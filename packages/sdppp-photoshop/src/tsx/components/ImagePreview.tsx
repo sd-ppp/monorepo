@@ -17,6 +17,7 @@ interface ImagePreviewProps {
       genByDocument: number;
       boundary: Rect;
     };
+    downloading?: boolean;
   }>;
   currentIndex: number;
   onIndexChange?: (index: number) => void;
@@ -25,6 +26,8 @@ interface ImagePreviewProps {
 export default function ImagePreview({ images, currentIndex, onIndexChange }: ImagePreviewProps) {
   const [imageLoading, setImageLoading] = useState(false);
   const [previousUrl, setPreviousUrl] = useState<string>('');
+  const currentImage = images[currentIndex];
+  const isDownloading = !!currentImage?.downloading;
 
   useEffect(() => {
     const currentUrl = images[currentIndex]?.url || '';
@@ -42,14 +45,14 @@ export default function ImagePreview({ images, currentIndex, onIndexChange }: Im
 
   return (
     <div style={{ position: 'relative', width: '100%', aspectRatio: '1', maxHeight: '100%' }}>
-      {imageLoading && (
+      {(imageLoading || isDownloading) && (
         <div style={{
           position: 'absolute',
           top: 0,
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: 'rgba(128, 128, 128, 0.5)',
+          backgroundColor: 'rgba(128, 128, 128, 0.35)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -82,40 +85,48 @@ export default function ImagePreview({ images, currentIndex, onIndexChange }: Im
           }}
         />
       ) : (
-        <Image
-          src={images[currentIndex].thumbnail_url}
-          alt={`Preview ${currentIndex + 1}`}
-          className="image-preview__image"
-          preview={{
-            src: images[currentIndex].url,
-            render: (originalNode, info) => {
-              const previewUrl = info.src || '';
-              if (isVideo(previewUrl)) {
-                return (
-                  <video
-                    src={previewUrl}
-                    controls
-                    autoPlay
-                    style={{
-                      maxWidth: '100%',
-                      maxHeight: '100%',
-                      objectFit: 'contain'
-                    }}
-                  />
-                );
+        currentImage?.thumbnail_url ? (
+          <Image
+            src={images[currentIndex].thumbnail_url}
+            alt={`Preview ${currentIndex + 1}`}
+            className="image-preview__image"
+            preview={{
+              src: images[currentIndex].url,
+              render: (originalNode, info) => {
+                const previewUrl = info.src || '';
+                if (isVideo(previewUrl)) {
+                  return (
+                    <video
+                      src={previewUrl}
+                      controls
+                      autoPlay
+                      style={{
+                        maxWidth: '100%',
+                        maxHeight: '100%',
+                        objectFit: 'contain'
+                      }}
+                    />
+                  );
+                }
+                return originalNode;
               }
-              return originalNode;
-            }
-          }}
-          width={'100%'}
-          height={'100%'}
-          style={{
-            objectFit: 'contain',
-            transition: 'opacity 0.2s ease'
-          }}
-          onLoad={() => setImageLoading(false)}
-          onError={() => setImageLoading(false)}
-        />
+            }}
+            width={'100%'}
+            height={'100%'}
+            style={{
+              objectFit: 'contain',
+              transition: 'opacity 0.2s ease'
+            }}
+            onLoad={() => setImageLoading(false)}
+            onError={() => setImageLoading(false)}
+          />
+        ) : (
+          // No thumbnail yet; render blank container and rely on overlay
+          <div
+            className="image-preview__image"
+            style={{ width: '100%', height: '100%' }}
+          />
+        )
       )}
     </div>
   );

@@ -196,11 +196,11 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
         title={t('image.delete_current', 'Delete Current')}
       />
     ),
-    indicator: images.length > 1 ? (
+    indicator: (
       <div className="image-preview__indicator">
         {currentIndex + 1} / {images.length}
       </div>
-    ) : null,
+    ),
     bottomDeleteAll: (
       <Button
         className="image-preview__bottom-delete-all"
@@ -261,7 +261,7 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
         <SaveOutlined />
       </Button>
     ),
-    bottomIndicator: images.length > 1 ? (
+    bottomIndicator: (
       <Dropdown
         menu={{
           items: [
@@ -292,11 +292,11 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
         trigger={['hover']}
         overlayStyle={{ minWidth: 'auto', width: 'max-content' }}
       >
-        <div className="image-preview__bottom-indicator">
-          {currentIndex + 1} / {images.length}
+        <div className="image-preview__bottom-indicator" style={{ cursor: 'pointer' }}>
+          {currentIndex + 1} / {images.length} <MoreOutlined />
         </div>
       </Dropdown>
-    ) : null
+    )
   };
 
   return (

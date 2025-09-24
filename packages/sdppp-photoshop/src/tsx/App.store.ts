@@ -15,6 +15,7 @@ export const MainStore = create<{
         boundary?: any,
         width?: number,
         height?: number,
+        downloading?: boolean,
     }[]
     showingPreview: boolean
     previewError: string
@@ -26,26 +27,69 @@ export const MainStore = create<{
     previewImageList: [
     ],
     downloadAndAppendImage: async ({ url, source, docId, boundary }: { url: string, source: string, docId?: number, boundary?: any }) => {
-        const res = await sdpppSDK.plugins.photoshop.downloadImage({ url: url })
+        // Insert a placeholder item to reflect downloading state
+        set({
+            previewImageList: [
+                ...MainStore.getState().previewImageList,
+                {
+                    url,
+                    source,
+                    thumbnail_url: '',
+                    nativePath: '',
+                    docId,
+                    boundary,
+                    downloading: true,
+                }
+            ]
+        })
+
+        const res = await sdpppSDK.plugins.photoshop.downloadImage({ url })
         if ('error' in res) {
+            // On error, remove the placeholder and record the error
+            const currentList = MainStore.getState().previewImageList
+            const idx = currentList.findIndex(item => item.url === url && item.source === source && item.downloading)
+            const nextList = idx >= 0 ? currentList.filter((_, i) => i !== idx) : currentList
             set({
-                previewError: res.error
+                previewError: res.error,
+                previewImageList: nextList,
             })
             return
+        }
 
+        // On success, update the placeholder to the final data
+        const currentList = MainStore.getState().previewImageList
+        const idx = currentList.findIndex(item => item.url === url && item.source === source && item.downloading)
+        if (idx >= 0) {
+            const updated = {
+                ...currentList[idx],
+                downloading: false,
+                thumbnail_url: (res as any).thumbnail_url ?? currentList[idx].thumbnail_url,
+                nativePath: (res as any).nativePath ?? currentList[idx].nativePath,
+                width: (res as any).width,
+                height: (res as any).height,
+            }
+            const nextList = [...currentList]
+            nextList[idx] = updated
+            set({
+                previewError: '',
+                previewImageList: nextList,
+            })
         } else {
+            // If placeholder not found (e.g., list cleared), append final item
             set({
                 previewError: '',
                 previewImageList: [
-                    ...MainStore.getState().previewImageList, {
+                    ...currentList,
+                    {
                         url,
                         source,
-                        thumbnail_url: res.thumbnail_url,
-                        nativePath: res.nativePath,
+                        thumbnail_url: (res as any).thumbnail_url,
+                        nativePath: (res as any).nativePath,
                         docId,
                         boundary,
                         width: (res as any).width,
                         height: (res as any).height,
+                        downloading: false,
                     }
                 ]
             })

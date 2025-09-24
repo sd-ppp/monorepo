@@ -106,7 +106,8 @@ function CustomAPIRendererModels() {
     return (
         <WidgetableProvider
             uploader={async (uploadInput, signal) => {
-                return await client.uploadImage(uploadInput.type, uploadInput.tokenOrBuffer, 'png', signal);
+                // return await client.uploadImage(uploadInput.type, uploadInput.tokenOrBuffer, 'png', signal);
+                return uploadInput.tokenOrBuffer;
             }}
             widgetRegistry={createBaseWidgetRegistry()}
         >

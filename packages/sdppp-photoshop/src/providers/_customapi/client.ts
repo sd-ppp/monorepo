@@ -2,10 +2,9 @@ import { WidgetableNode, WidgetableWidget } from '@sdppp/common/schemas/schemas'
 import { Client } from '../base/Client';
 import { Task } from '../base/Task';
 import { t, getCurrentLanguage, sdpppSDK } from '@sdppp/common';
-import { GoogleGenAI, HarmCategory, HarmBlockThreshold } from '@google/genai'
-import { runOpenAIEditHttp } from './handlers';
-// OpenAI SDK removed; using HTTP calls via handlers
+// GoogleGenAI and OpenAI moved to mesh actions
 
+// Gemini and OpenAI interfaces moved to mesh actions - keeping for compatibility
 export interface GeminiResult {
   success: boolean
   imageUrl?: string
@@ -13,152 +12,14 @@ export interface GeminiResult {
   error?: string
 }
 
-export class GeminiImageGenerator {
-  protected genAI!: GoogleGenAI
-
-  constructor(config: { apiKey: string, baseURL?: string }) {
-    const options: any = { apiKey: config.apiKey };
-    if (config.baseURL) {
-      options.httpOptions = { baseUrl: config.baseURL };
-    }
-    this.genAI = new GoogleGenAI(options);
-  }
-
-  private async callGeminiWithImageAndPrompt(pngBuffer: Buffer, prompt: string): Promise<GeminiResult> {
-    const apiStartTime = Date.now()
-
-    try {
-      const base64Image = pngBuffer.toString('base64')
-
-      const response = await this.genAI.models.generateContent({
-        model: 'gemini-2.5-flash-image-preview',
-        contents: [
-          {
-            role: 'user',
-            parts: [
-              {
-                inlineData: {
-                  mimeType: 'image/png',
-                  data: base64Image
-                }
-              },
-              {
-                text: prompt
-              }
-            ]
-          }
-        ],
-        config: {
-          temperature: 1.0,
-          topP: 0.95,
-          maxOutputTokens: 32768,
-          responseModalities: ['TEXT', 'IMAGE'],
-          safetySettings: [
-            { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
-            { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
-            { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
-            { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE }
-          ]
-        }
-      })
-
-      const apiTime = Date.now() - apiStartTime
-
-      if (response && response.candidates && response.candidates.length > 0) {
-        const imageUrl = this.extractImageFromCandidates(response.candidates)
-        if (imageUrl) {
-          return {
-            success: true,
-            imageUrl,
-            apiTime
-          }
-        }
-      }
-
-      return {
-        success: false,
-        apiTime,
-        error: 'No image data found in Gemini response'
-      }
-
-    } catch (error) {
-      const apiTime = Date.now() - apiStartTime
-      return {
-        success: false,
-        apiTime,
-        error: error instanceof Error ? error.message : 'Gemini API error'
-      }
-    }
-  }
-
-  private extractImageFromCandidates(candidates: any[]): string | null {
-    try {
-      for (const candidate of candidates) {
-        if (candidate.content && candidate.content.parts) {
-          for (const part of candidate.content.parts) {
-            if (part.inlineData && part.inlineData.data) {
-              const mimeType = part.inlineData.mimeType || 'image/png'
-              return `data:${mimeType};base64,${part.inlineData.data}`
-            }
-          }
-        }
-      }
-      return null
-    } catch (error) {
-      console.error('Error extracting image from candidates:', error)
-      return null
-    }
-  }
-
-  async generateSingleImage(
-    pngBuffer: Buffer,
-    prompt: string
-  ): Promise<GeminiResult> {
-    console.log('Generating single Gemini image...')
-    return await this.callGeminiWithImageAndPrompt(pngBuffer, prompt)
-  }
-
-  async generateImagesWithBatching(
-    pngBuffer: Buffer,
-    prompt: string,
-    batchCount: number = 3,
-    imagesPerBatch: number = 3
-  ): Promise<{
-    results: GeminiResult[],
-    bestResult: GeminiResult
-  }> {
-    const geminiResults: GeminiResult[] = []
-
-    for (let batch = 0; batch < batchCount; batch++) {
-      // console.log(`Generating Gemini batch ${batch + 1}/${batchCount} (images ${batch * imagesPerBatch + 1}-${batch * imagesPerBatch + imagesPerBatch})...`)
-      const batchPromises = Array(imagesPerBatch).fill(null).map(() =>
-        this.callGeminiWithImageAndPrompt(pngBuffer, prompt)
-      )
-      const batchResults = await Promise.all(batchPromises)
-      geminiResults.push(...batchResults)
-    }
-
-    const bestResult = geminiResults.find(r => r.success) || geminiResults[geminiResults.length - 1]
-
-    return {
-      results: geminiResults,
-      bestResult
-    }
-  }
-}
-
 export class SDPPPCustomAPI extends Client<{
   apiKey: string
   baseURL: string
   format: 'google' | 'openai'
 }> {
-  private geminiGenerator: GeminiImageGenerator | null = null;
-
   constructor(config: { apiKey: string, baseURL: string, format: 'google' | 'openai' }) {
     super(config);
-    if (config.format === 'google') {
-      this.geminiGenerator = new GeminiImageGenerator({ apiKey: config.apiKey, baseURL: config.baseURL });
-    }
+    // Gemini generator removed - using mesh actions now
   }
 
   async getNodes(_model: string): Promise<{
@@ -221,8 +82,9 @@ export class SDPPPCustomAPI extends Client<{
         throw new Error('Image input and prompt are required');
       }
 
-      // Convert base64 image_input to buffer
-      const imageBuffer = this.convertBase64ToBuffer(input.image_input);
+      // For token-based flow, use the input directly as token
+      // For base64 flow, input.image_input is the base64 data
+      const imageToken = input.image_input;
 
       const taskId = `${this.config.format}_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
       let taskResult: any = null;
@@ -240,14 +102,25 @@ export class SDPPPCustomAPI extends Client<{
             if (!taskResult) {
               try {
                 if (this.config.format === 'google') {
-                  console.log('Starting Gemini image generation...');
-                  taskResult = await this.geminiGenerator!.generateSingleImage(
-                    imageBuffer,
-                    input.prompt
-                  );
+                  console.log('Starting Gemini image generation via mesh action...');
+                  // Determine if input is token or base64
+                  const isToken = typeof imageToken === 'string' && !imageToken.startsWith('data:') && !imageToken.includes(',');
+                  taskResult = await sdpppSDK.plugins.photoshop.geminiImageGenerate({
+                    apiKey: this.config.apiKey,
+                    baseURL: this.config.baseURL,
+                    imageInput: isToken ? imageToken : input.image_input,
+                    imageInputType: isToken ? 'token' : 'base64',
+                    prompt: input.prompt
+                  });
                 } else {
-                  console.log('Starting OpenAI image edit via HTTP API...');
-                  taskResult = await runOpenAIEditHttp(this.config.apiKey, this.config.baseURL, imageBuffer, input.prompt, model);
+                  console.log('Starting OpenAI image edit via mesh action...');
+                  taskResult = await sdpppSDK.plugins.photoshop.openaiImageEdit({
+                    apiKey: this.config.apiKey,
+                    baseURL: this.config.baseURL,
+                    imageToken,
+                    prompt: input.prompt,
+                    model
+                  });
                 }
                 isCompleted = true;
               } catch (error) {
@@ -331,5 +204,5 @@ export class SDPPPCustomAPI extends Client<{
     return Buffer.from(imageInput, 'base64');
   }
 
-  // OpenAI generation moved to HTTP handlers in run()
+  // OpenAI generation moved to mesh actions in run()
 }

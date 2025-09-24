@@ -2,5 +2,5 @@ node_modules
 .pnpm-store
 tsconfig.tsbuildinfo
 .env
-internals
+# internals
 .vscode
