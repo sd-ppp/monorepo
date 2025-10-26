@@ -163,13 +163,9 @@ export function useImageManager({
   urls,
   onValueChange,
 }: UseImageManagerOptions): UseImageManagerReturn {
-<<<<<<< HEAD
   const altActive = useAltKeyState();
   const buttons = useButtonConfigs(isMask, altActive);
-=======
   const { t } = useTranslation();
-  const buttons = useButtonConfigs(isMask);
->>>>>>> 4ab3381 (sync back bugfix & layer watch)
 
   // Register component in store
   useEffect(() => {

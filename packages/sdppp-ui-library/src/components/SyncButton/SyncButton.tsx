@@ -140,12 +140,30 @@ export const SyncButton: React.FC<SyncButtonProps> = ({
     if (!autoSyncEnabled) return null;
     if (!autoSyncButtonTooltips) return autoSyncButton;
     const title = isAutoSync ? autoSyncButtonTooltips.enabled : autoSyncButtonTooltips.disabled;
-    return <Tooltip title={title}>{autoSyncButton}</Tooltip>;
+    return (
+      <Tooltip
+        title={title}
+        placement="top"
+        align={{ offset: [0, -8] }}
+        getPopupContainer={() => document.body}
+      >
+        {autoSyncButton}
+      </Tooltip>
+    );
   }, [autoSyncEnabled, autoSyncButtonTooltips, isAutoSync, autoSyncButton]);
 
   const renderedMainButton = useMemo(() => {
     if (!syncButtonTooltip) return mainButton;
-    return <Tooltip title={syncButtonTooltip}>{mainButton}</Tooltip>;
+    return (
+      <Tooltip
+        title={syncButtonTooltip}
+        placement="top"
+        align={{ offset: [0, -8] }}
+        getPopupContainer={() => document.body}
+      >
+        {mainButton}
+      </Tooltip>
+    );
   }, [syncButtonTooltip, mainButton]);
 
   return (

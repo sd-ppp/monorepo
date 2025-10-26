@@ -181,6 +181,12 @@ export declare const sdpppSDK: {
 			}, signal?: AbortSignal) => Promise<{
 				name: string;
 			}>;
+			sdpppHandshake: (data: {
+				hostVersion?: string | undefined;
+			}, signal?: AbortSignal) => Promise<{
+				comfyVersion: string;
+				hostVersion?: string | undefined;
+			}>;
 			setWidgetValue: (data: {
 				values: {
 					value: string | number | boolean | any[] | Record<string, any>;
