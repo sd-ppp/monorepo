@@ -9,6 +9,7 @@ export interface AutoSyncConfig {
   type: TrackType;
   content: ContentType;
   alt?: boolean;
+  layerIdentify?: string | null;
 }
 
 export interface SlotState {
@@ -116,11 +117,14 @@ export const GlobalImageStore = create<GlobalImageStoreState>((set, get) => ({
   },
 
   setSlotAuto: (id, index, auto) => {
+    let previousAuto: AutoSyncConfig | null = null;
+
     set(state => {
       const comp = state.components[id];
       if (!comp) return state;
 
       const prev = comp.slots[index] || {};
+      previousAuto = prev.auto || null;
       const nextSlot: SlotState = { ...prev, auto };
 
       return {
@@ -134,20 +138,13 @@ export const GlobalImageStore = create<GlobalImageStoreState>((set, get) => ({
       };
     });
 
-    // Handle realtime thumbnail tracking
     const comp = get().components[id];
-    const type: TrackType = auto?.type || (comp?.isMask ? 'mask' : 'image');
+    const type: TrackType = auto?.type || previousAuto?.type || (comp?.isMask ? 'mask' : 'image');
 
     if (auto) {
-      startAutoThumbnail(type, auto.content, !!auto.alt);
-    } else {
-      // Stop all types for safety
-      stopAutoThumbnail('image', 'canvas');
-      stopAutoThumbnail('image', 'curlayer');
-      stopAutoThumbnail('image', 'selection');
-      stopAutoThumbnail('mask', 'canvas');
-      stopAutoThumbnail('mask', 'curlayer');
-      stopAutoThumbnail('mask', 'selection');
+      startAutoThumbnail(type, auto.content, !!auto.alt, auto.layerIdentify || undefined);
+    } else if (previousAuto) {
+      stopAutoThumbnail(previousAuto.type, previousAuto.content, previousAuto.layerIdentify || null);
     }
   },
 
@@ -352,7 +349,12 @@ export function useImageSlotState(componentId: string, index: number) {
   const docId = sdpppSDK.stores.PhotoshopStore.getState().activeDocumentID;
   const thumbs = RealtimeThumbnailStore(state => state.thumbsByDoc[docId || 0]);
 
-  const rtKey = slot?.auto?.content ? `${slot.auto.content}${slot?.auto?.alt ? '_alt' : ''}` : null;
+  const makeKey = () => {
+    if (!slot?.auto?.content) return null;
+    const base = slot.auto.layerIdentify ? `${slot.auto.content}:${slot.auto.layerIdentify}` : slot.auto.content;
+    return slot.auto.alt ? `${base}_alt` : base;
+  };
+  const rtKey = makeKey();
   const rt = rtKey
     ? (comp?.isMask ? thumbs?.mask?.[rtKey] : thumbs?.image?.[rtKey])
     : '';

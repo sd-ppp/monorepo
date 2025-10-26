@@ -173,6 +173,14 @@ export declare const sdpppSDK: {
 			logout: (data: {}, signal?: AbortSignal) => Promise<{
 				success: boolean;
 			}>;
+			uploadComfyImageFromUXP: (data: {
+				fileName: string;
+				dataBase64: string;
+				mimeType?: string | undefined;
+				overwrite?: boolean | undefined;
+			}, signal?: AbortSignal) => Promise<{
+				name: string;
+			}>;
 			setWidgetValue: (data: {
 				values: {
 					value: string | number | boolean | any[] | Record<string, any>;
@@ -278,6 +286,7 @@ export declare const sdpppSDK: {
 				imageQuality: number;
 				cropBySelection: "positive" | "negative" | "no";
 				SkipNonNormalLayer: boolean;
+				layer_identify?: string | null | undefined;
 			}, signal?: AbortSignal) => Promise<{
 				error?: string | undefined;
 				thumbnail_url?: string | undefined;
@@ -296,11 +305,15 @@ export declare const sdpppSDK: {
 				} | "canvas" | "curlayer" | "selection";
 				content: "canvas" | "curlayer" | "selection";
 				imageSize: number;
+				layer_identify?: string | null | undefined;
 			}, signal?: AbortSignal) => Promise<{
 				error?: string | undefined;
 				thumbnail_url?: string | undefined;
 				file_token?: string | undefined;
 				source?: string | undefined;
+			}>;
+			getCurrentLayerIdentify: (data: {}, signal?: AbortSignal) => Promise<{
+				layer_identify: string | null;
 			}>;
 			importImage: (data: {
 				type: "canvas" | "curlayer" | "newdoc" | "smartobject";
@@ -340,6 +353,7 @@ export declare const sdpppSDK: {
 					imageSize: number;
 					imageQuality: number;
 					cropBySelection: "positive" | "negative" | "no";
+					layer_identify?: string | null | undefined;
 				} | undefined;
 			}>;
 			selectLayerImage: (data: {
@@ -353,6 +367,7 @@ export declare const sdpppSDK: {
 					imageSize: number;
 					imageQuality: number;
 					cropBySelection: "positive" | "negative" | "no";
+					layer_identify?: string | null | undefined;
 				} | undefined;
 			}>;
 			selectLayerMask: (data: {
@@ -364,6 +379,7 @@ export declare const sdpppSDK: {
 					reverse: boolean;
 					content: "canvas" | "curlayer" | "selection";
 					imageSize: number;
+					layer_identify?: string | null | undefined;
 				} | undefined;
 			}>;
 			selectSelectionMask: (data: {
@@ -375,6 +391,7 @@ export declare const sdpppSDK: {
 					reverse: boolean;
 					content: "canvas" | "curlayer" | "selection";
 					imageSize: number;
+					layer_identify?: string | null | undefined;
 				} | undefined;
 			}>;
 			taskAdd: (data: {

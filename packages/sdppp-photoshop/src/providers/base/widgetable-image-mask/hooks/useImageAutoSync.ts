@@ -1,4 +1,5 @@
 import React, { useCallback, useRef } from 'react';
+import { sdpppSDK } from '@sdppp/common';
 import { useUploadPasses } from '../../upload-pass-context';
 import { GlobalImageStore, type AutoSyncConfig } from '../stores/global-image-store';
 import { getPhotoshopImage } from '../utils/image-operations';
@@ -25,10 +26,30 @@ export function useImageAutoSync({ componentId, urls, isMask, onValueChange }: U
     urlsRef.current = urls || [];
   }, [urls]);
 
+  const resolveCurrentLayerIdentify = useCallback(async (): Promise<string | null> => {
+    try {
+      const api: any = sdpppSDK?.plugins?.photoshop;
+      if (!api) return null;
+
+      if (typeof api.getCurrentLayerIdentify === 'function') {
+        const res = await api.getCurrentLayerIdentify();
+        return res?.layer_identify ?? res?.identify ?? null;
+      }
+    } catch (error) {
+      console.warn('[useImageAutoSync] resolveCurrentLayerIdentify error', error);
+    }
+    return null;
+  }, []);
+
   const onAutoSyncChange = useCallback(
-    (index: number, activeId: string | null, event: AutoSyncEvent) => {
+    async (index: number, activeId: string | null, event: AutoSyncEvent) => {
       const type = isMask ? 'mask' : 'image';
       const altUsed = !!event?.altKey;
+      let resolvedLayerIdentify: string | null = null;
+
+      if (activeId === 'curlayer') {
+        resolvedLayerIdentify = await resolveCurrentLayerIdentify();
+      }
 
       // Update auto-sync state in global store (drives realtime thumbnails)
       if (!activeId) {
@@ -38,6 +59,7 @@ export function useImageAutoSync({ componentId, urls, isMask, onValueChange }: U
           type,
           content: activeId as any,
           alt: altUsed,
+          layerIdentify: resolvedLayerIdentify,
         };
         GlobalImageStore.getState().setSlotAuto(componentId, index, autoConfig);
       }
@@ -55,6 +77,8 @@ export function useImageAutoSync({ componentId, urls, isMask, onValueChange }: U
       if (!activeId) return;
 
       // Create a persistent upload pass that fetches latest PS content at execution time
+      const layerIdentify = activeId === 'curlayer' ? resolvedLayerIdentify : null;
+
       const uploadPass = {
         getUploadFile: async (signal?: AbortSignal) => {
           if (signal?.aborted) {
@@ -67,7 +91,12 @@ export function useImageAutoSync({ componentId, urls, isMask, onValueChange }: U
           } catch {}
 
           // Propagate Alt semantics (reverse/crop) like once-sync Alt behavior
-          const { file_token, result } = await getPhotoshopImage(isMask, activeId as any, altUsed);
+          const { file_token, result } = await getPhotoshopImage(
+            isMask,
+            activeId as any,
+            altUsed,
+            layerIdentify || undefined
+          );
 
           if (result?.error) {
             throw new Error(result.error);
@@ -105,7 +134,7 @@ export function useImageAutoSync({ componentId, urls, isMask, onValueChange }: U
       passesRef.current.set(index, uploadPass);
       addUploadPass(uploadPass);
     },
-    [componentId, isMask, urls, onValueChange, addUploadPass, removeUploadPass]
+    [componentId, isMask, urls, onValueChange, addUploadPass, removeUploadPass, resolveCurrentLayerIdentify]
   );
 
   return { onAutoSyncChange };

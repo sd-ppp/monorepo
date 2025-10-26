@@ -189,6 +189,7 @@ export const zhCN = {
   'image.upload.tooltip.mask.canvas': '从 画布 获取遮罩',
   'image.upload.tooltip.autosync.on': '自动同步: 开启',
   'image.upload.tooltip.autosync.off': '自动同步: 关闭',
+  'image.upload.autosync.fetching': '自动获取中…',
 
   'image.auto_send_enabled': '自动填入画布开启',
   'image.auto_send_disabled': '自动填入画布关闭',

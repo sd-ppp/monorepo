@@ -188,6 +188,7 @@ export const enUS = {
   'image.upload.tooltip.mask.selection': 'Get mask from Selection',
   'image.upload.tooltip.autosync.on': 'Auto Sync: on',
   'image.upload.tooltip.autosync.off': 'Auto Sync: off',
+  'image.upload.autosync.fetching': 'Auto fetching…',
 
   'image.auto_send_enabled': 'Auto send enabled',
   'image.auto_send_disabled': 'Auto send disabled',

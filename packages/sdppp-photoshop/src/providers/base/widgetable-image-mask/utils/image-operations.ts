@@ -6,7 +6,8 @@ import { sdpppSDK } from '@sdppp/common';
 export const getPhotoshopImage = async (
   isMask = false,
   source: 'canvas' | 'curlayer' | 'selection',
-  reverse?: boolean
+  reverse?: boolean,
+  layerIdentify?: string | null
 ) => {
   let thumbnail_url: string, file_token: string, imageSource: string, result: any;
 
@@ -40,6 +41,10 @@ export const getPhotoshopImage = async (
       boundary: boundaryParam as any,
     };
 
+    if (layerIdentify) {
+      maskParams.layer_identify = layerIdentify;
+    }
+
     result = await sdpppSDK.plugins.photoshop.getMask(maskParams as any);
     thumbnail_url = result.thumbnail_url;
     file_token = result.file_token;
@@ -65,14 +70,18 @@ export const getPhotoshopImage = async (
       boundaryParam = boundary;
     }
 
-    const getImageParams = {
+    const getImageParams: any = {
       content: source,
       boundary: boundaryParam,
       imageSize:
         workBoundaryMaxSizes[activeDocumentID] ||
         sdpppSDK.stores.PhotoshopStore.getState().sdpppX['settings.imaging.defaultImagesSizeLimit'],
       cropBySelection: reverse ? 'negative' : 'no',
-    } as const;
+    };
+
+    if (layerIdentify) {
+      getImageParams.layer_identify = layerIdentify;
+    }
 
     result = await sdpppSDK.plugins.photoshop.getImage(getImageParams);
     thumbnail_url = result.thumbnail_url;

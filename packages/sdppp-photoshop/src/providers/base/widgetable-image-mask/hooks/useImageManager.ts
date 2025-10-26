@@ -1,12 +1,12 @@
 import { sdpppSDK } from '@sdppp/common';
 import { useTranslation } from '@sdppp/common/i18n/react';
-import type { ImageSyncGroupData, ButtonConfig } from '@sdppp/ui-library';
+import type { ButtonConfig, ImageSyncGroupData } from '@sdppp/ui-library';
 import React, { useCallback, useEffect, useMemo } from 'react';
-import { GlobalImageStore, useComponent, useImageSlotState } from '../stores/global-image-store';
+import { GlobalImageStore, useComponent } from '../stores/global-image-store';
 import { RealtimeThumbnailStore } from '../stores/realtime-thumbnail-store';
-import { useImageSync, type SyncEvent } from './useImageSync';
-import { useImageAutoSync, type AutoSyncEvent } from './useImageAutoSync';
 import { removeUrlAtIndex } from '../utils/upload-helpers';
+import { useImageAutoSync, type AutoSyncEvent } from './useImageAutoSync';
+import { useImageSync, type SyncEvent } from './useImageSync';
 
 export interface UseImageManagerOptions {
   componentId: string;
@@ -143,6 +143,19 @@ function useButtonConfigs(isMask: boolean, altActive: boolean): ButtonConfig[] {
   }, [isMask, altActive, t]);
 }
 
+const MAX_LAYER_LABEL_LENGTH = 24;
+
+const formatLayerDisplay = (identify: string) => {
+  if (!identify) return '';
+  const match = identify.match(/^(.*?)(?:\s*\(id:\d+\))?$/);
+  const rawName = match ? match[1] : identify;
+  const cleaned = rawName.replace(/^[-\s]+/, '').trim();
+  if (cleaned.length <= MAX_LAYER_LABEL_LENGTH) {
+    return cleaned;
+  }
+  return `${cleaned.slice(0, MAX_LAYER_LABEL_LENGTH - 1)}…`;
+};
+
 export function useImageManager({
   componentId,
   maxCount,
@@ -150,8 +163,13 @@ export function useImageManager({
   urls,
   onValueChange,
 }: UseImageManagerOptions): UseImageManagerReturn {
+<<<<<<< HEAD
   const altActive = useAltKeyState();
   const buttons = useButtonConfigs(isMask, altActive);
+=======
+  const { t } = useTranslation();
+  const buttons = useButtonConfigs(isMask);
+>>>>>>> 4ab3381 (sync back bugfix & layer watch)
 
   // Register component in store
   useEffect(() => {
@@ -194,18 +212,49 @@ export function useImageManager({
     for (let i = 0; i < groupCount; i++) {
       const slot = comp?.slots?.[i];
       const activeId = slot?.auto?.content || null;
-      const key = activeId ? `${activeId}${slot?.auto?.alt ? '_alt' : ''}` : null;
+      let key: string | null = null;
+      if (activeId) {
+        const base = slot?.auto?.layerIdentify ? `${activeId}:${slot.auto.layerIdentify}` : activeId;
+        key = slot?.auto?.alt ? `${base}_alt` : base;
+      }
       const rt = key ? (comp?.isMask ? (thumbs as any)?.mask?.[key] : (thumbs as any)?.image?.[key]) : '';
       const fallback = urls?.[i] || '';
 
+      const slotButtons = buttons.map(btn => {
+        if (btn.id === 'curlayer') {
+          const isActive = slot?.auto?.content === 'curlayer';
+          const layerIdentifyRaw = slot?.auto?.layerIdentify || '';
+          if (isActive && layerIdentifyRaw) {
+            const label = formatLayerDisplay(layerIdentifyRaw);
+            return {
+              ...btn,
+              text: label,
+            };
+          }
+          return btn;
+        }
+
+        if (btn.id === 'canvas') {
+          const isCanvasActive = slot?.auto?.content === 'canvas';
+          if (isCanvasActive) {
+            return {
+              ...btn,
+              descText: t('image.upload.autosync.fetching', { defaultValue: 'Auto fetching…' }),
+            };
+          }
+        }
+
+        return btn;
+      });
+
       arr.push({
-        buttons,
+        buttons: slotButtons,
         imageUrl: rt || slot?.thumbnail || fallback,
         activeAutoSyncId: activeId,
       });
     }
     return arr;
-  }, [comp, groupCount, urls, buttons, thumbs]);
+  }, [comp, groupCount, urls, buttons, thumbs, t]);
 
   // Sync and auto-sync hooks
   const { onSync, uploading, uploadError } = useImageSync({

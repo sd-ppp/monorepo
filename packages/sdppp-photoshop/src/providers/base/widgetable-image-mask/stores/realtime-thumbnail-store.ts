@@ -5,21 +5,26 @@ import { create } from 'zustand';
 type ContentType = 'canvas' | 'curlayer' | 'selection';
 type TrackType = 'image' | 'mask';
 
-type ThumbKey = `${ContentType}` | `${ContentType}_alt`;
+type ThumbKey = string;
 interface DocThumbs {
-  image?: Partial<Record<ThumbKey, string>>;
-  mask?: Partial<Record<ThumbKey, string>>;
+  image?: Record<ThumbKey, string>;
+  mask?: Record<ThumbKey, string>;
 }
 
-interface TrackingEntry { type: TrackType; content: ContentType; alt?: boolean }
+interface TrackingEntry { type: TrackType; content: ContentType; alt?: boolean; layerIdentify?: string | null }
 interface TrackingState {
   trackingByDoc: Record<number, TrackingEntry[]>;
   thumbsByDoc: Record<number, DocThumbs>;
   addTracking: (docId: number, config: TrackingEntry) => void;
   removeTracking: (docId: number, config?: TrackingEntry) => void;
   clearTracking: (docId: number) => void;
-  setThumb: (docId: number, type: TrackType, content: ContentType, dataUrl: string, alt?: boolean) => void;
+  setThumb: (docId: number, type: TrackType, content: ContentType, dataUrl: string, alt?: boolean, layerIdentify?: string | null) => void;
 }
+
+const makeThumbKey = (content: ContentType, alt?: boolean, layerIdentify?: string | null) => {
+  const base = layerIdentify ? `${content}:${layerIdentify}` : content;
+  return alt ? `${base}_alt` : base;
+};
 
 export const RealtimeThumbnailStore = create<TrackingState>((set, get) => ({
   trackingByDoc: {},
@@ -28,8 +33,8 @@ export const RealtimeThumbnailStore = create<TrackingState>((set, get) => ({
     set(state => {
       const list = state.trackingByDoc[docId] || [];
       const next = list
-        // ensure uniqueness by type+content; replace different alt variant
-        .filter(e => !(e.type === config.type && e.content === config.content));
+        // ensure uniqueness by type+content+layerIdentify; replace different alt variant
+        .filter(e => !(e.type === config.type && e.content === config.content && (e.layerIdentify || null) === (config.layerIdentify || null)));
       next.push(config);
       return { trackingByDoc: { ...state.trackingByDoc, [docId]: next } };
     });
@@ -39,14 +44,14 @@ export const RealtimeThumbnailStore = create<TrackingState>((set, get) => ({
     set(state => {
       if (!config) return { trackingByDoc: { ...state.trackingByDoc, [docId]: [] } };
       const list = state.trackingByDoc[docId] || [];
-      const next = list.filter(e => !(e.type === config.type && e.content === config.content));
+      const next = list.filter(e => !(e.type === config.type && e.content === config.content && (e.layerIdentify || null) === (config.layerIdentify || null)));
       return { trackingByDoc: { ...state.trackingByDoc, [docId]: next } };
     });
   },
   clearTracking: (docId) => {
     set(state => ({ trackingByDoc: { ...state.trackingByDoc, [docId]: [] } }));
   },
-  setThumb: (docId, type, content, dataUrl, alt) => {
+  setThumb: (docId, type, content, dataUrl, alt, layerIdentify) => {
     set(state => ({
       thumbsByDoc: {
         ...state.thumbsByDoc,
@@ -54,7 +59,7 @@ export const RealtimeThumbnailStore = create<TrackingState>((set, get) => ({
           ...(state.thumbsByDoc[docId] || {}),
           [type]: {
             ...((state.thumbsByDoc[docId] || {})[type] || {}),
-            [`${content}${alt ? '_alt' : ''}` as ThumbKey]: dataUrl,
+            [makeThumbKey(content, alt, layerIdentify) as ThumbKey]: dataUrl,
           },
         },
       },
@@ -101,10 +106,11 @@ async function runFetch() {
           imageQuality: 1,
           cropBySelection: tracking.alt ? 'negative' : 'no',
           SkipNonNormalLayer: true,
+          layer_identify: tracking.layerIdentify || undefined,
         });
         const thumb = res.thumbnail_url || '';
         if (thumb) {
-          RealtimeThumbnailStore.getState().setThumb(docId, 'image', tracking.content, thumb, !!tracking.alt);
+          RealtimeThumbnailStore.getState().setThumb(docId, 'image', tracking.content, thumb, !!tracking.alt, tracking.layerIdentify);
         }
       } else {
         const res = await sdpppSDK.plugins.photoshop.getMask({
@@ -112,10 +118,11 @@ async function runFetch() {
           content: tracking.content,
           reverse: !!tracking.alt,
           imageSize: 192,
+          layer_identify: tracking.layerIdentify || undefined,
         } as any);
         const thumb = (res as any)?.thumbnail_url || '';
         if (thumb) {
-          RealtimeThumbnailStore.getState().setThumb(docId, 'mask', tracking.content, thumb, !!tracking.alt);
+          RealtimeThumbnailStore.getState().setThumb(docId, 'mask', tracking.content, thumb, !!tracking.alt, tracking.layerIdentify);
         }
       }
     }
@@ -178,23 +185,28 @@ async function runFetch() {
   });
 })();
 
-export function startAutoThumbnail(type: TrackType, content: ContentType, alt?: boolean) {
+export function startAutoThumbnail(type: TrackType, content: ContentType, alt?: boolean, layerIdentify?: string | null) {
   const docId = sdpppSDK.stores.PhotoshopStore.getState().activeDocumentID;
   if (!docId) return;
-  RealtimeThumbnailStore.getState().addTracking(docId, { type, content, alt: !!alt });
+  RealtimeThumbnailStore.getState().addTracking(docId, { type, content, alt: !!alt, layerIdentify: layerIdentify || null });
 }
 
-export function stopAutoThumbnail(type?: TrackType, content?: ContentType) {
+export function stopAutoThumbnail(type?: TrackType, content?: ContentType, layerIdentify?: string | null) {
   const docId = sdpppSDK.stores.PhotoshopStore.getState().activeDocumentID;
   if (!docId) return;
   if (type && content) {
-    RealtimeThumbnailStore.getState().removeTracking(docId, { type, content });
+    RealtimeThumbnailStore.getState().removeTracking(docId, { type, content, layerIdentify: layerIdentify || null });
+  } else if (type) {
+    const tracking = RealtimeThumbnailStore.getState().trackingByDoc[docId] || [];
+    tracking
+      .filter(entry => entry.type === type)
+      .forEach(entry => RealtimeThumbnailStore.getState().removeTracking(docId, entry));
   } else {
     RealtimeThumbnailStore.getState().clearTracking(docId);
   }
 }
 
-export function useRealtimeThumbnail(type: TrackType, content: ContentType) {
+export function useRealtimeThumbnail(type: TrackType, content: ContentType, layerIdentify?: string | null) {
   // Bind to current active document
   const docId = sdpppSDK.stores.PhotoshopStore.getState().activeDocumentID;
   const thumbs = RealtimeThumbnailStore(state => state.thumbsByDoc[docId]);
@@ -203,13 +215,14 @@ export function useRealtimeThumbnail(type: TrackType, content: ContentType) {
   React.useEffect(() => {
     if (!docId) return;
     // Add tracking for this doc
-    RealtimeThumbnailStore.getState().addTracking(docId, { type, content });
+    RealtimeThumbnailStore.getState().addTracking(docId, { type, content, layerIdentify: layerIdentify || null });
 
     // Cleanup: remove tracking from the original doc when deps change
     return () => {
-      RealtimeThumbnailStore.getState().removeTracking(docId, { type, content });
+      RealtimeThumbnailStore.getState().removeTracking(docId, { type, content, layerIdentify: layerIdentify || null });
     };
-  }, [docId, type, content]);
+  }, [docId, type, content, layerIdentify]);
 
-  return (thumbs && thumbs[type]?.[content]) || '';
+  const key = makeThumbKey(content, false, layerIdentify ?? null);
+  return (thumbs && thumbs[type]?.[key]) || '';
 }

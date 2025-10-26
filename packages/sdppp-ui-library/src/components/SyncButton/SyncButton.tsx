@@ -57,7 +57,7 @@ export const SyncButton: React.FC<SyncButtonProps> = ({
       size="middle"
       disabled={disabled}
       onClick={handleSyncClick}
-      style={{ flexGrow: 1, position: 'relative', height: 28 }}
+      style={{ flex: '1 1 0%', position: 'relative', height: 28, minWidth: 0 }}
     >
       <div
         data-testid="sync-button-content"
@@ -68,7 +68,8 @@ export const SyncButton: React.FC<SyncButtonProps> = ({
           height: '100%',
           lineHeight: 1,
           gap: 0,
-          width: '100%'
+          width: '100%',
+          minWidth: 0
         }}
       >
         <div
@@ -79,10 +80,25 @@ export const SyncButton: React.FC<SyncButtonProps> = ({
             alignItems: 'center',
             justifyContent: 'center',
             lineHeight: 1,
-            width: '100%'
+            width: '100%',
+            minWidth: 0,
+            padding: '0 4px',
+            overflow: 'hidden'
           }}
         >
-          {children}
+          <span
+            style={{
+              display: 'block',
+              maxWidth: '100%',
+              minWidth: 0,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap'
+            }}
+            title={typeof children === 'string' ? children : undefined}
+          >
+            {children}
+          </span>
         </div>
         {descText ? (
           <div
@@ -116,7 +132,7 @@ export const SyncButton: React.FC<SyncButtonProps> = ({
       size="middle"
       disabled={disabled}
       onClick={handleAutoSyncToggle}
-      style={{ height: 28 }}
+      style={{ height: 28, flex: '0 0 auto' }}
     />
   ), [isAutoSync, autoSyncButtonIcon, disabled, handleAutoSyncToggle]);
 
@@ -134,7 +150,7 @@ export const SyncButton: React.FC<SyncButtonProps> = ({
 
   return (
     <div {...rest} style={{ display: 'inline-flex', margin: 0, padding: 0, verticalAlign: 'top', lineHeight: 1 }}>
-      <Space.Compact style={{ width: buttonWidth }} block>
+      <Space.Compact style={{ width: buttonWidth, overflow: 'hidden' }} block>
         {renderedMainButton}
         {renderedAutoSyncButton}
       </Space.Compact>

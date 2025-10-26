@@ -17,9 +17,8 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
   const [currentIndex, setCurrentIndex] = React.useState(0);
   const [sending, setSending] = React.useState(false);
   const [sendingAll, setSendingAll] = React.useState(false);
-  const [isShiftPressed, setIsShiftPressed] = React.useState(false);
   const [isAutoSync, setIsAutoSync] = React.useState(false);
-  const isShiftPressedRef = React.useRef(false);
+  const autoSendTypeRef = React.useRef<'smartobject' | 'newdoc'>('smartobject');
   const pendingAutoSendRef = React.useRef(new Map<string, { cancel: boolean }>());
 
   const currentItem = images[currentIndex];
@@ -73,7 +72,7 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
       if (!item || !item.nativePath) {
         return;
       }
-      const type = isShiftPressedRef.current ? 'newdoc' : 'smartobject';
+      const type = autoSendTypeRef.current;
       await sdpppSDK.plugins.photoshop.importImage({
         nativePath: item.nativePath,
         boundary: item.boundary ?? 'canvas',
@@ -195,34 +194,22 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
     autoPrevLenRef.current = images.length;
   }, [images.length, isAutoSync]);
 
-  // keep ref updated for shift key state used in async tasks
   React.useEffect(() => {
-    isShiftPressedRef.current = isShiftPressed;
-  }, [isShiftPressed]);
-
-  React.useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Shift') {
-        setIsShiftPressed(true);
-      }
-    };
-
-    const handleKeyUp = (event: KeyboardEvent) => {
-      if (event.key === 'Shift') {
-        setIsShiftPressed(false);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
-
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
       // cancel pending tasks on unmount
       pendingAutoSendRef.current.forEach(t => (t.cancel = true));
       pendingAutoSendRef.current.clear();
     };
+  }, []);
+
+  const handleAutoSyncToggle = React.useCallback(({ shiftKey }: { shiftKey: boolean }) => {
+    setIsAutoSync(prev => {
+      const next = !prev;
+      if (!prev && next) {
+        autoSendTypeRef.current = shiftKey ? 'newdoc' : 'smartobject';
+      }
+      return next;
+    });
   }, []);
 
   if (!images.length) {
@@ -309,8 +296,8 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
         <SyncButton
           disabled={sending || sendingAll}
           isAutoSync={isAutoSync}
-          onSync={({ altKey, shiftKey }) => handleSendToPS({ shiftKey })}
-          onAutoSyncToggle={() => setIsAutoSync(prev => !prev)}
+          onSync={({ shiftKey }) => handleSendToPS({ shiftKey })}
+          onAutoSyncToggle={handleAutoSyncToggle}
           buttonWidth={88}
           mainButtonType="primary"
           autoSyncButtonTooltips={{
