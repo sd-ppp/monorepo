@@ -7,6 +7,7 @@ import { SyncOutlined } from '@ant-design/icons';
 
 const mockOnSync = vi.fn();
 const mockOnAutoSyncToggle = vi.fn();
+const mockOnCancel = vi.fn();
 
 const defaultProps = {
   disabled: false,
@@ -56,6 +57,26 @@ describe('SyncButton', () => {
     expect(mockOnSync).toHaveBeenLastCalledWith({ altKey: true, shiftKey: false });
 
     expect(mockOnSync).toHaveBeenCalledTimes(3);
+  });
+
+  describe('cancel button', () => {
+    it('does not render cancel button by default', () => {
+      renderComponent();
+      expect(screen.queryByTestId('sync-button-cancel')).not.toBeInTheDocument();
+    });
+
+    it('renders cancel button when enabled and calls onCancel with modifiers', () => {
+      renderComponent({ cancelEnabled: true, onCancel: mockOnCancel });
+      const cancelButton = screen.getByTestId('sync-button-cancel');
+      fireEvent.click(cancelButton, { altKey: true, shiftKey: false });
+      expect(mockOnCancel).toHaveBeenCalledWith({ altKey: true, shiftKey: false });
+    });
+
+    it('respects disabled state', () => {
+      renderComponent({ cancelEnabled: true, disabled: true, onCancel: mockOnCancel });
+      const cancelButton = screen.getByTestId('sync-button-cancel');
+      expect(cancelButton).toBeDisabled();
+    });
   });
 
   describe('auto-sync functionality', () => {

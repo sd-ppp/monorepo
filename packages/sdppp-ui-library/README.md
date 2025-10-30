@@ -17,7 +17,7 @@ Quick Start
 Usage
 
 - In other apps or the playground, import directly from the TypeScript source:
-  `import { SyncButton, ImageSyncGroup } from 'react-antd-tailwind-ui'`
+  `import { SyncButton, ImageSyncGroup } from '@sdppp/ui-library'`
   No build step is required; bundlers like Vite/Storybook transpile TS from the workspace package.
 
 Notes

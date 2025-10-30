@@ -1,6 +1,7 @@
 import { Button, Tooltip, Typography, Space } from 'antd';
 import type { ButtonProps } from 'antd';
-import { SyncOutlined } from '@ant-design/icons';
+import { SyncOutlined, CloseOutlined } from '@ant-design/icons';
+import type { TooltipPlacement } from 'antd/es/tooltip';
 import React, { useCallback, useMemo } from 'react';
 
 export interface SyncButtonProps {
@@ -20,6 +21,10 @@ export interface SyncButtonProps {
   buttonWidth?: number | string;
   // customize main button style (e.g., 'primary')
   mainButtonType?: ButtonProps['type'];
+  tooltipPlacement?: TooltipPlacement;
+  autoTooltipPlacement?: TooltipPlacement;
+  cancelEnabled?: boolean;
+  onCancel?: (event: { altKey: boolean; shiftKey: boolean }) => void;
   'data-testid'?: string;
 }
 
@@ -36,8 +41,13 @@ export const SyncButton: React.FC<SyncButtonProps> = ({
   autoSyncButtonTooltips,
   buttonWidth,
   mainButtonType = 'default',
+  tooltipPlacement = 'top',
+  autoTooltipPlacement = 'top',
+  cancelEnabled = false,
+  onCancel,
   ...rest
 }) => {
+  const defaultOffset: [number, number] = [0, -8];
   const autoSyncButtonIcon = useMemo(() =>
     React.cloneElement(autoSyncIcon as React.ReactElement, { spin: isAutoSync }),
   [autoSyncIcon, isAutoSync]);
@@ -49,6 +59,10 @@ export const SyncButton: React.FC<SyncButtonProps> = ({
   const handleAutoSyncToggle = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
     onAutoSyncToggle({ altKey: e.altKey, shiftKey: e.shiftKey });
   }, [onAutoSyncToggle]);
+
+  const handleCancelClick = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
+    onCancel?.({ altKey: e.altKey, shiftKey: e.shiftKey });
+  }, [onCancel]);
 
   const mainButton = useMemo(() => (
     <Button
@@ -140,37 +154,64 @@ export const SyncButton: React.FC<SyncButtonProps> = ({
     if (!autoSyncEnabled) return null;
     if (!autoSyncButtonTooltips) return autoSyncButton;
     const title = isAutoSync ? autoSyncButtonTooltips.enabled : autoSyncButtonTooltips.disabled;
+    const autoAlign =
+      autoTooltipPlacement === 'top' ? { offset: defaultOffset } : undefined;
     return (
       <Tooltip
         title={title}
-        placement="top"
-        align={{ offset: [0, -8] }}
+        placement={autoTooltipPlacement}
+        align={autoAlign}
         getPopupContainer={() => document.body}
       >
         {autoSyncButton}
       </Tooltip>
     );
-  }, [autoSyncEnabled, autoSyncButtonTooltips, isAutoSync, autoSyncButton]);
+  }, [autoSyncEnabled, autoSyncButtonTooltips, isAutoSync, autoSyncButton, autoTooltipPlacement]);
 
   const renderedMainButton = useMemo(() => {
     if (!syncButtonTooltip) return mainButton;
+    const align =
+      tooltipPlacement === 'top' ? { offset: defaultOffset } : undefined;
     return (
       <Tooltip
         title={syncButtonTooltip}
-        placement="top"
-        align={{ offset: [0, -8] }}
+        placement={tooltipPlacement}
+        align={align}
         getPopupContainer={() => document.body}
       >
         {mainButton}
       </Tooltip>
     );
-  }, [syncButtonTooltip, mainButton]);
+  }, [syncButtonTooltip, mainButton, tooltipPlacement]);
+
+  const cancelButton = useMemo(() => {
+    if (!cancelEnabled) return null;
+    return (
+      <Button
+        data-testid="sync-button-cancel"
+        type="text"
+        size="middle"
+        disabled={disabled}
+        onClick={handleCancelClick}
+        icon={<CloseOutlined />}
+        style={{
+          height: 28,
+          flex: '0 0 auto',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+        aria-label="Cancel"
+      />
+    );
+  }, [cancelEnabled, disabled, handleCancelClick]);
 
   return (
     <div {...rest} style={{ display: 'inline-flex', margin: 0, padding: 0, verticalAlign: 'top', lineHeight: 1 }}>
       <Space.Compact style={{ width: buttonWidth, overflow: 'hidden' }} block>
-        {renderedMainButton}
         {renderedAutoSyncButton}
+        {renderedMainButton}
+        {cancelButton}
       </Space.Compact>
     </div>
   );

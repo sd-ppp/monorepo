@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { Space } from 'antd';
+import type { TooltipPlacement } from 'antd/es/tooltip';
 import { SyncButton } from '../SyncButton/SyncButton';
 
 export interface ButtonConfig {
@@ -27,6 +28,8 @@ export interface ExclusiveSyncGroupProps {
   // Controlled/Uncontrolled support for auto active id
   activeAutoSyncId?: string | null;
   defaultActiveAutoSyncId?: string | null;
+  tooltipPlacement?: TooltipPlacement;
+  autoTooltipPlacement?: TooltipPlacement;
 }
 
 export const ExclusiveSyncGroup: React.FC<ExclusiveSyncGroupProps> = ({
@@ -36,6 +39,8 @@ export const ExclusiveSyncGroup: React.FC<ExclusiveSyncGroupProps> = ({
   buttonWidth,
   activeAutoSyncId: activeAutoSyncIdProp,
   defaultActiveAutoSyncId = null,
+  tooltipPlacement,
+  autoTooltipPlacement,
 }) => {
   const [syncingStates, setSyncingStates] = useState<Record<string, boolean>>({});
   const [activeAutoSyncIdState, setActiveAutoSyncIdState] = useState<string | null>(defaultActiveAutoSyncId);
@@ -86,6 +91,8 @@ export const ExclusiveSyncGroup: React.FC<ExclusiveSyncGroupProps> = ({
           syncButtonTooltip={config.syncButtonTooltip}
           autoSyncButtonTooltips={config.autoSyncButtonTooltips}
           descText={config.descText}
+          tooltipPlacement={tooltipPlacement}
+          autoTooltipPlacement={autoTooltipPlacement}
         >
           {config.text}
         </SyncButton>

@@ -6,6 +6,7 @@ const config: StorybookConfig = {
     '../src/stories/**/*.mdx',
     '../src/stories/**/*.stories.@(js|jsx|mjs|ts|tsx)'
   ],
+  staticDirs: ['../public'],
   addons: [
     '@chromatic-com/storybook',
     '@storybook/addon-docs',
@@ -13,6 +14,9 @@ const config: StorybookConfig = {
     '@storybook/addon-a11y',
     '@storybook/addon-vitest'
   ],
+  typescript: {
+    reactDocgen: 'react-docgen-typescript'
+  },
   framework: {
     name: '@storybook/react-vite',
     options: {}
@@ -22,7 +26,7 @@ const config: StorybookConfig = {
     viteConfig.resolve ??= {};
     viteConfig.resolve.alias ??= [] as any;
     const aliasEntry = {
-      find: 'react-antd-tailwind-ui',
+      find: '@sdppp/ui-library',
       replacement: path.resolve(__dirname, '../../src/index.ts'),
     } as any;
     // Avoid duplicate alias entries

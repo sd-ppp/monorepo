@@ -2,10 +2,10 @@ import { QuestionCircleOutlined } from '@ant-design/icons';
 import { sdpppSDK, useTranslation } from '@sdppp/common';
 import { loadRemoteConfig } from '@sdppp/vite-remote-config-loader';
 import { WidgetableProvider } from '@sdppp/widgetable-ui';
-import { UploadPassProvider } from '../../base/upload-pass-context';
 import { Alert, Button, Flex, Input, Tooltip } from 'antd';
 import { useEffect, useState } from 'react';
 import { useStore } from 'zustand';
+import { UploadPassProvider } from '../../base/upload-pass-context';
 import { createImageMaskWidgetRegistry } from '../../base/widgetable-image-mask/widgetable-widgets';
 import { ComfyCloudRecommendBanner } from './cloud_recommend';
 import { WorkflowListProvider } from './comfy_frontend';
@@ -95,7 +95,7 @@ function useComfyConnectStatus() {
     } else {
         showRenderer = true
     }
-    if (comfyHTTPCode === 200 && (!comfyWebviewVersion || comfyWebviewVersion !== SDPPP_VERSION)) {
+    if (comfyHTTPCode === 200 && (!comfyWebviewVersion || comfyWebviewVersion != SDPPP_VERSION)) {
         statusText += (statusText ? ' | ' : '') + t('comfy.version_mismatch', { comfyVersion: comfyWebviewVersion, pluginVersion: SDPPP_VERSION })
         statusTextType = statusTextType == 'error' ? 'error' : 'warning'
     }

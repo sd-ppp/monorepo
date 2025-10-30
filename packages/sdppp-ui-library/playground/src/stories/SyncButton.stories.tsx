@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { SyncButton } from 'react-antd-tailwind-ui';
+import { SyncButton } from '@sdppp/ui-library';
 
 const meta: Meta<typeof SyncButton> = {
   title: 'Components/SyncButton',

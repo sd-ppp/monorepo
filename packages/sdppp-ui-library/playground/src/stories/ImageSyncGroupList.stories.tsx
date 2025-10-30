@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { ImageSyncGroupList } from 'react-antd-tailwind-ui';
-import type { ImageSyncGroupData, ButtonConfig } from 'react-antd-tailwind-ui';
+import { ImageSyncGroupList } from '@sdppp/ui-library';
+import type { ImageSyncGroupData, ButtonConfig } from '@sdppp/ui-library';
 
 const meta: Meta<typeof ImageSyncGroupList> = {
   title: 'Components/ImageSyncGroupList',
