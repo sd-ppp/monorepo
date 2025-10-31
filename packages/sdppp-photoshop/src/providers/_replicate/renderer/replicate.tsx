@@ -1,14 +1,16 @@
-import { QuestionCircleOutlined } from '@ant-design/icons';
+import { QuestionCircleOutlined, StopOutlined } from '@ant-design/icons';
 import { sdpppSDK, useTranslation } from '@sdppp/common';
 import { WidgetableNode } from '@sdppp/common/schemas/schemas';
+import type { WorkflowStatusDescriptor } from '@sdppp/ui-library';
 import { loadRemoteConfig } from '@sdppp/vite-remote-config-loader';
 import { WidgetableProvider, WorkflowEditApiFormat } from '@sdppp/widgetable-ui';
-import { UploadPassProvider } from '../../base/upload-pass-context';
 import { Alert, Button, Flex, Input, Tooltip } from 'antd';
 import Link from 'antd/es/typography/Link';
 import { useEffect, useState } from 'react';
-import { WorkBoundary } from '../../base/components';
+import { SimpleWorkflowControlPanel } from '../../_comfy_frontend/renderer/components/workflow-detail/components/SimpleWorkflowControlPanel';
 import { ModelSelector } from '../../base/components/ModelSelector';
+import '../../base/styles/workflow-controls.less';
+import { UploadPassProvider } from '../../base/upload-pass-context';
 import { useTaskExecutor } from '../../base/useTaskExecutor';
 import { createImageMaskWidgetRegistry } from '../../base/widgetable-image-mask/widgetable-widgets';
 import './replicate.less';
@@ -43,6 +45,7 @@ export default function ReplicateRenderer({ showingPreview }: { showingPreview: 
 
 function ReplicateRendererModels() {
     const { t, language } = useTranslation();
+    const translate = t as unknown as (key: string, options?: Record<string, unknown>) => string;
     const { selectedModel, availableModels, removeModel, addModel } = replicateStore();
     const client = replicateStore((state) => state.client);
     const [loading, setLoading] = useState(false);
@@ -129,42 +132,45 @@ function ReplicateRendererModels() {
             }}
         >
         <WidgetableProvider widgetRegistry={createImageMaskWidgetRegistry()}>
-            <Flex gap={4} align="center">
-                <Tooltip title={t('replicate.help_tooltip', { defaultMessage: 'How to use?' })} placement="left">
-                    <Button
-                        type="text"
-                        size="small"
-                        icon={<QuestionCircleOutlined />}
-                        onClick={async () => {
-                            const banners = loadRemoteConfig('banners');
-                            const replicateURL = banners.find((banner: any) => banner.type === 'replicate_tutorial' && banner.locale == language)?.link;
-                            sdpppSDK.plugins.photoshop.openExternalLink({ url: replicateURL })
-                        }}
-                        style={{ color: 'var(--sdppp-host-text-color-secondary)' }}
-                    />
-                </Tooltip>
-                <ModelSelector
-                    value={selectedModel}
-                    placeholder={t('replicate.model_placeholder')}
-                    loading={loading}
-                    loadError={loadError}
-                    options={modelOptions}
-                    onChange={handleModelChange}
-                    onDelete={removeModel}
-                />
-            </Flex>
-            {selectedModel && !loading && !loadError && <ReplicateRendererForm />}
+            <ReplicateRendererForm
+                selectedModel={selectedModel}
+                loading={loading}
+                loadError={loadError}
+                modelOptions={modelOptions}
+                onModelChange={handleModelChange}
+                onModelRemove={removeModel}
+                language={language}
+            />
+            {loading && <Alert message={translate('replicate.loading', { defaultMessage: 'Loading...' })} type="info" showIcon />}
+            {loadError && <Alert message={loadError} type="error" showIcon />}
         </WidgetableProvider>
         </UploadPassProvider>
     )
 }
 
-function ReplicateRendererForm() {
+interface ReplicateRendererFormProps {
+    selectedModel: string | undefined;
+    loading: boolean;
+    loadError: string;
+    modelOptions: { value: string; label: string }[];
+    onModelChange: (value: string) => Promise<void> | void;
+    onModelRemove: (value: string) => void;
+    language: string;
+}
+
+function ReplicateRendererForm({
+    selectedModel,
+    loading,
+    loadError,
+    modelOptions,
+    onModelChange,
+    onModelRemove,
+    language,
+}: ReplicateRendererFormProps) {
     const { t } = useTranslation()
     const currentNodes = replicateStore((state) => state.currentNodes);
     const currentValues = replicateStore((state) => state.currentValues);
     const setCurrentValues = replicateStore((state) => state.setCurrentValues);
-    const selectedModel = replicateStore((state) => state.selectedModel);
     const runningTasks = replicateStore((state) => state.runningTasks);
 
     const { runError, progressMessage, handleRun, handleCancel, isRunning, canCancel } = useTaskExecutor({
@@ -195,23 +201,61 @@ function ReplicateRendererForm() {
             return processedValues;
         }
     });
+    const translate = t as unknown as (key: string, options?: Record<string, unknown>) => string;
+
     return (
         <>
-            <WorkBoundary />
-            <Button type="primary" onClick={handleRun}>{t('replicate.execute')}</Button>
-            {progressMessage && (
-                <Alert 
-                    message={progressMessage} 
-                    type="info" 
-                    showIcon
-                    action={canCancel ? (
-                        <Button size="small" type="text" onClick={handleCancel}>
-                            {t('common.cancel')}
-                        </Button>
-                    ) : undefined}
+            <Flex gap={4} align="center" style={{ marginBottom: 8, width: '100%' }}>
+                <Tooltip title={translate('replicate.help_tooltip', { defaultMessage: 'How to use?' })} placement="left">
+                    <Button
+                        className="workflow-action-button"
+                        icon={<QuestionCircleOutlined />}
+                        type="text"
+                        onClick={async () => {
+                            const banners = loadRemoteConfig('banners');
+                            const replicateURL = banners.find((banner: any) => banner.type === 'replicate_tutorial' && banner.locale == language)?.link;
+                            if (replicateURL) {
+                                sdpppSDK.plugins.photoshop.openExternalLink({ url: replicateURL });
+                            }
+                        }}
+                    />
+                </Tooltip>
+                <ModelSelector
+                    value={selectedModel}
+                    placeholder={translate('replicate.model_placeholder')}
+                    loading={loading}
+                    loadError={loadError}
+                    options={modelOptions}
+                    onChange={onModelChange}
+                    onDelete={onModelRemove}
                 />
-            )}
-            {runError && <Alert message={runError} type="error" showIcon />}
+            </Flex>
+            <SimpleWorkflowControlPanel
+                headerCenter={undefined}
+                runTooltip={translate('replicate.execute', { defaultMessage: 'Execute' })}
+                runDisabled={isRunning || loading || !selectedModel}
+                onRun={handleRun}
+                cancelTooltip={translate('replicate.stop', { defaultMessage: 'Stop' })}
+                canCancel={canCancel}
+                onCancel={handleCancel}
+                middleTopRight={(
+                    <Tooltip title={translate('replicate.stop', { defaultMessage: 'Stop' })}>
+                        <Button
+                            className="workflow-action-button"
+                            danger
+                            icon={<StopOutlined />}
+                            onClick={handleCancel}
+                            disabled={!canCancel}
+                        />
+                    </Tooltip>
+                )}
+                status={((): WorkflowStatusDescriptor => {
+                    if (runError) return { type: 'error', message: runError };
+                    if (progressMessage) return { type: 'text', tone: 'secondary', message: progressMessage };
+                    if (isRunning) return { type: 'uploading', message: translate('replicate.running', { defaultMessage: 'Running...' }) };
+                    return { type: 'empty' };
+                })()}
+            />
             <WorkflowEditApiFormat
                 modelName={selectedModel}
                 nodes={currentNodes}

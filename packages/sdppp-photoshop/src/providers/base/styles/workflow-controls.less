@@ -1,0 +1,113 @@
+.workflow-detail-controls {
+  margin: 12px 0;
+}
+
+.workflow-detail-controls .workflow-action-button {
+  width: 32px;
+  height: 32px;
+  font-size: 16px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.workflow-detail-controls .workflow-main-action-button {
+  width: 81px;
+  height: 81px;
+  font-size: 32px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.workflow-detail-controls .workflow-controls-secondary-row {
+  gap: 3px;
+}
+
+.workflow-detail-controls .workflow-secondary-button {
+  width: 25px;
+  height: 25px;
+  font-size: 8px;
+  padding: 0;
+  min-width: 24px;
+}
+
+.workflow-detail-controls .workflow-run-status {
+  width: 100%;
+}
+
+.workflow-detail-title {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.95);
+  max-width: 320px;
+  min-width: 0;
+}
+
+.workflow-boundary-preview {
+  width: 81px;
+  height: 81px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  cursor: pointer;
+  position: relative;
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.workflow-boundary-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.workflow-boundary-preview-empty {
+  border-style: dashed;
+}
+
+.workflow-boundary-preview-hovered {
+  transform: scale(1.04);
+  box-shadow: 0 12px 24px rgba(19, 194, 194, 0.35);
+  border-color: rgba(82, 196, 26, 0.6);
+}
+
+.workflow-boundary-placeholder {
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 12px;
+  text-align: center;
+  padding: 12px;
+  line-height: 1.35;
+}
+
+.workflow-detail-controls .workflow-boundary-limit,
+.workflow-detail-controls .workflow-boundary-limit:visited,
+.workflow-detail-controls .workflow-boundary-limit:hover,
+.workflow-detail-controls .workflow-boundary-limit:active {
+  color: rgba(255, 255, 255, 0.65) !important;
+}
+
+.workflow-boundary-limit {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  font-size: 12px;
+  line-height: 1.2;
+  text-decoration: none;
+  cursor: pointer;
+  gap: 2px;
+}
+
+.workflow-boundary-limit-value {
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.workflow-boundary-limit span {
+  color: inherit;
+}
