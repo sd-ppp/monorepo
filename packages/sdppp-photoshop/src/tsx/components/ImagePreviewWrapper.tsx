@@ -45,15 +45,20 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
     try {
       setSending(true);
       const type = opts?.shiftKey ? 'newdoc' : 'smartobject';
+      const resource = images[index].resource;
+      if (!resource) {
+        console.warn('[ImagePreviewWrapper] Missing resource for import', images[index]);
+        return;
+      }
       await sdpppSDK.plugins.photoshop.importImage({
-        nativePath: images[index].nativePath || images[index].url,
+        resource,
         // Pass boundary if available; default to 'canvas'
         boundary: images[index].boundary ?? 'canvas',
         type: type,
         // Pass through original image dimensions when known
         sourceWidth: (images as any)[index]?.width,
         sourceHeight: (images as any)[index]?.height
-      });
+      } as any);
     } finally {
       setSending(false);
     }
@@ -63,23 +68,23 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
     await sendToPSAtIndex(currentIndex, { shiftKey: !!event?.shiftKey });
   };
 
-  // Send by URL using nativePath once ready
-  const sendNativeImageByUrl = async (url: string) => {
+  // Send by URL using resource once ready
+  const sendResourceByUrl = async (url: string) => {
     try {
       setSending(true);
       const list = MainStore.getState().previewImageList;
       const item = list.find(it => it.url === url);
-      if (!item || !item.nativePath) {
+      if (!item || !item.resource) {
         return;
       }
       const type = autoSendTypeRef.current;
       await sdpppSDK.plugins.photoshop.importImage({
-        nativePath: item.nativePath,
+        resource: item.resource,
         boundary: item.boundary ?? 'canvas',
         type,
         sourceWidth: (item as any)?.width,
         sourceHeight: (item as any)?.height,
-      });
+      } as any);
     } finally {
       setSending(false);
     }
@@ -110,15 +115,19 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
       }
 
       const type = event?.shiftKey ? 'newdoc' : 'smartobject';
-      const promises = imageItems.map(image =>
-        sdpppSDK.plugins.photoshop.importImage({
-          nativePath: image.nativePath || image.url,
+      const promises = imageItems.map(image => {
+        if (!image.resource) {
+          console.warn('[ImagePreviewWrapper] skip sendAll without resource', image.url);
+          return Promise.resolve();
+        }
+        return sdpppSDK.plugins.photoshop.importImage({
+          resource: image.resource,
           boundary: image.boundary ?? 'canvas',
           type: type,
           sourceWidth: (image as any)?.width,
           sourceHeight: (image as any)?.height
-        })
-      );
+        } as any);
+      });
       await Promise.all(promises);
     } finally {
       setSendingAll(false);
@@ -126,15 +135,19 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
   };
 
   const handleSaveAll = () => {
-    sdpppSDK.plugins.photoshop.requestAndDoSaveImage({
-      nativePaths: images.map(image => image.nativePath)
-    });
+    const resources = images
+      .map(image => image.resource)
+      .filter((res): res is string => !!res);
+    if (resources.length) {
+      sdpppSDK.plugins.photoshop.requestAndDoSaveImage({ resources } as any);
+    }
   };
 
   const handleSaveCurrent = async () => {
+    if (!currentItem?.resource) return;
     await sdpppSDK.plugins.photoshop.requestAndDoSaveImage({
-      nativePaths: [currentItem.nativePath]
-    });
+      resources: [currentItem.resource]
+    } as any);
   };
 
   const handleJumpToLast = () => {
@@ -151,7 +164,7 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
     setPrevLength(images.length);
   }, [images.length, currentIndex]);
 
-  // Auto-send newly received images when auto is active, waiting for nativePath
+  // Auto-send newly received images when auto is active, waiting for resource
   const autoPrevLenRef = React.useRef(images.length);
   const scheduleAutoSendForUrl = (url: string) => {
     if (pendingAutoSendRef.current.has(url)) return;
@@ -164,8 +177,8 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
           const item = list.find(it => it.url === url);
           if (!item) break; // deleted
           const downloading = (item as any)?.downloading === true;
-          if (!downloading && !!item.nativePath) {
-            await sendNativeImageByUrl(url);
+          if (!downloading && !!item.resource) {
+            await sendResourceByUrl(url);
             break;
           }
           await new Promise(res => setTimeout(res, 200));

@@ -11,8 +11,8 @@ interface ImagePreviewProps {
   images: Array<{
     url: string;
     source: string;
-    thumbnail_url: string;
-    nativePath?: string;
+    thumbnail?: string;
+    resource?: string;
     metadata?: {
       genByDocument: number;
       boundary: Rect;
@@ -85,9 +85,9 @@ export default function ImagePreview({ images, currentIndex, onIndexChange }: Im
           }}
         />
       ) : (
-        currentImage?.thumbnail_url ? (
+        currentImage?.thumbnail ? (
           <Image
-            src={images[currentIndex].thumbnail_url}
+            src={images[currentIndex].thumbnail}
             alt={`Preview ${currentIndex + 1}`}
             className="image-preview__image"
             preview={{

@@ -3,7 +3,7 @@ import { sdpppSDK } from '@sdppp/common';
 import { useUploadPasses } from '../../upload-pass-context';
 import { GlobalImageStore, type AutoSyncConfig } from '../stores/global-image-store';
 import { getPhotoshopImage } from '../utils/image-operations';
-import { createTokenUploadPass, updateUrlsAtIndex, isAbortError } from '../utils/upload-helpers';
+import { updateUrlsAtIndex, isAbortError } from '../utils/upload-helpers';
 
 export interface AutoSyncEvent {
   altKey: boolean;
@@ -91,7 +91,7 @@ export function useImageAutoSync({ componentId, urls, isMask, onValueChange }: U
           } catch {}
 
           // Propagate Alt semantics (reverse/crop) like once-sync Alt behavior
-          const { file_token, result } = await getPhotoshopImage(
+          const { resource, result, thumbnail, mime } = await getPhotoshopImage(
             isMask,
             activeId as any,
             altUsed,
@@ -102,14 +102,21 @@ export function useImageAutoSync({ componentId, urls, isMask, onValueChange }: U
             throw new Error(result.error);
           }
 
-          if (!file_token) {
-            throw new Error('Missing file token from Photoshop');
+          if (!resource) {
+            throw new Error('Missing resource from Photoshop');
+          }
+
+          if (thumbnail) {
+            try {
+              GlobalImageStore.getState().setSlotThumbnail(componentId, index, thumbnail);
+            } catch {}
           }
 
           return {
-            type: 'token' as const,
-            tokenOrBuffer: file_token,
+            type: 'resource' as const,
+            resource,
             fileName: `${Date.now()}.png`,
+            mimeType: mime,
           };
         },
         onUploaded: async (finalUrl: string) => {

@@ -95,7 +95,37 @@ function ReplicateRendererModels() {
     return (
         <UploadPassProvider
             uploader={async (uploadInput, signal) => {
-                return await client.uploadImage(uploadInput.type, uploadInput.tokenOrBuffer, 'jpg', signal);
+                const inferFormat = (mime?: string) => {
+                    if (!mime) return 'png';
+                    const subtype = mime.split('/')[1] || '';
+                    if (subtype === 'jpeg') return 'jpg';
+                    if (subtype.includes('png')) return 'png';
+                    if (subtype.includes('jpg')) return 'jpg';
+                    if (subtype.includes('webp')) return 'webp';
+                    return 'png';
+                };
+
+                const format = inferFormat(uploadInput.mimeType) as 'png' | 'jpg' | 'jpeg' | 'webp';
+                const source = uploadInput.resource as any;
+                let payload: ArrayBuffer;
+                if (source && typeof source === 'object' && 'data' in source) {
+                    const data = source.data;
+                    if (data instanceof ArrayBuffer) {
+                        payload = data;
+                    } else if (ArrayBuffer.isView(data)) {
+                        payload = (data as ArrayBufferView).buffer;
+                    } else {
+                        payload = data as ArrayBuffer;
+                    }
+                } else if (uploadInput.resource instanceof ArrayBuffer) {
+                    payload = uploadInput.resource;
+                } else if (ArrayBuffer.isView(uploadInput.resource)) {
+                    payload = (uploadInput.resource as ArrayBufferView).buffer;
+                } else {
+                    payload = uploadInput.resource as ArrayBuffer;
+                }
+
+                return await client.uploadImage('buffer', payload, format, signal);
             }}
         >
         <WidgetableProvider widgetRegistry={createImageMaskWidgetRegistry()}>

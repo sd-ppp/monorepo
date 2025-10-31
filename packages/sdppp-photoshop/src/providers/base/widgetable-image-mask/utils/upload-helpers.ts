@@ -1,7 +1,11 @@
+import { Buffer } from 'buffer';
+
 export interface UploadFile {
-  type: 'buffer' | 'token';
-  tokenOrBuffer: ArrayBuffer | string;
+  type: 'buffer' | 'token' | 'resource';
+  resource: any;
   fileName: string;
+  mimeType?: string;
+  resourceId?: string;
 }
 
 export interface UploadPass {
@@ -30,10 +34,15 @@ export const createFileUploadPass = (
       throw new DOMException('Upload aborted', 'AbortError');
     }
     const buffer = await fileToArrayBuffer(file);
+    const base64 = Buffer.from(buffer).toString('base64');
     return {
       type: 'buffer',
-      tokenOrBuffer: buffer,
+      resource: {
+        data: base64,
+        mimeType: file.type || undefined,
+      },
       fileName: file.name,
+      mimeType: file.type || undefined,
     };
   },
   onUploaded: async (finalUrl: string) => {
@@ -49,9 +58,10 @@ export const createFileUploadPass = (
 /**
  * Create upload pass for Photoshop token
  */
-export const createTokenUploadPass = (
-  token: string,
+export const createResourceUploadPass = (
+  resource: string,
   fileName: string,
+  mimeType: string | undefined,
   onUploaded: (url: string) => void,
   onError: (error: any) => void
 ): UploadPass => ({
@@ -60,9 +70,11 @@ export const createTokenUploadPass = (
       throw new DOMException('Upload aborted', 'AbortError');
     }
     return {
-      type: 'token',
-      tokenOrBuffer: token,
+      type: 'resource',
+      resource,
+      resourceId: resource,
       fileName,
+      mimeType,
     };
   },
   onUploaded: async (finalUrl: string) => {
@@ -74,6 +86,13 @@ export const createTokenUploadPass = (
     }
   },
 });
+
+export const createTokenUploadPass = (
+  token: string,
+  fileName: string,
+  onUploaded: (url: string) => void,
+  onError: (error: any) => void
+) => createResourceUploadPass(token, fileName, undefined, onUploaded, onError);
 
 /**
  * Update URLs array at specific index

@@ -9,7 +9,7 @@ import {
 } from '../utils/image-operations';
 import {
   createFileUploadPass,
-  createTokenUploadPass,
+  createResourceUploadPass,
   updateUrlsAtIndex,
   isAbortError,
 } from '../utils/upload-helpers';
@@ -77,7 +77,7 @@ export function useImageSync({ componentId, urls, isMask, onValueChange }: UseIm
         if (syncType === 'canvas' || syncType === 'curlayer' || syncType === 'selection') {
           setUploading(true);
 
-          const { thumbnail_url, file_token, result } = await getPhotoshopImage(
+          const { thumbnail, resource, result, mime } = await getPhotoshopImage(
             isMask,
             syncType as any,
             event.altKey
@@ -87,17 +87,18 @@ export function useImageSync({ componentId, urls, isMask, onValueChange }: UseIm
             throw new Error(result.error);
           }
 
-          if (!file_token) {
-            throw new Error('Missing file token from Photoshop');
+          if (!resource) {
+            throw new Error('Missing resource from Photoshop');
           }
 
-          if (thumbnail_url) {
-            GlobalImageStore.getState().setSlotThumbnail(componentId, index, thumbnail_url);
+          if (thumbnail) {
+            GlobalImageStore.getState().setSlotThumbnail(componentId, index, thumbnail);
           }
 
-          const uploadPass = createTokenUploadPass(
-            file_token,
+          const uploadPass = createResourceUploadPass(
+            resource,
             `${Date.now()}.png`,
+            mime,
             (finalUrl: string) => {
               const next = updateUrlsAtIndex(urlsRef.current, index, finalUrl);
               onValueChange(next);

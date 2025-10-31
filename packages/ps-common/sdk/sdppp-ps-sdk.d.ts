@@ -228,7 +228,6 @@ export declare const sdpppSDK: {
 				success: boolean;
 				images?: {
 					url: string;
-					thumbnail: string;
 				}[] | undefined;
 				nodeErrors?: Record<string, string> | undefined;
 				prompt_ids?: string[] | undefined;
@@ -295,9 +294,11 @@ export declare const sdpppSDK: {
 				layer_identify?: string | null | undefined;
 			}, signal?: AbortSignal) => Promise<{
 				error?: string | undefined;
-				thumbnail_url?: string | undefined;
-				file_token?: string | undefined;
+				width?: number | undefined;
+				height?: number | undefined;
+				resource?: string | undefined;
 				source?: string | undefined;
+				thumbnail?: string | undefined;
 			}>;
 			getMask: (data: {
 				reverse: boolean;
@@ -314,9 +315,11 @@ export declare const sdpppSDK: {
 				layer_identify?: string | null | undefined;
 			}, signal?: AbortSignal) => Promise<{
 				error?: string | undefined;
-				thumbnail_url?: string | undefined;
-				file_token?: string | undefined;
+				width?: number | undefined;
+				height?: number | undefined;
+				resource?: string | undefined;
 				source?: string | undefined;
+				thumbnail?: string | undefined;
 			}>;
 			getCurrentLayerIdentify: (data: {}, signal?: AbortSignal) => Promise<{
 				layer_identify: string | null;
@@ -535,9 +538,11 @@ export declare const sdpppSDK: {
 			}>;
 			uploadComfyImage: (data: {
 				uploadInput: {
-					type: "token" | "buffer";
+					type: "token" | "buffer" | "resource";
 					fileName: string;
-					tokenOrBuffer?: any;
+					mimeType?: string | undefined;
+					resource?: any;
+					resourceId?: string | undefined;
 				};
 				overwrite: boolean;
 			}, signal?: AbortSignal) => Promise<{
@@ -588,16 +593,24 @@ export declare const sdpppSDK: {
 				error?: string | undefined;
 				width?: number | undefined;
 				height?: number | undefined;
-				thumbnail_url?: string | undefined;
-				nativePath?: string | undefined;
+				resource?: string | undefined;
+			}>;
+			getThumbnail: (data: {
+				resource: string;
+				maxSize?: number | undefined;
+			}, signal?: AbortSignal) => Promise<{
+				error?: string | undefined;
+				width?: number | undefined;
+				height?: number | undefined;
+				thumbnail?: string | undefined;
 			}>;
 			deleteDownloadedImage: (data: {
-				nativePaths: string[];
+				resources: string[];
 			}, signal?: AbortSignal) => Promise<{
 				error?: string | undefined;
 			}>;
 			requestAndDoSaveImage: (data: {
-				nativePaths: string[];
+				resources: string[];
 			}, signal?: AbortSignal) => Promise<{
 				error?: string | undefined;
 			}>;

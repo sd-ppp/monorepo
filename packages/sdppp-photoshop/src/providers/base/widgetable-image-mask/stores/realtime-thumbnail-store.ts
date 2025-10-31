@@ -108,9 +108,24 @@ async function runFetch() {
           SkipNonNormalLayer: true,
           layer_identify: tracking.layerIdentify || undefined,
         });
-        const thumb = res.thumbnail_url || '';
+        let thumb = (res as any)?.thumbnail;
+        if (!thumb && res?.resource) {
+          try {
+            const thumbRes = await (sdpppSDK.plugins.photoshop as any)?.getThumbnail?.({ resource: res.resource, maxSize: 192 });
+            thumb = thumbRes?.thumbnail ?? thumb;
+          } catch (err) {
+            console.warn('[RealtimeThumbnailStore] getThumbnail image failed', err);
+          }
+        }
         if (thumb) {
           RealtimeThumbnailStore.getState().setThumb(docId, 'image', tracking.content, thumb, !!tracking.alt, tracking.layerIdentify);
+        }
+        if (typeof (res as any)?.resource === 'string') {
+          try {
+            await (sdpppSDK.plugins.photoshop as any)?.deleteDownloadedImage?.({ resources: [res.resource] });
+          } catch (err) {
+            console.warn('[RealtimeThumbnailStore] deleteDownloadedImage image failed', err);
+          }
         }
       } else {
         const res = await sdpppSDK.plugins.photoshop.getMask({
@@ -120,9 +135,24 @@ async function runFetch() {
           imageSize: 192,
           layer_identify: tracking.layerIdentify || undefined,
         } as any);
-        const thumb = (res as any)?.thumbnail_url || '';
+        let thumb = (res as any)?.thumbnail;
+        if (!thumb && res?.resource) {
+          try {
+            const thumbRes = await (sdpppSDK.plugins.photoshop as any)?.getThumbnail?.({ resource: res.resource, maxSize: 192 });
+            thumb = thumbRes?.thumbnail ?? thumb;
+          } catch (err) {
+            console.warn('[RealtimeThumbnailStore] getThumbnail mask failed', err);
+          }
+        }
         if (thumb) {
           RealtimeThumbnailStore.getState().setThumb(docId, 'mask', tracking.content, thumb, !!tracking.alt, tracking.layerIdentify);
+        }
+        if (typeof (res as any)?.resource === 'string') {
+          try {
+            await (sdpppSDK.plugins.photoshop as any)?.deleteDownloadedImage?.({ resources: [res.resource] });
+          } catch (err) {
+            console.warn('[RealtimeThumbnailStore] deleteDownloadedImage mask failed', err);
+          }
         }
       }
     }

@@ -108,8 +108,20 @@ function CustomAPIRendererModels() {
     return (
         <UploadPassProvider
             uploader={async (uploadInput, signal) => {
-                // return await client.uploadImage(uploadInput.type, uploadInput.tokenOrBuffer, 'png', signal);
-                return uploadInput.tokenOrBuffer as string;
+                if (uploadInput.type === 'buffer') {
+                    const source = uploadInput.resource as any;
+                    const arrayBuffer = source?.data ?? uploadInput.resource;
+                    const bytes = new Uint8Array(arrayBuffer);
+                    const binary = Array.from(bytes)
+                        .map((b) => String.fromCharCode(b))
+                        .join('');
+                    const base64 = typeof btoa === 'function'
+                        ? btoa(binary)
+                        : Buffer.from(arrayBuffer).toString('base64');
+                    const mime = uploadInput.mimeType ?? 'image/png';
+                    return `data:${mime};base64,${base64}`;
+                }
+                return uploadInput.resource as string;
             }}
         >
         <WidgetableProvider widgetRegistry={createImageMaskWidgetRegistry()}>

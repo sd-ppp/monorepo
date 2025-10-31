@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
+import { Button, Tooltip, Divider, Progress, Space, Typography, Alert } from 'antd';
 import {
   SaveOutlined,
   ReloadOutlined,
@@ -6,24 +7,150 @@ import {
   ArrowLeftOutlined,
   PlayCircleFilled,
   ForwardOutlined,
+  StopOutlined,
+  ThunderboltFilled
 } from '@ant-design/icons';
 import { sdpppSDK } from '@sdppp/common';
 import { useStore } from 'zustand';
 import { WidgetableRenderer as WorkflowEdit } from '@sdppp/widgetable-ui';
 import { useUploadPasses } from '../../../base/upload-pass-context';
+import './workflow-detail.less';
+import { MainStore } from '../../../../tsx/App.store';
 import { comfyWorkflowStore } from '../comfy_frontend';
+import { debug } from 'debug';
 import { useTranslation } from '@sdppp/common';
 import { ComfyTask } from '../../ComfyTask';
 import { WorkBoundary } from '../../../base/components';
-import {
-  WorkflowControlsPanel,
-  WorkflowStatusDisplay,
-  type WorkflowStatusDescriptor,
-  type WorkflowActionConfig,
-  type WorkflowMainActionConfig,
-  type WorkflowSecondaryActionConfig,
-} from '@sdppp/ui-library';
 
+const log = debug('comfy-frontend:workflow-detail')
+const { Text } = Typography; 
+
+const WorkflowStatus: React.FC<{ currentWorkflow: string, uploading: boolean }> = ({ currentWorkflow, uploading }) => {
+  const { t } = useTranslation()
+  // Avoid subscribing to the whole store to prevent re-render on every state change
+  const lastError = useStore(sdpppSDK.stores.ComfyStore, (s) => s.lastError)
+  const progress = useStore(sdpppSDK.stores.ComfyStore, (s) => s.progress)
+  const executingNodeTitle = useStore(sdpppSDK.stores.ComfyStore, (s) => s.executingNodeTitle)
+  const queueSize = useStore(sdpppSDK.stores.ComfyStore, (s) => s.queueSize)
+  const autoRunning = useStore(sdpppSDK.stores.PhotoshopStore, (state) => state.comfyAutoRunning)
+
+  // Removed debug render logging per request
+
+  if (uploading) {
+    return <Alert type="info" message={t('comfy.uploading')} showIcon className="workflow-run-status" />;
+  }
+  if (lastError) {
+    return <Alert type="error" message={lastError} showIcon className="workflow-run-status" />;
+  }
+  if (executingNodeTitle) {
+    return (
+      <div className="workflow-run-status">
+        <Text ellipsis={{ tooltip: true }}>{t('comfy.queue_progress', { queueSize, progress, executingNodeTitle })}</Text>
+        <Progress percent={progress} size="small" showInfo={false} />
+      </div>
+    );
+  }
+  if (autoRunning) {
+    return <Text type="secondary" className="workflow-run-status">auto run workflow after change..</Text>;
+  }
+  if (currentWorkflow) {
+    return <Text type="secondary" className="workflow-run-status">{currentWorkflow}</Text>;
+  }
+  return null;
+};
+
+const SaveButton = ({ currentWorkflow }: { currentWorkflow: string }) => {
+  const { t } = useTranslation()
+  return (
+    <Tooltip title={t('comfy.save')}>
+      <Button icon={<SaveOutlined />} onClick={() => {
+        sdpppSDK.plugins.ComfyCaller.saveWorkflow({
+          workflow_path: currentWorkflow,
+        })
+      }} />
+    </Tooltip>
+  );
+};
+
+const RefreshButton = ({ currentWorkflow }: { currentWorkflow: string }) => {
+  const { t } = useTranslation()
+  return (
+    <Tooltip title={t('comfy.refresh')}>
+      <Button icon={<ReloadOutlined />} onClick={() =>
+        sdpppSDK.plugins.ComfyCaller.openWorkflow({
+          workflow_path: currentWorkflow,
+          reset: true
+        })
+      } />
+    </Tooltip>
+  );
+};
+
+const StopAndCancelButton = () => {
+  const { t } = useTranslation()
+  const onClearAndInterrupt = useCallback(async () => {
+    sdpppSDK.plugins.ComfyCaller.stopAll({});
+  }, []);
+  return (
+    <Tooltip title={t('comfy.stop_cancel_all')}>
+      <Button icon={<CloseCircleOutlined />} danger onClick={onClearAndInterrupt} />
+    </Tooltip>
+  );
+};
+
+const AutoRunButton = ({ currentWorkflow, setUploading }: { currentWorkflow: string, setUploading: (uploading: boolean) => void }) => {
+  const { t } = useTranslation()
+  const [isAutoRunning, setIsAutoRunning] = useState(false)
+  const canvasStateID = useStore(sdpppSDK.stores.PhotoshopStore, (state) => state.canvasStateID)
+  const { waitAllUploadPasses } = useUploadPasses();
+  // Stabilize referenced values/functions inside the effect to avoid retriggers
+  const waitAllUploadPassesRef = useRef(waitAllUploadPasses)
+  useEffect(() => { waitAllUploadPassesRef.current = waitAllUploadPasses }, [waitAllUploadPasses])
+  const currentWorkflowRef = useRef(currentWorkflow)
+  useEffect(() => { currentWorkflowRef.current = currentWorkflow }, [currentWorkflow])
+
+  // Removed debug render logging per request
+
+  // Listen for canvasStateID changes and trigger run
+  useEffect(() => {
+    if (!isAutoRunning || !canvasStateID) return;
+    let cancelled = false;
+    (async () => {
+      setUploading(true);
+      try {
+        await waitAllUploadPassesRef.current();
+      } finally {
+        setUploading(false);
+      }
+      if (!cancelled) {
+        await runAndWaitResult(1, currentWorkflowRef.current);
+      }
+    })();
+    return () => { cancelled = true };
+  }, [canvasStateID, isAutoRunning, setUploading]);
+
+  return (
+    <Tooltip title={isAutoRunning ? t('comfy.stop_auto_run') : t('comfy.start_auto_run')}>
+      <Button
+        icon={<ForwardOutlined />}
+        type={isAutoRunning ? 'primary' : 'default'}
+        className={isAutoRunning ? 'auto-run-active' : ''}
+        onClick={() => {
+          setIsAutoRunning(!isAutoRunning)
+        }}
+      />
+    </Tooltip>
+  );
+};
+
+// const EditButton = () => {
+//   // Mocked logic for edit
+//   return (
+//     <Tooltip title="ComfyUI 编辑">
+//       <Button icon={<EditOutlined />} />
+//     </Tooltip>
+//   );
+// };
 async function runAndWaitResult(multi: number, currentWorkflow: string): Promise<ComfyTask> {
   // 获取当前文档ID和边界信息
   const activeDocumentID = sdpppSDK.stores.PhotoshopStore.getState().activeDocumentID;
@@ -39,138 +166,7 @@ async function runAndWaitResult(multi: number, currentWorkflow: string): Promise
   return task;
 }
 
-const useWorkflowStatusDescriptor = (
-  currentWorkflow: string,
-  uploading: boolean,
-): WorkflowStatusDescriptor => {
-  const { t } = useTranslation();
-  const lastError = useStore(sdpppSDK.stores.ComfyStore, (s) => s.lastError);
-  const progress = useStore(sdpppSDK.stores.ComfyStore, (s) => s.progress);
-  const executingNodeTitle = useStore(sdpppSDK.stores.ComfyStore, (s) => s.executingNodeTitle);
-  const queueSize = useStore(sdpppSDK.stores.ComfyStore, (s) => s.queueSize);
-  const autoRunning = useStore(sdpppSDK.stores.PhotoshopStore, (state) => state.comfyAutoRunning);
-
-  if (uploading) {
-    return { type: 'uploading', message: t('comfy.uploading') };
-  }
-  if (lastError) {
-    return { type: 'error', message: lastError };
-  }
-  if (executingNodeTitle) {
-    return {
-      type: 'progress',
-      message: t('comfy.queue_progress', { queueSize, progress, executingNodeTitle }),
-      percent: progress,
-      showInfo: false,
-    };
-  }
-  if (autoRunning) {
-    return { type: 'text', message: 'auto run workflow after change..', tone: 'secondary' };
-  }
-  if (currentWorkflow) {
-    return { type: 'text', message: currentWorkflow, tone: 'secondary' };
-  }
-  return { type: 'empty' };
-};
-
-const useBackAction = (
-  setCurrentWorkflow: (workflow: string) => void,
-): WorkflowActionConfig => {
-  const { t } = useTranslation();
-  return useMemo(() => ({
-    icon: <ArrowLeftOutlined />,
-    tooltip: t('comfy.back'),
-    onClick: () => setCurrentWorkflow(''),
-    'data-testid': 'workflow-back-button',
-  }), [setCurrentWorkflow, t]);
-};
-
-const useSaveAction = (currentWorkflow: string): WorkflowActionConfig => {
-  const { t } = useTranslation();
-  return useMemo(() => ({
-    icon: <SaveOutlined />,
-    tooltip: t('comfy.save'),
-    onClick: () => {
-      sdpppSDK.plugins.ComfyCaller.saveWorkflow({ workflow_path: currentWorkflow });
-    },
-    'data-testid': 'workflow-save-button',
-  }), [currentWorkflow, t]);
-};
-
-const useRefreshAction = (currentWorkflow: string): WorkflowActionConfig => {
-  const { t } = useTranslation();
-  return useMemo(() => ({
-    icon: <ReloadOutlined />,
-    tooltip: t('comfy.refresh'),
-    onClick: () => {
-      sdpppSDK.plugins.ComfyCaller.openWorkflow({
-        workflow_path: currentWorkflow,
-        reset: true,
-      });
-    },
-    'data-testid': 'workflow-refresh-button',
-  }), [currentWorkflow, t]);
-};
-
-const useStopAction = (): WorkflowActionConfig => {
-  const { t } = useTranslation();
-  const onClearAndInterrupt = useCallback(() => {
-    sdpppSDK.plugins.ComfyCaller.stopAll({});
-  }, []);
-  return useMemo(() => ({
-    icon: <CloseCircleOutlined />,
-    tooltip: t('comfy.stop_cancel_all'),
-    danger: true,
-    onClick: onClearAndInterrupt,
-    'data-testid': 'workflow-stop-button',
-  }), [onClearAndInterrupt, t]);
-};
-
-const useAutoRunAction = (
-  currentWorkflow: string,
-  setUploading: (uploading: boolean) => void,
-): WorkflowActionConfig => {
-  const { t } = useTranslation();
-  const [isAutoRunning, setIsAutoRunning] = useState(false);
-  const canvasStateID = useStore(sdpppSDK.stores.PhotoshopStore, (state) => state.canvasStateID);
-  const { waitAllUploadPasses } = useUploadPasses();
-  const waitAllUploadPassesRef = useRef(waitAllUploadPasses);
-  useEffect(() => { waitAllUploadPassesRef.current = waitAllUploadPasses; }, [waitAllUploadPasses]);
-
-  const currentWorkflowRef = useRef(currentWorkflow);
-  useEffect(() => { currentWorkflowRef.current = currentWorkflow; }, [currentWorkflow]);
-
-  useEffect(() => {
-    if (!isAutoRunning || !canvasStateID) return;
-    let cancelled = false;
-    (async () => {
-      setUploading(true);
-      try {
-        await waitAllUploadPassesRef.current();
-      } finally {
-        setUploading(false);
-      }
-      if (!cancelled) {
-        await runAndWaitResult(1, currentWorkflowRef.current);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [canvasStateID, isAutoRunning, setUploading]);
-
-  return useMemo(() => ({
-    icon: <ForwardOutlined />,
-    tooltip: isAutoRunning ? t('comfy.stop_auto_run') : t('comfy.start_auto_run'),
-    type: isAutoRunning ? 'primary' : 'default',
-    active: isAutoRunning,
-    onClick: () => setIsAutoRunning((prev) => !prev),
-    'data-testid': 'workflow-auto-run-button',
-  }), [isAutoRunning, t]);
-};
-
-const useRunMainAction = (
-  currentWorkflow: string,
-  setUploading: (uploading: boolean) => void,
-): WorkflowMainActionConfig => {
+const RunButton = ({ currentWorkflow, setUploading }: { currentWorkflow: string, setUploading: (uploading: boolean) => void }) => {
   const { t } = useTranslation();
   const { waitAllUploadPasses } = useUploadPasses();
   const [isDisabled, setIsDisabled] = useState(false);
@@ -182,34 +178,33 @@ const useRunMainAction = (
     setUploading(true);
     await waitAllUploadPasses();
     setUploading(false);
-    await runAndWaitResult(1, currentWorkflow);
-  }, [currentWorkflow, setUploading, waitAllUploadPasses]);
 
-  return useMemo(() => ({
-    icon: <PlayCircleFilled />,
-    tooltip: t('comfy.run'),
-    onClick: doRun,
-    disabled: isDisabled,
-    type: 'primary',
-    size: 81,
-    'data-testid': 'workflow-run-button',
-  }), [doRun, isDisabled, currentWorkflow, t]);
+    const task = await runAndWaitResult(1, currentWorkflow);
+  }, [waitAllUploadPasses, setUploading, currentWorkflow]);
+
+  return (
+    <Tooltip title={t('comfy.run')}>
+      <Button
+        type="primary"
+        icon={<PlayCircleFilled />}
+        onClick={doRun}
+        disabled={isDisabled}
+      />
+    </Tooltip>
+  );
 };
 
-const useRunMultiActions = (
-  currentWorkflow: string,
-  setUploading: (uploading: boolean) => void,
-): WorkflowSecondaryActionConfig[] => {
+const RunMultiButtons = ({ currentWorkflow, setUploading }: { currentWorkflow: string, setUploading: (uploading: boolean) => void }) => {
   const { waitAllUploadPasses } = useUploadPasses();
   const [disabledButtons, setDisabledButtons] = useState<Set<number>>(new Set());
 
   const doRun = useCallback(async (multi: number) => {
-    setDisabledButtons((prev) => new Set(prev).add(multi));
+    setDisabledButtons(prev => new Set(prev).add(multi));
     setTimeout(() => {
-      setDisabledButtons((prev) => {
-        const next = new Set(prev);
-        next.delete(multi);
-        return next;
+      setDisabledButtons(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(multi);
+        return newSet;
       });
     }, 500);
 
@@ -217,18 +212,28 @@ const useRunMultiActions = (
     await waitAllUploadPasses();
     setUploading(false);
     const task = await runAndWaitResult(multi, currentWorkflow);
-    task.promise.finally(() => { /* no-op, caller monitors externally */ });
-  }, [currentWorkflow, setUploading, waitAllUploadPasses]);
+    // 任务完成后清理
+    task.promise.finally(() => {
+      // 多任务不需要特殊状态跟踪，直接执行即可
+    });
+  }, [waitAllUploadPasses, currentWorkflow]);
 
-  return useMemo(() => {
-    const multipliers = [2, 5, 9];
-    return multipliers.map<WorkflowSecondaryActionConfig>((multi) => ({
-      label: `x${multi}`,
-      onClick: () => void doRun(multi),
-      disabled: disabledButtons.has(multi),
-      'data-testid': `workflow-run-multi-${multi}`,
-    }));
-  }, [currentWorkflow, disabledButtons, doRun]);
+  return (
+    <>
+      <Button size="small" onClick={() => doRun(2)} disabled={disabledButtons.has(2)}>x2</Button>
+      <Button size="small" onClick={() => doRun(5)} disabled={disabledButtons.has(5)}>x5</Button>
+      <Button size="small" onClick={() => doRun(9)} disabled={disabledButtons.has(9)}>x9</Button>
+    </>
+  );
+};
+
+const BackButton = ({ onBack }: { onBack: () => void }) => {
+  const { t } = useTranslation()
+  return (
+    <Tooltip title={t('comfy.back')}>
+      <Button icon={<ArrowLeftOutlined />} onClick={onBack} />
+    </Tooltip>
+  )
 };
 
 // 渲染计数器
@@ -292,34 +297,36 @@ export function WorkflowDetail({ currentWorkflow, setCurrentWorkflow }: { curren
     }
   }, [widgetableValues, currentWorkflow])
 
-  const statusDescriptor = useWorkflowStatusDescriptor(currentWorkflow, uploading);
-  const backAction = useBackAction(setCurrentWorkflow);
-  const saveAction = useSaveAction(currentWorkflow);
-  const refreshAction = useRefreshAction(currentWorkflow);
-  const stopAction = useStopAction();
-  const autoRunAction = useAutoRunAction(currentWorkflow, setUploading);
-  const runMainAction = useRunMainAction(currentWorkflow, setUploading);
-  const runMultiActions = useRunMultiActions(currentWorkflow, setUploading);
-
-  const leftActions = useMemo<WorkflowActionConfig[]>(() => (
-    [backAction, saveAction, refreshAction]
-  ), [backAction, refreshAction, saveAction]);
-
-  const rightActions = useMemo<WorkflowActionConfig[]>(() => (
-    [stopAction, autoRunAction]
-  ), [autoRunAction, stopAction]);
-
   return (
     <div className="workflow-edit-wrap">
       <div className="workflow-edit-top">
-        <WorkflowControlsPanel
-          leftActions={leftActions}
-          rightActions={rightActions}
-          mainAction={runMainAction}
-          secondaryActions={runMultiActions}
-          statusArea={<WorkflowStatusDisplay status={statusDescriptor} />}
-          auxiliarySlot={<WorkBoundary />}
-        />
+        <div className="workflow-edit-controls">
+          <div className="workflow-edit-controls-grid">
+          <div className="workflow-edit-controls-main">
+            <div className="workflow-edit-controls-main-top">
+              <div className="workflow-edit-controls-left">
+                <BackButton onBack={() => setCurrentWorkflow('')} />
+                <SaveButton currentWorkflow={currentWorkflow} />
+                <RefreshButton currentWorkflow={currentWorkflow} />
+              </div>
+              <div className="workflow-edit-controls-right">
+                <StopAndCancelButton />
+                <AutoRunButton currentWorkflow={currentWorkflow} setUploading={setUploading} />
+              </div>
+            </div>
+            <div className="workflow-edit-controls-main-bottom">
+              <WorkflowStatus currentWorkflow={currentWorkflow} uploading={uploading} />
+            </div>
+          </div>
+          <div className="workflow-edit-controls-center">
+            <RunButton currentWorkflow={currentWorkflow} setUploading={setUploading} />
+          </div>
+          <div className="workflow-edit-multibuttons-vertical">
+            <RunMultiButtons currentWorkflow={currentWorkflow} setUploading={setUploading} />
+          </div>
+          </div>
+          <WorkBoundary />
+        </div>
       </div>
       <WorkflowEdit
         widgetableStructure={widgetableStructure}

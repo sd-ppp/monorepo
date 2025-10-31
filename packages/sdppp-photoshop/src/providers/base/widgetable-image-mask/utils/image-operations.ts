@@ -9,7 +9,10 @@ export const getPhotoshopImage = async (
   reverse?: boolean,
   layerIdentify?: string | null
 ) => {
-  let thumbnail_url: string, file_token: string, imageSource: string, result: any;
+  let resource: string | undefined;
+  let thumbnail: string | undefined;
+  let imageSource: string | undefined;
+  let result: any;
 
   if (isMask) {
     const activeDocumentID = sdpppSDK.stores.PhotoshopStore.getState().activeDocumentID;
@@ -46,8 +49,8 @@ export const getPhotoshopImage = async (
     }
 
     result = await sdpppSDK.plugins.photoshop.getMask(maskParams as any);
-    thumbnail_url = result.thumbnail_url;
-    file_token = result.file_token;
+    resource = result.resource;
+    thumbnail = result.thumbnail;
     imageSource = result.source;
   } else {
     const activeDocumentID = sdpppSDK.stores.PhotoshopStore.getState().activeDocumentID;
@@ -84,12 +87,30 @@ export const getPhotoshopImage = async (
     }
 
     result = await sdpppSDK.plugins.photoshop.getImage(getImageParams);
-    thumbnail_url = result.thumbnail_url;
-    file_token = result.file_token;
+    resource = result.resource;
+    thumbnail = result.thumbnail;
     imageSource = result.source;
   }
 
-  return { thumbnail_url, file_token, source: imageSource, result };
+  if (resource && !thumbnail) {
+    try {
+      const getThumbnailAction = (sdpppSDK.plugins.photoshop as any)?.getThumbnail;
+      if (typeof getThumbnailAction === 'function') {
+        const thumbRes = await getThumbnailAction({ resource });
+        thumbnail = thumbRes?.thumbnail ?? thumbnail;
+      }
+    } catch (error) {
+      console.warn('[getPhotoshopImage] getThumbnail failed', error);
+    }
+  }
+
+  return {
+    resource,
+    thumbnail,
+    source: imageSource,
+    result,
+    mime: 'image/png',
+  };
 };
 
 /**

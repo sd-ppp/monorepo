@@ -1,11 +1,14 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, ReactNode } from 'react';
 import { z } from 'zod';
 import { createStore } from 'zustand';
+import { sdpppSDK } from '@sdppp/common';
 
 const uploadImageInputSchema = z.object({
-  type: z.literal('buffer').or(z.literal('token')),
-  tokenOrBuffer: z.any(),
+  type: z.union([z.literal('buffer'), z.literal('token'), z.literal('resource')]),
+  resource: z.any(),
   fileName: z.string(),
+  mimeType: z.string().optional(),
+  resourceId: z.string().optional(),
 });
 export type UploadPassInput = z.infer<typeof uploadImageInputSchema>;
 
@@ -30,6 +33,92 @@ interface UploadPassProviderProps {
   uploader: (uploadInput: UploadPassInput, signal?: AbortSignal) => Promise<string>;
 }
 
+function base64ToArrayBuffer(base64: string) {
+  if (typeof atob === 'function') {
+    const binaryString = atob(base64);
+    const len = binaryString.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes.buffer;
+  }
+  // Node / fallback
+  if (typeof Buffer !== 'undefined') {
+    return Buffer.from(base64, 'base64').buffer;
+  }
+  throw new Error('No base64 decoder available');
+}
+
+function inferExtension(mimeType?: string) {
+  if (!mimeType) return undefined;
+  const [, subtype] = mimeType.split('/');
+  if (!subtype) return undefined;
+  if (subtype === 'jpeg') return 'jpg';
+  return subtype;
+}
+
+function ensureFileName(fileName: string, mimeType?: string) {
+  if (!mimeType) {
+    return fileName;
+  }
+  const hasExtension = /\.[a-zA-Z0-9]+$/.test(fileName);
+  if (hasExtension) {
+    return fileName;
+  }
+  const ext = inferExtension(mimeType);
+  return ext ? `${fileName}.${ext}` : fileName;
+}
+
+async function materializeUploadInput(uploadInput: UploadPassInput, signal?: AbortSignal): Promise<UploadPassInput> {
+  if (uploadInput.type === 'buffer') {
+    return uploadInput;
+  }
+  if (signal?.aborted) {
+    throw new DOMException('Upload aborted', 'AbortError');
+  }
+  const resourceHandle = typeof uploadInput.resource === 'string'
+    ? uploadInput.resource
+    : uploadInput.resourceId;
+
+  if (!resourceHandle) {
+    return uploadInput;
+  }
+
+  const { base64, mimeType, error } = await sdpppSDK.plugins.photoshop.getImageBase64({ token: resourceHandle });
+  if (signal?.aborted) {
+    throw new DOMException('Upload aborted', 'AbortError');
+  }
+  if (error) {
+    throw new Error(error);
+  }
+  if (!base64) {
+    throw new Error('Failed to resolve resource data');
+  }
+
+  let dataPart = base64;
+  let resolvedMime = mimeType;
+  const match = /^data:([^;]+);base64,(.*)$/.exec(base64);
+  if (match) {
+    resolvedMime = resolvedMime || match[1];
+    dataPart = match[2];
+  }
+
+  const buffer = base64ToArrayBuffer(dataPart);
+  const fileName = ensureFileName(uploadInput.fileName, resolvedMime);
+
+  return {
+    type: 'buffer',
+    resource: {
+      data: buffer,
+      mimeType: resolvedMime ?? uploadInput.mimeType,
+    },
+    fileName,
+    mimeType: resolvedMime ?? uploadInput.mimeType,
+    resourceId: resourceHandle,
+  };
+}
+
 const uploadPassesStore = createStore<{
   uploadPasses: UploadPass[];
   runningUploadPasses: { [id: string]: Promise<string> };
@@ -51,7 +140,8 @@ export function UploadPassProvider({ children, uploader }: UploadPassProviderPro
 
       const promise = new Promise<string>(async (resolve, reject) => {
         try {
-          const uploadInput = await pass.getUploadFile(abortController.signal);
+          const rawUploadInput = await pass.getUploadFile(abortController.signal);
+          const uploadInput = await materializeUploadInput(rawUploadInput, abortController.signal);
           const fileURL = await uploader(uploadInput, abortController.signal);
           if (pass.onUploaded && !abortController.signal.aborted) {
             await pass.onUploaded(fileURL);
@@ -111,7 +201,8 @@ export function UploadPassProvider({ children, uploader }: UploadPassProviderPro
       }
       const promisesFromUploadPasses = uploadPassesStore.getState().uploadPasses.map(async pass => {
         try {
-          const uploadInput = await pass.getUploadFile();
+          const rawUploadInput = await pass.getUploadFile();
+          const uploadInput = await materializeUploadInput(rawUploadInput);
           const fileURL = await uploader(uploadInput);
           if (pass.onUploaded) {
             await pass.onUploaded(fileURL);
@@ -135,4 +226,3 @@ export function useUploadPasses() {
   if (!ctx) throw new Error('useUploadPasses must be used within an UploadPassProvider');
   return ctx;
 }
-

@@ -8,8 +8,8 @@ export const MainStore = create<{
     provider: (keyof typeof Providers) | ''
     previewImageList: {
         url: string,
-        thumbnail_url: string | undefined,
-        nativePath: string | undefined,
+        resource?: string,
+        thumbnail?: string,
         source: string,
         docId?: number,
         boundary?: any,
@@ -20,7 +20,7 @@ export const MainStore = create<{
     showingPreview: boolean
     previewError: string
     downloadAndAppendImage: (image: { url: string, source: string, docId?: number, boundary?: any }) => Promise<void>
-    deletePreviewImages: (nativePaths: string[]) => Promise<void>
+    deletePreviewImages: (keys: string[]) => Promise<void>
     setShowingPreview: (showing: boolean) => void
 }>()(persist((set) => ({
     provider: '',
@@ -34,8 +34,8 @@ export const MainStore = create<{
                 {
                     url,
                     source,
-                    thumbnail_url: '',
-                    nativePath: '',
+                    resource: undefined,
+                    thumbnail: undefined,
                     docId,
                     boundary,
                     downloading: true,
@@ -44,13 +44,13 @@ export const MainStore = create<{
         })
 
         const res = await sdpppSDK.plugins.photoshop.downloadImage({ url })
-        if ('error' in res) {
+        if ((res as any)?.error) {
             // On error, remove the placeholder and record the error
             const currentList = MainStore.getState().previewImageList
             const idx = currentList.findIndex(item => item.url === url && item.source === source && item.downloading)
             const nextList = idx >= 0 ? currentList.filter((_, i) => i !== idx) : currentList
             set({
-                previewError: res.error,
+                previewError: (res as any).error,
                 previewImageList: nextList,
             })
             return
@@ -59,12 +59,28 @@ export const MainStore = create<{
         // On success, update the placeholder to the final data
         const currentList = MainStore.getState().previewImageList
         const idx = currentList.findIndex(item => item.url === url && item.source === source && item.downloading)
+
+        const resource = (res as any).resource as string | undefined
+        let thumbnail = (res as any).thumbnail as (string | undefined)
+
+        if (resource && !thumbnail) {
+            try {
+                const getThumbnailAction = (sdpppSDK.plugins.photoshop as any)?.getThumbnail
+                if (typeof getThumbnailAction === 'function') {
+                    const thumbRes = await getThumbnailAction({ resource })
+                    thumbnail = thumbRes?.thumbnail ?? thumbnail
+                }
+            } catch (error) {
+                console.warn('[MainStore] getThumbnail failed', error)
+            }
+        }
+
         if (idx >= 0) {
             const updated = {
                 ...currentList[idx],
                 downloading: false,
-                thumbnail_url: (res as any).thumbnail_url ?? currentList[idx].thumbnail_url,
-                nativePath: (res as any).nativePath ?? currentList[idx].nativePath,
+                resource: resource ?? currentList[idx].resource,
+                thumbnail: thumbnail ?? currentList[idx].thumbnail,
                 width: (res as any).width,
                 height: (res as any).height,
             }
@@ -83,8 +99,8 @@ export const MainStore = create<{
                     {
                         url,
                         source,
-                        thumbnail_url: (res as any).thumbnail_url,
-                        nativePath: (res as any).nativePath,
+                        resource,
+                        thumbnail,
                         docId,
                         boundary,
                         width: (res as any).width,
@@ -95,13 +111,26 @@ export const MainStore = create<{
             })
         }
     },
-    deletePreviewImages: async (nativePaths: string[]) => {
+    deletePreviewImages: async (resources: string[]) => {
         const currentList = MainStore.getState().previewImageList
 
-        await sdpppSDK.plugins.photoshop.deleteDownloadedImage({ nativePaths })
+        const normalizedResources = resources.filter((res): res is string => typeof res === 'string' && !!res)
+        const resourceSet = new Set(normalizedResources);
+
+        const deleteAction = (sdpppSDK.plugins.photoshop as any)?.deleteDownloadedImage;
+        if (typeof deleteAction === 'function' && resourceSet.size) {
+            try {
+                await deleteAction({ resources: Array.from(resourceSet) });
+            } catch (error) {
+                console.warn('[MainStore] deleteDownloadedImage resources failed', error);
+            }
+        }
 
         set({
-            previewImageList: currentList.filter(item => item.nativePath && !nativePaths.includes(item.nativePath))
+            previewImageList: currentList.filter(item => {
+                const key = item.resource;
+                return !key || !resourceSet.has(key);
+            })
         })
     },
     showingPreview: false,
@@ -125,6 +154,14 @@ export const MainStore = create<{
     partialize: (state) => ({
         provider: state.provider,
     }),
+    onRehydrateStorage: () => (state) => {
+        if (state?.previewImageList) {
+            state.previewImageList = state.previewImageList.map((item: any) => ({
+                ...item,
+                thumbnail: item.thumbnail ?? undefined,
+            }));
+        }
+    },
 }))
 
 let firstPreview = false

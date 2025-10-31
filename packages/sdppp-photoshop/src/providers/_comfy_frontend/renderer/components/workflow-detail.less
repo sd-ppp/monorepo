@@ -1,0 +1,101 @@
+// Workflow Detail Controls Layout
+.workflow-edit-controls {
+  margin: 12px 0;
+}
+
+.workflow-edit-controls-grid {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.workflow-edit-controls-main {
+  display: flex;
+  justify-content: start;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.workflow-edit-controls-main-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+}
+
+.workflow-edit-controls-main-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: stretch;
+  flex: 1;
+}
+
+.workflow-run-status {
+  flex: 1;
+}
+
+.workflow-edit-controls-left {
+  display: flex;
+  align-items: center;
+}
+
+.workflow-edit-controls-right {
+  display: flex;
+  align-items: center;
+}
+
+.workflow-edit-controls-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: start;
+}
+
+.workflow-edit-multibuttons-vertical {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+// Make the Run button larger
+.workflow-edit-controls-center .ant-btn-primary {
+  width: 81px;
+  height: 81px;
+  font-size: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+// Make multi buttons smaller and stacked (0.5x size)
+.workflow-edit-multibuttons-vertical .ant-btn {
+  width: 25px;
+  height: 25px;
+  font-size: 8px;
+  padding: 0;
+  min-width: 24px;
+}
+
+// Style for main control buttons
+.workflow-edit-controls-left .ant-btn,
+.workflow-edit-controls-right .ant-btn {
+  width: 32px;
+  height: 32px;
+  font-size: 16px;
+}
+
+// AutoRun button animation
+@keyframes auto-run-pulse {
+  0%, 100% {
+    box-shadow: inset 0 0 0 0 rgba(82, 196, 26, 0.8);
+  }
+  50% {
+    box-shadow: inset 0 0 8px 2px rgba(82, 196, 26, 0.4);
+  }
+}
+
+.auto-run-active {
+  animation: auto-run-pulse 2s ease-in-out infinite;
+}

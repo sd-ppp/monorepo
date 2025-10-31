@@ -356,7 +356,7 @@ export class SDPPPRunningHub extends Client<{
     }
   }
 
-  async uploadImage(type: 'token' | 'buffer', image: ArrayBuffer | string, format: 'png' | 'jpg' | 'jpeg' | 'webp', signal?: AbortSignal): Promise<string> {
+  async uploadImage(type: 'token' | 'buffer' | 'resource', image: ArrayBuffer | string, format: 'png' | 'jpg' | 'jpeg' | 'webp', signal?: AbortSignal): Promise<string> {
     const apiUrl = `https://${this.getBaseHost()}/task/openapi/upload`;
     const filename = `runninghub_${Math.random().toString(36).substring(2, 8)}_${Date.now()}.${format}`;
     log('uploadImage called', { type, format, filename, url: apiUrl });
@@ -369,8 +369,42 @@ export class SDPPPRunningHub extends Client<{
 
       // Create form data for file upload
       const formData = new FormData();
-      const blob = new Blob([image], {
-        type: `image/${type === 'token' ? 'uxp' : format}`,
+      let buffer: ArrayBuffer;
+      if (type === 'buffer') {
+        buffer = image instanceof ArrayBuffer
+          ? image
+          : ArrayBuffer.isView(image)
+            ? (image as ArrayBufferView).buffer
+            : (image as ArrayBuffer);
+      } else {
+        const token = image as string;
+        const { base64, mimeType, error } = await sdpppSDK.plugins.photoshop.getImageBase64({ token });
+        if (signal?.aborted) {
+          throw new DOMException('Upload aborted', 'AbortError');
+        }
+        if (error || !base64) {
+          throw new Error(error || 'Failed to load resource data');
+        }
+        const payload = base64.startsWith('data:')
+          ? base64.split(',')[1]
+          : base64;
+        let binary: string;
+        if (typeof atob === 'function') {
+          binary = atob(payload);
+        } else if (typeof Buffer !== 'undefined') {
+          binary = Buffer.from(payload, 'base64').toString('binary');
+        } else {
+          throw new Error('No base64 decoder available');
+        }
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+          bytes[i] = binary.charCodeAt(i);
+        }
+        buffer = bytes.buffer;
+      }
+
+      const blob = new Blob([buffer], {
+        type: `image/${format}`,
       });
       formData.append('file', blob, filename);
       formData.append('fileType', 'image');

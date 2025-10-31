@@ -18,7 +18,7 @@ export abstract class Client<T> {
     
     abstract run(model: string, input: any, signal?: AbortSignal): Promise<Task<any>>;
     
-    abstract uploadImage(type: 'token' | 'buffer', image: ArrayBuffer | string, format: 'png' | 'jpg' | 'jpeg' | 'webp', signal?: AbortSignal): Promise<string>;
+    abstract uploadImage(type: 'token' | 'buffer' | 'resource', image: ArrayBuffer | string, format: 'png' | 'jpg' | 'jpeg' | 'webp', signal?: AbortSignal): Promise<string>;
 
     /**
      * 执行任务并跟踪活动任务
