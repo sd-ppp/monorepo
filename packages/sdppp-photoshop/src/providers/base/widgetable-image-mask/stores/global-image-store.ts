@@ -5,6 +5,11 @@ import { RealtimeThumbnailStore, startAutoThumbnail, stopAutoThumbnail } from '.
 type ContentType = 'canvas' | 'curlayer' | 'selection';
 type TrackType = 'image' | 'mask';
 
+export interface AdvancedSelectionState {
+  action: 'getImage' | 'pickLocalFile';
+  params?: Record<string, any> | null;
+}
+
 export interface AutoSyncConfig {
   type: TrackType;
   content: ContentType;
@@ -17,6 +22,14 @@ export interface SlotState {
   thumbnail?: string;
   uploading?: boolean;
   uploadId?: string | null;
+  primaryResourceId?: string | null;
+  maskResourceId?: string | null;
+  compositeThumbnail?: string;
+  compositeDirty?: boolean;
+  compositeResourceId?: string | null;
+  maskAutoEnabled?: boolean;
+  advancedSelection?: AdvancedSelectionState | null;
+  advancedAutoEnabled?: boolean;
 }
 
 export interface ImageComponentState {
@@ -40,6 +53,14 @@ export interface GlobalImageStoreState {
   setSlotAuto: (id: string, index: number, auto: AutoSyncConfig | null) => void;
   setSlotThumbnail: (id: string, index: number, url: string | undefined) => void;
   setSlotUploading: (id: string, index: number, uploading: boolean, uploadId?: string | null) => void;
+  setSlotPrimaryResource: (id: string, index: number, resourceId: string | null | undefined) => void;
+  setSlotMaskResource: (id: string, index: number, resourceId: string | null | undefined) => void;
+  setSlotCompositeThumbnail: (id: string, index: number, thumbnail: string | undefined) => void;
+  markSlotCompositeDirty: (id: string, index: number, dirty?: boolean) => void;
+  setSlotCompositeResource: (id: string, index: number, resourceId: string | null | undefined) => void;
+  setSlotMaskAutoEnabled: (id: string, index: number, enabled: boolean) => void;
+  setSlotAdvancedSelection: (id: string, index: number, selection: AdvancedSelectionState | null) => void;
+  setSlotAdvancedAutoEnabled: (id: string, index: number, enabled: boolean) => void;
   clearSlot: (id: string, index: number) => void;
 
   // Utility methods
@@ -175,6 +196,196 @@ export const GlobalImageStore = create<GlobalImageStoreState>((set, get) => ({
 
       const prev = comp.slots[index] || {};
       const nextSlot: SlotState = { ...prev, uploading, uploadId };
+
+      return {
+        components: {
+          ...state.components,
+          [id]: {
+            ...comp,
+            slots: { ...comp.slots, [index]: nextSlot },
+          },
+        },
+      };
+    });
+  },
+
+  setSlotPrimaryResource: (id, index, resourceId) => {
+    set(state => {
+      const comp = state.components[id];
+      if (!comp) return state;
+
+      const prev = comp.slots[index] || {};
+      const nextSlot: SlotState = {
+        ...prev,
+        primaryResourceId: resourceId ?? null,
+        compositeDirty: resourceId !== prev.primaryResourceId ? true : prev.compositeDirty,
+        compositeResourceId: resourceId !== prev.primaryResourceId ? null : prev.compositeResourceId,
+      };
+
+      return {
+        components: {
+          ...state.components,
+          [id]: {
+            ...comp,
+            slots: { ...comp.slots, [index]: nextSlot },
+          },
+        },
+      };
+    });
+  },
+
+  setSlotMaskResource: (id, index, resourceId) => {
+    set(state => {
+      const comp = state.components[id];
+      if (!comp) return state;
+
+      const prev = comp.slots[index] || {};
+      const nextSlot: SlotState = {
+        ...prev,
+        maskResourceId: resourceId ?? null,
+        compositeDirty: resourceId !== prev.maskResourceId ? true : prev.compositeDirty,
+        compositeResourceId: resourceId !== prev.maskResourceId ? null : prev.compositeResourceId,
+      };
+
+      return {
+        components: {
+          ...state.components,
+          [id]: {
+            ...comp,
+            slots: { ...comp.slots, [index]: nextSlot },
+          },
+        },
+      };
+    });
+  },
+
+  setSlotCompositeThumbnail: (id, index, thumbnail) => {
+    set(state => {
+      const comp = state.components[id];
+      if (!comp) return state;
+
+      const prev = comp.slots[index] || {};
+      const nextSlot: SlotState = {
+        ...prev,
+        compositeThumbnail: thumbnail,
+        compositeDirty: false,
+      };
+
+      return {
+        components: {
+          ...state.components,
+          [id]: {
+            ...comp,
+            slots: { ...comp.slots, [index]: nextSlot },
+          },
+        },
+      };
+    });
+  },
+
+  markSlotCompositeDirty: (id, index, dirty = true) => {
+    set(state => {
+      const comp = state.components[id];
+      if (!comp) return state;
+
+      const prev = comp.slots[index] || {};
+      const nextSlot: SlotState = {
+        ...prev,
+        compositeDirty: dirty,
+        compositeResourceId: dirty ? null : prev.compositeResourceId,
+      };
+
+      return {
+        components: {
+          ...state.components,
+          [id]: {
+            ...comp,
+            slots: { ...comp.slots, [index]: nextSlot },
+          },
+        },
+      };
+    });
+  },
+
+  setSlotCompositeResource: (id, index, resourceId) => {
+    set(state => {
+      const comp = state.components[id];
+      if (!comp) return state;
+
+      const prev = comp.slots[index] || {};
+      const nextSlot: SlotState = {
+        ...prev,
+        compositeResourceId: resourceId ?? null,
+      };
+
+      return {
+        components: {
+          ...state.components,
+          [id]: {
+            ...comp,
+            slots: { ...comp.slots, [index]: nextSlot },
+          },
+        },
+      };
+    });
+  },
+
+  setSlotMaskAutoEnabled: (id, index, enabled) => {
+    set(state => {
+      const comp = state.components[id];
+      if (!comp) return state;
+
+      const prev = comp.slots[index] || {};
+      const nextSlot: SlotState = {
+        ...prev,
+        maskAutoEnabled: enabled,
+      };
+
+      return {
+        components: {
+          ...state.components,
+          [id]: {
+            ...comp,
+            slots: { ...comp.slots, [index]: nextSlot },
+          },
+        },
+      };
+    });
+  },
+
+  setSlotAdvancedSelection: (id, index, selection) => {
+    set(state => {
+      const comp = state.components[id];
+      if (!comp) return state;
+
+      const prev = comp.slots[index] || {};
+      const nextSlot: SlotState = {
+        ...prev,
+        advancedSelection: selection,
+      };
+
+      return {
+        components: {
+          ...state.components,
+          [id]: {
+            ...comp,
+            slots: { ...comp.slots, [index]: nextSlot },
+          },
+        },
+      };
+    });
+  },
+
+  setSlotAdvancedAutoEnabled: (id, index, enabled) => {
+    set(state => {
+      const comp = state.components[id];
+      if (!comp) return state;
+
+      const prev = comp.slots[index] || {};
+      const nextSlot: SlotState = {
+        ...prev,
+        advancedAutoEnabled: enabled,
+      };
 
       return {
         components: {

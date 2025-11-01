@@ -265,9 +265,10 @@ function RunningHubRendererForm({
             <Flex gap={4} align="center" style={{ marginBottom: 8, width: '100%' }}>
                 <Tooltip title={translate('runninghub.help_tooltip', { defaultMessage: 'How to use?' })} placement="left">
                     <Button
-                        className="workflow-action-button"
-                        icon={<QuestionCircleOutlined />}
                         type="text"
+                        size="small"
+                        icon={<QuestionCircleOutlined />}
+                        style={{ color: 'var(--sdppp-host-text-color-secondary)' }}
                         onClick={async () => {
                             const banners = loadRemoteConfig('banners');
                             const runninghubURL = banners.find((banner: any) => banner.type === 'runninghub_tutorial' && banner.locale == language)?.link;

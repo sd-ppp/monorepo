@@ -240,6 +240,10 @@ export const BoundaryPreview: React.FC<BoundaryPreviewProps> = ({ previewQuality
     .filter(Boolean)
     .join(' ');
 
+  const labelText = isHovered
+    ? translate('boundary.preview_select', { defaultMessage: 'Get selection' })
+    : translate('boundary.preview_main_image', { defaultMessage: 'Main Img' });
+
   return (
     <Tooltip title={translate('boundary.tooltip', { defaultMessage: 'Input Setting' })}>
       <div
@@ -258,6 +262,9 @@ export const BoundaryPreview: React.FC<BoundaryPreviewProps> = ({ previewQuality
             {translate('boundary.preview_placeholder', { defaultMessage: '点击使用当前选区' })}
           </span>
         )}
+        <div className="workflow-boundary-preview-label">
+          {labelText}
+        </div>
       </div>
     </Tooltip>
   );

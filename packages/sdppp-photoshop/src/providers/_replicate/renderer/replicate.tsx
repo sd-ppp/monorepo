@@ -208,9 +208,10 @@ function ReplicateRendererForm({
             <Flex gap={4} align="center" style={{ marginBottom: 8, width: '100%' }}>
                 <Tooltip title={translate('replicate.help_tooltip', { defaultMessage: 'How to use?' })} placement="left">
                     <Button
-                        className="workflow-action-button"
-                        icon={<QuestionCircleOutlined />}
                         type="text"
+                        size="small"
+                        icon={<QuestionCircleOutlined />}
+                        style={{ color: 'var(--sdppp-host-text-color-secondary)' }}
                         onClick={async () => {
                             const banners = loadRemoteConfig('banners');
                             const replicateURL = banners.find((banner: any) => banner.type === 'replicate_tutorial' && banner.locale == language)?.link;

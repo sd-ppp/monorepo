@@ -1,14 +1,12 @@
 import React, { useCallback, useRef } from 'react';
-import { sdpppSDK } from '@sdppp/common';
 import { useUploadPasses } from '../../upload-pass-context';
 import { GlobalImageStore, type AutoSyncConfig } from '../stores/global-image-store';
-import { getPhotoshopImage } from '../utils/image-operations';
+import {
+  captureCurrentMask,
+  captureWorkBoundaryImage,
+  composeImageWithMask,
+} from '../utils/image-operations';
 import { updateUrlsAtIndex, isAbortError } from '../utils/upload-helpers';
-
-export interface AutoSyncEvent {
-  altKey: boolean;
-  shiftKey: boolean;
-}
 
 export interface UseImageAutoSyncOptions {
   componentId: string;
@@ -17,67 +15,57 @@ export interface UseImageAutoSyncOptions {
   onValueChange: (urls: string[]) => void;
 }
 
-export function useImageAutoSync({ componentId, urls, isMask, onValueChange }: UseImageAutoSyncOptions) {
+type PassKind = 'primary' | 'mask';
+
+export function useImageAutoSync({
+  componentId,
+  urls,
+  isMask,
+  onValueChange,
+}: UseImageAutoSyncOptions) {
   const { addUploadPass, removeUploadPass } = useUploadPasses();
-  const passesRef = useRef<Map<number, any>>(new Map());
+  const passesRef = useRef<Map<string, any>>(new Map());
   const urlsRef = useRef<string[]>(urls || []);
 
   React.useEffect(() => {
     urlsRef.current = urls || [];
   }, [urls]);
 
-  const resolveCurrentLayerIdentify = useCallback(async (): Promise<string | null> => {
-    try {
-      const api: any = sdpppSDK?.plugins?.photoshop;
-      if (!api) return null;
+  const passKey = useCallback((index: number, kind: PassKind) => `${index}:${kind}`, []);
 
-      if (typeof api.getCurrentLayerIdentify === 'function') {
-        const res = await api.getCurrentLayerIdentify();
-        return res?.layer_identify ?? res?.identify ?? null;
-      }
-    } catch (error) {
-      console.warn('[useImageAutoSync] resolveCurrentLayerIdentify error', error);
-    }
-    return null;
-  }, []);
-
-  const onAutoSyncChange = useCallback(
-    async (index: number, activeId: string | null, event: AutoSyncEvent) => {
-      const type = isMask ? 'mask' : 'image';
-      const altUsed = !!event?.altKey;
-      let resolvedLayerIdentify: string | null = null;
-
-      if (activeId === 'curlayer') {
-        resolvedLayerIdentify = await resolveCurrentLayerIdentify();
-      }
-
-      // Update auto-sync state in global store (drives realtime thumbnails)
-      if (!activeId) {
-        GlobalImageStore.getState().setSlotAuto(componentId, index, null);
-      } else if (activeId === 'canvas' || activeId === 'curlayer' || activeId === 'selection') {
-        const autoConfig: AutoSyncConfig = {
-          type,
-          content: activeId as any,
-          alt: altUsed,
-          layerIdentify: resolvedLayerIdentify,
-        };
-        GlobalImageStore.getState().setSlotAuto(componentId, index, autoConfig);
-      }
-
-      // Remove existing pass for this slot
-      const existing = passesRef.current.get(index);
+  const clearPass = useCallback(
+    (index: number, kind: PassKind) => {
+      const key = passKey(index, kind);
+      const existing = passesRef.current.get(key);
       if (existing) {
         try {
           removeUploadPass(existing);
         } catch {}
-        passesRef.current.delete(index);
+        passesRef.current.delete(key);
+      }
+    },
+    [passKey, removeUploadPass]
+  );
+
+  const setPrimaryAuto = useCallback(
+    async (index: number, enable: boolean) => {
+      const autoConfig: AutoSyncConfig | null = enable
+        ? {
+            type: isMask ? 'mask' : 'image',
+            content: 'canvas',
+            alt: false,
+            layerIdentify: null,
+          }
+        : null;
+
+      GlobalImageStore.getState().setSlotAuto(componentId, index, autoConfig);
+      clearPass(index, 'primary');
+
+      if (!enable) {
+        return;
       }
 
-      // If disabled, nothing more to do
-      if (!activeId) return;
-
-      // Create a persistent upload pass that fetches latest PS content at execution time
-      const layerIdentify = activeId === 'curlayer' ? resolvedLayerIdentify : null;
+      GlobalImageStore.getState().markSlotCompositeDirty(componentId, index, true);
 
       const uploadPass = {
         getUploadFile: async (signal?: AbortSignal) => {
@@ -85,45 +73,26 @@ export function useImageAutoSync({ componentId, urls, isMask, onValueChange }: U
             throw new DOMException('Upload aborted', 'AbortError');
           }
 
-          // Mark slot uploading for UI indication
           try {
             GlobalImageStore.getState().setSlotUploading(componentId, index, true);
           } catch {}
 
-          // Propagate Alt semantics (reverse/crop) like once-sync Alt behavior
-          const { resource, result, thumbnail, mime } = await getPhotoshopImage(
-            isMask,
-            activeId as any,
-            altUsed,
-            layerIdentify || undefined
-          );
+          const capture = await captureWorkBoundaryImage(componentId, index);
 
-          if (result?.error) {
-            throw new Error(result.error);
-          }
-
-          if (!resource) {
+          if (!capture.resource) {
             throw new Error('Missing resource from Photoshop');
-          }
-
-          if (thumbnail) {
-            try {
-              GlobalImageStore.getState().setSlotThumbnail(componentId, index, thumbnail);
-            } catch {}
           }
 
           return {
             type: 'resource' as const,
-            resource,
+            resource: capture.resource,
             fileName: `${Date.now()}.png`,
-            mimeType: mime,
+            mimeType: 'image/png',
           };
         },
         onUploaded: async (finalUrl: string) => {
           const next = updateUrlsAtIndex(urlsRef.current, index, finalUrl);
           onValueChange(next);
-
-          // Clear uploading state
           try {
             GlobalImageStore.getState().setSlotUploading(componentId, index, false);
           } catch {}
@@ -138,11 +107,83 @@ export function useImageAutoSync({ componentId, urls, isMask, onValueChange }: U
         },
       };
 
-      passesRef.current.set(index, uploadPass);
+      passesRef.current.set(passKey(index, 'primary'), uploadPass);
       addUploadPass(uploadPass);
     },
-    [componentId, isMask, urls, onValueChange, addUploadPass, removeUploadPass, resolveCurrentLayerIdentify]
+    [addUploadPass, clearPass, componentId, isMask, onValueChange, passKey]
   );
 
-  return { onAutoSyncChange };
+  const setMaskAuto = useCallback(
+    async (index: number, enable: boolean) => {
+      GlobalImageStore.getState().setSlotMaskAutoEnabled(componentId, index, enable);
+      clearPass(index, 'mask');
+
+      if (!enable) {
+        return;
+      }
+
+      GlobalImageStore.getState().markSlotCompositeDirty(componentId, index, true);
+
+      const uploadPass = {
+        getUploadFile: async (signal?: AbortSignal) => {
+          if (signal?.aborted) {
+            throw new DOMException('Upload aborted', 'AbortError');
+          }
+
+          try {
+            GlobalImageStore.getState().setSlotUploading(componentId, index, true);
+          } catch {}
+
+          const slot = GlobalImageStore.getState().getSlot(componentId, index);
+          if (!slot?.primaryResourceId) {
+            const primaryCapture = await captureWorkBoundaryImage(componentId, index);
+            if (!primaryCapture.resource) {
+              throw new Error('Missing primary resource for masking');
+            }
+          }
+
+          const maskCapture = await captureCurrentMask(componentId, index);
+          if (!maskCapture.resource) {
+            throw new Error('Missing mask resource from Photoshop');
+          }
+
+          const composite = await composeImageWithMask(componentId, index);
+          if (!composite.resource) {
+            throw new Error('Failed to compose image with mask');
+          }
+
+          return {
+            type: 'resource' as const,
+            resource: composite.resource,
+            fileName: `${Date.now()}.png`,
+            mimeType: 'image/png',
+          };
+        },
+        onUploaded: async (finalUrl: string) => {
+          const next = updateUrlsAtIndex(urlsRef.current, index, finalUrl);
+          onValueChange(next);
+          try {
+            GlobalImageStore.getState().setSlotUploading(componentId, index, false);
+          } catch {}
+        },
+        onUploadError: (error: any) => {
+          if (!isAbortError(error)) {
+            console.warn('Mask auto sync upload failed:', error);
+          }
+          try {
+            GlobalImageStore.getState().setSlotUploading(componentId, index, false);
+          } catch {}
+        },
+      };
+
+      passesRef.current.set(passKey(index, 'mask'), uploadPass);
+      addUploadPass(uploadPass);
+    },
+    [addUploadPass, clearPass, componentId, onValueChange, passKey]
+  );
+
+  return {
+    setPrimaryAuto,
+    setMaskAuto,
+  };
 }

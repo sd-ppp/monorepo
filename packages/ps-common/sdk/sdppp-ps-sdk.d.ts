@@ -351,6 +351,13 @@ export declare const sdpppSDK: {
 				boundary?: "canvas" | "curlayer" | "selection" | undefined;
 				cancelled?: boolean | undefined;
 			}>;
+			selectImageSource: (data: {
+				additionalData?: Record<string, any> | undefined;
+			}, signal?: AbortSignal) => Promise<{
+				params?: any;
+				action?: "getImage" | "pickLocalFile" | undefined;
+				cancelled?: boolean | undefined;
+			}>;
 			selectCanvasImage: (data: {
 				additionalData?: Record<string, any> | undefined;
 			}, signal?: AbortSignal) => Promise<{
@@ -597,11 +604,24 @@ export declare const sdpppSDK: {
 			}>;
 			getThumbnail: (data: {
 				resource: string;
+				maskResource?: string | undefined;
+				invertMask?: boolean | undefined;
 				maxSize?: number | undefined;
 			}, signal?: AbortSignal) => Promise<{
 				error?: string | undefined;
 				width?: number | undefined;
 				height?: number | undefined;
+				thumbnail?: string | undefined;
+			}>;
+			applyMaskToImage: (data: {
+				maskResource: string;
+				imageResource: string;
+				invertMask?: boolean | undefined;
+			}, signal?: AbortSignal) => Promise<{
+				error?: string | undefined;
+				width?: number | undefined;
+				height?: number | undefined;
+				resource?: string | undefined;
 				thumbnail?: string | undefined;
 			}>;
 			deleteDownloadedImage: (data: {
