@@ -94,16 +94,32 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
     MainStore.setState({ showingPreview: false });
   };
 
-  const handleDeleteCurrent = () => {
-    const newImages = images.filter((_, index) => index !== currentIndex);
-    MainStore.setState({ previewImageList: newImages });
-    if (currentIndex >= newImages.length && newImages.length > 0) {
-      setCurrentIndex(newImages.length - 1);
+  const handleDeleteCurrent = async () => {
+    const current = images[currentIndex];
+    if (current?.resource) {
+      await MainStore.getState().deletePreviewImages([current.resource]);
+    } else {
+      const newImages = images.filter((_, index) => index !== currentIndex);
+      MainStore.setState({ previewImageList: newImages });
+    }
+    const nextList = MainStore.getState().previewImageList;
+    if (currentIndex >= nextList.length && nextList.length > 0) {
+      setCurrentIndex(nextList.length - 1);
+    } else if (!nextList.length) {
+      setCurrentIndex(0);
     }
   };
 
-  const handleClearAll = () => {
-    MainStore.setState({ previewImageList: [] });
+  const handleClearAll = async () => {
+    const resources = images
+      .map(image => image.resource)
+      .filter((res): res is string => !!res);
+    if (resources.length) {
+      await MainStore.getState().deletePreviewImages(resources);
+    } else {
+      MainStore.setState({ previewImageList: [] });
+    }
+    setCurrentIndex(0);
   };
 
   const handleSendAll = async (event?: React.MouseEvent) => {

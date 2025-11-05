@@ -1,5 +1,6 @@
 import { sdpppSDK } from '@sdppp/common';
-import { GlobalImageStore } from '../stores/global-image-store';
+import { GlobalImageStore } from '../../foundation/stores/global-image-store';
+import type { AutoSyncConfig } from '../../foundation/stores/types';
 
 interface CaptureContext {
   boundaryParam: any;
@@ -84,6 +85,54 @@ export const captureWorkBoundaryImage = async (
       }
     } catch (error) {
       console.warn('[captureWorkBoundaryImage] getThumbnail failed', error);
+    }
+  }
+
+  GlobalImageStore.getState().markSlotCompositeDirty(componentId, index, true);
+
+  return {
+    resource,
+    thumbnail: thumbnail ?? undefined,
+    width: result?.width,
+    height: result?.height,
+  };
+};
+
+export const captureAutoImage = async (
+  componentId: string,
+  index: number,
+  config: AutoSyncConfig
+): Promise<CaptureResponse> => {
+  const { boundaryParam: defaultBoundary, imageSize } = resolveWorkBoundaryContext();
+  const boundary = config.boundary ?? defaultBoundary ?? 'canvas';
+
+  const result = await sdpppSDK.plugins.photoshop.getImage({
+    content: config.content,
+    boundary,
+    imageSize,
+    imageQuality: 1,
+    cropBySelection: config.alt ? 'negative' : 'no',
+    layer_identify: config.layerIdentify ?? undefined,
+  });
+
+  const resource: string | undefined = result?.resource;
+  const thumbnail: string | undefined = result?.thumbnail;
+
+  GlobalImageStore.getState().setSlotPrimaryResource(componentId, index, resource ?? null);
+
+  if (thumbnail) {
+    GlobalImageStore.getState().setSlotThumbnail(componentId, index, thumbnail);
+  } else if (resource) {
+    try {
+      const thumbRes = await sdpppSDK.plugins.photoshop.getThumbnail({
+        resource,
+        maxSize: DEFAULT_THUMBNAIL_SIZE,
+      });
+      if (thumbRes?.thumbnail) {
+        GlobalImageStore.getState().setSlotThumbnail(componentId, index, thumbRes.thumbnail);
+      }
+    } catch (error) {
+      console.warn('[captureAutoImage] getThumbnail failed', error);
     }
   }
 
@@ -295,64 +344,5 @@ export const composeImageWithMask = async (
     });
     GlobalImageStore.getState().markSlotCompositeDirty(componentId, index, true);
     throw error;
-  }
-};
-
-/**
- * Create and handle file input for disk uploads
- */
-export const createFileInput = (
-  onFileSelected: (file: File) => void,
-  accept = 'image/*'
-): void => {
-  const input = document.createElement('input');
-  input.type = 'file';
-  input.accept = accept;
-  input.multiple = false;
-  input.style.position = 'fixed';
-  input.style.left = '-10000px';
-  input.style.top = '-10000px';
-  document.body.appendChild(input);
-
-  const cleanup = () => {
-    try {
-      input.value = '';
-      document.body.removeChild(input);
-    } catch {}
-  };
-
-  input.onchange = () => {
-    const file = input.files?.[0];
-    cleanup();
-    if (file) {
-      onFileSelected(file);
-    }
-  };
-
-  input.click();
-};
-
-/**
- * Validate if file is an image
- */
-export const validateImageFile = (file: File): boolean => {
-  return file.type?.startsWith('image/') || false;
-};
-
-/**
- * Create blob URL from file
- */
-export const createBlobUrl = (file: File): string => {
-  return URL.createObjectURL(file);
-};
-
-/**
- * Revoke blob URL safely
- */
-export const revokeBlobUrl = (url: string): void => {
-  if (url?.startsWith('blob:')) {
-    try {
-      URL.revokeObjectURL(url);
-    } catch {}
   }
 };

@@ -1,12 +1,15 @@
 import React, { useCallback, useRef } from 'react';
-import { useUploadPasses } from '../../upload-pass-context';
-import { GlobalImageStore, type AutoSyncConfig } from '../stores/global-image-store';
+import { useUploadPasses } from '../../../upload-pass-context';
+import { GlobalImageStore, type AutoSyncConfig, getSlotPrimaryConfig } from '../../foundation/stores/global-image-store';
 import {
   captureCurrentMask,
   captureWorkBoundaryImage,
   composeImageWithMask,
-} from '../utils/image-operations';
-import { updateUrlsAtIndex, isAbortError } from '../utils/upload-helpers';
+  resolveWorkBoundaryContext,
+  captureAutoImage,
+} from '../../services/photoshop/operations';
+import { createSlotUploadPass } from '../../services/upload/upload-helpers';
+import type { BoundarySetting, SlotState } from '../../foundation/stores/types';
 
 export interface UseImageAutoSyncOptions {
   componentId: string;
@@ -33,6 +36,35 @@ export function useImageAutoSync({
 
   const passKey = useCallback((index: number, kind: PassKind) => `${index}:${kind}`, []);
 
+  const buildAutoConfig = useCallback(
+    (slot: SlotState | undefined): AutoSyncConfig => {
+      const desiredType: AutoSyncConfig['type'] = isMask ? 'mask' : 'image';
+      const { boundaryParam } = resolveWorkBoundaryContext();
+      const fallbackBoundary: BoundarySetting =
+        typeof boundaryParam === 'object' || typeof boundaryParam === 'string'
+          ? boundaryParam
+          : null;
+
+      const currentAuto = getSlotPrimaryConfig(slot);
+      if (currentAuto) {
+        return {
+          ...currentAuto,
+          type: desiredType,
+          boundary: currentAuto.boundary ?? fallbackBoundary,
+        };
+      }
+
+      return {
+        type: desiredType,
+        content: slot?.primaryContent ?? 'canvas',
+        alt: typeof slot?.primaryAlt === 'boolean' ? slot.primaryAlt : false,
+        layerIdentify: slot?.primaryLayerIdentify ?? null,
+        boundary: slot?.primaryBoundary ?? fallbackBoundary,
+      };
+    },
+    [isMask]
+  );
+
   const clearPass = useCallback(
     (index: number, kind: PassKind) => {
       const key = passKey(index, kind);
@@ -49,16 +81,11 @@ export function useImageAutoSync({
 
   const setPrimaryAuto = useCallback(
     async (index: number, enable: boolean) => {
-      const autoConfig: AutoSyncConfig | null = enable
-        ? {
-            type: isMask ? 'mask' : 'image',
-            content: 'canvas',
-            alt: false,
-            layerIdentify: null,
-          }
-        : null;
+      const store = GlobalImageStore.getState();
+      const slotState = store.getSlot(componentId, index);
+      const autoConfig: AutoSyncConfig | null = enable ? buildAutoConfig(slotState) : null;
 
-      GlobalImageStore.getState().setSlotAuto(componentId, index, autoConfig);
+      store.setSlotPrimaryConfig(componentId, index, autoConfig);
       clearPass(index, 'primary');
 
       if (!enable) {
@@ -67,50 +94,37 @@ export function useImageAutoSync({
 
       GlobalImageStore.getState().markSlotCompositeDirty(componentId, index, true);
 
-      const uploadPass = {
-        getUploadFile: async (signal?: AbortSignal) => {
-          if (signal?.aborted) {
-            throw new DOMException('Upload aborted', 'AbortError');
-          }
-
+      const uploadPass = createSlotUploadPass({
+        componentId,
+        index,
+        urlsRef,
+        onValueChange,
+        logPrefix: 'Auto sync upload',
+        onStart: () => {
           try {
             GlobalImageStore.getState().setSlotUploading(componentId, index, true);
           } catch {}
-
-          const capture = await captureWorkBoundaryImage(componentId, index);
-
+        },
+        onComplete: () => {
+          try {
+            GlobalImageStore.getState().setSlotUploading(componentId, index, false);
+          } catch {}
+        },
+        captureResource: async () => {
+          const latestSlot = GlobalImageStore.getState().getSlot(componentId, index);
+          const config = buildAutoConfig(latestSlot);
+          const capture = await captureAutoImage(componentId, index, config);
           if (!capture.resource) {
             throw new Error('Missing resource from Photoshop');
           }
-
-          return {
-            type: 'resource' as const,
-            resource: capture.resource,
-            fileName: `${Date.now()}.png`,
-            mimeType: 'image/png',
-          };
+          return capture.resource;
         },
-        onUploaded: async (finalUrl: string) => {
-          const next = updateUrlsAtIndex(urlsRef.current, index, finalUrl);
-          onValueChange(next);
-          try {
-            GlobalImageStore.getState().setSlotUploading(componentId, index, false);
-          } catch {}
-        },
-        onUploadError: (error: any) => {
-          if (!isAbortError(error)) {
-            console.warn('Auto sync upload failed:', error);
-          }
-          try {
-            GlobalImageStore.getState().setSlotUploading(componentId, index, false);
-          } catch {}
-        },
-      };
+      });
 
       passesRef.current.set(passKey(index, 'primary'), uploadPass);
       addUploadPass(uploadPass);
     },
-    [addUploadPass, clearPass, componentId, isMask, onValueChange, passKey]
+    [addUploadPass, buildAutoConfig, clearPass, componentId, onValueChange, passKey]
   );
 
   const setMaskAuto = useCallback(
@@ -124,16 +138,23 @@ export function useImageAutoSync({
 
       GlobalImageStore.getState().markSlotCompositeDirty(componentId, index, true);
 
-      const uploadPass = {
-        getUploadFile: async (signal?: AbortSignal) => {
-          if (signal?.aborted) {
-            throw new DOMException('Upload aborted', 'AbortError');
-          }
-
+      const uploadPass = createSlotUploadPass({
+        componentId,
+        index,
+        urlsRef,
+        onValueChange,
+        logPrefix: 'Mask auto sync upload',
+        onStart: () => {
           try {
             GlobalImageStore.getState().setSlotUploading(componentId, index, true);
           } catch {}
-
+        },
+        onComplete: () => {
+          try {
+            GlobalImageStore.getState().setSlotUploading(componentId, index, false);
+          } catch {}
+        },
+        captureResource: async () => {
           const slot = GlobalImageStore.getState().getSlot(componentId, index);
           if (!slot?.primaryResourceId) {
             const primaryCapture = await captureWorkBoundaryImage(componentId, index);
@@ -152,29 +173,9 @@ export function useImageAutoSync({
             throw new Error('Failed to compose image with mask');
           }
 
-          return {
-            type: 'resource' as const,
-            resource: composite.resource,
-            fileName: `${Date.now()}.png`,
-            mimeType: 'image/png',
-          };
+          return composite.resource;
         },
-        onUploaded: async (finalUrl: string) => {
-          const next = updateUrlsAtIndex(urlsRef.current, index, finalUrl);
-          onValueChange(next);
-          try {
-            GlobalImageStore.getState().setSlotUploading(componentId, index, false);
-          } catch {}
-        },
-        onUploadError: (error: any) => {
-          if (!isAbortError(error)) {
-            console.warn('Mask auto sync upload failed:', error);
-          }
-          try {
-            GlobalImageStore.getState().setSlotUploading(componentId, index, false);
-          } catch {}
-        },
-      };
+      });
 
       passesRef.current.set(passKey(index, 'mask'), uploadPass);
       addUploadPass(uploadPass);

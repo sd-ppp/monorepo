@@ -15,6 +15,7 @@ export const MainStore = create<{
         boundary?: any,
         width?: number,
         height?: number,
+        mimeType?: string,
         downloading?: boolean,
     }[]
     showingPreview: boolean
@@ -38,6 +39,9 @@ export const MainStore = create<{
                     thumbnail: undefined,
                     docId,
                     boundary,
+                    width: undefined,
+                    height: undefined,
+                    mimeType: undefined,
                     downloading: true,
                 }
             ]
@@ -81,8 +85,9 @@ export const MainStore = create<{
                 downloading: false,
                 resource: resource ?? currentList[idx].resource,
                 thumbnail: thumbnail ?? currentList[idx].thumbnail,
-                width: (res as any).width,
-                height: (res as any).height,
+                width: (res as any).width ?? currentList[idx].width,
+                height: (res as any).height ?? currentList[idx].height,
+                mimeType: (res as any).mimeType ?? currentList[idx].mimeType,
             }
             const nextList = [...currentList]
             nextList[idx] = updated
@@ -105,6 +110,7 @@ export const MainStore = create<{
                         boundary,
                         width: (res as any).width,
                         height: (res as any).height,
+                        mimeType: (res as any).mimeType,
                         downloading: false,
                     }
                 ]

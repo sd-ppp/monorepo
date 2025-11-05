@@ -318,9 +318,9 @@ export const ConditionalControlsExample: Story = {
               textAlign: 'center',
             }}
           >
-            本节点默认使用
+            本节点默认继承
             {'\n'}
-            当前图层+遮罩
+            主图
           </div>
         ) : (
           <SyncButton

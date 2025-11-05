@@ -189,7 +189,7 @@ export const SyncButton: React.FC<SyncButtonProps> = ({
     return (
       <Button
         data-testid="sync-button-cancel"
-        type="text"
+        type="default"
         size="middle"
         disabled={disabled}
         onClick={handleCancelClick}
@@ -200,6 +200,7 @@ export const SyncButton: React.FC<SyncButtonProps> = ({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
+          borderStyle: 'dashed',
         }}
         aria-label="Cancel"
       />

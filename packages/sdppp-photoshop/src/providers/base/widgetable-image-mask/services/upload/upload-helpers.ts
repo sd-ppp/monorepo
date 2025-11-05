@@ -1,18 +1,5 @@
 import { Buffer } from 'buffer';
-
-export interface UploadFile {
-  type: 'buffer' | 'token' | 'resource';
-  resource: any;
-  fileName: string;
-  mimeType?: string;
-  resourceId?: string;
-}
-
-export interface UploadPass {
-  getUploadFile: (signal?: AbortSignal) => Promise<UploadFile>;
-  onUploaded: (finalUrl: string) => Promise<void>;
-  onUploadError: (error: any) => void;
-}
+import type { UploadPass } from '../../../upload-pass-context';
 
 /**
  * Convert file to ArrayBuffer for upload
@@ -87,13 +74,6 @@ export const createResourceUploadPass = (
   },
 });
 
-export const createTokenUploadPass = (
-  token: string,
-  fileName: string,
-  onUploaded: (url: string) => void,
-  onError: (error: any) => void
-) => createResourceUploadPass(token, fileName, undefined, onUploaded, onError);
-
 /**
  * Update URLs array at specific index
  */
@@ -124,3 +104,86 @@ export const removeUrlAtIndex = (urls: string[], index: number): string[] => {
 export const isAbortError = (error: any): boolean => {
   return error instanceof DOMException && error.name === 'AbortError';
 };
+
+type UrlsRef = { current: string[] };
+
+interface SlotUploadPassOptions {
+  componentId: string;
+  index: number;
+  urlsRef: UrlsRef;
+  onValueChange: (urls: string[]) => void;
+  captureResource: (signal?: AbortSignal) => Promise<string>;
+  logPrefix: string;
+  setUploadingState?: (value: boolean) => void;
+  setUploadError?: (value: string) => void;
+  onStart?: () => void;
+  onComplete?: () => void;
+  fileNameFactory?: () => string;
+  mimeType?: string;
+}
+
+const safeInvoke = (fn?: (() => void) | ((value: boolean) => void), value?: boolean) => {
+  if (!fn) return;
+  try {
+    if (typeof value === 'boolean') {
+      (fn as (value: boolean) => void)(value);
+    } else {
+      (fn as () => void)();
+    }
+  } catch {}
+};
+
+const defaultFileNameFactory = () => `${Date.now()}.png`;
+
+export const createSlotUploadPass = ({
+  componentId,
+  index,
+  urlsRef,
+  onValueChange,
+  captureResource,
+  logPrefix,
+  setUploadingState,
+  setUploadError,
+  onStart,
+  onComplete,
+  fileNameFactory = defaultFileNameFactory,
+  mimeType = 'image/png',
+}: SlotUploadPassOptions): UploadPass => ({
+  getUploadFile: async (signal?: AbortSignal) => {
+    if (signal?.aborted) {
+      throw new DOMException('Upload aborted', 'AbortError');
+    }
+
+    safeInvoke(setUploadingState, true);
+    safeInvoke(onStart);
+
+    const resource = await captureResource(signal);
+    if (!resource) {
+      throw new Error('Missing resource from capture');
+    }
+
+    return {
+      type: 'resource',
+      resource,
+      resourceId: resource,
+      fileName: fileNameFactory(),
+      mimeType,
+    };
+  },
+  onUploaded: async (finalUrl: string) => {
+    const next = updateUrlsAtIndex(urlsRef.current, index, finalUrl);
+    onValueChange(next);
+    safeInvoke(setUploadingState, false);
+    safeInvoke(onComplete);
+  },
+  onUploadError: (error: any) => {
+    if (!isAbortError(error)) {
+      console.warn(`${logPrefix} failed:`, error);
+      if (setUploadError) {
+        setUploadError(error?.message || String(error));
+      }
+    }
+    safeInvoke(setUploadingState, false);
+    safeInvoke(onComplete);
+  },
+});
