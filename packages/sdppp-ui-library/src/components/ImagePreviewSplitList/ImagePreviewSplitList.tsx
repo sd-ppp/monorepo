@@ -1,4 +1,5 @@
-import type { CSSProperties, FC } from 'react';
+import { cloneElement, isValidElement } from 'react';
+import type { CSSProperties, FC, ReactElement } from 'react';
 import { ImagePreviewSplit } from '../ImagePreviewSplit/ImagePreviewSplit';
 import type { ImagePreviewSplitProps } from '../ImagePreviewSplit/ImagePreviewSplit';
 
@@ -6,8 +7,10 @@ export interface ImagePreviewSplitListItem extends ImagePreviewSplitProps {
   id?: string | number;
 }
 
+type ImagePreviewSplitListRenderable = ImagePreviewSplitListItem | ReactElement;
+
 export interface ImagePreviewSplitListProps {
-  items: ImagePreviewSplitListItem[];
+  items: ImagePreviewSplitListRenderable[];
   gap?: number | string;
   className?: string;
   style?: CSSProperties;
@@ -34,6 +37,11 @@ export const ImagePreviewSplitList: FC<ImagePreviewSplitListProps> = ({
       }}
     >
       {items.map((item, index) => {
+        if (isValidElement(item)) {
+          const key = item.key ?? index;
+          return cloneElement(item, { key });
+        }
+
         const { id, ...rest } = item;
         const key = id ?? index;
         return <ImagePreviewSplit key={key} {...rest} />;
