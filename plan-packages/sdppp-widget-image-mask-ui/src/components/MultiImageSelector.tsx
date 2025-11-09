@@ -1,308 +1,224 @@
-import { useWidgetImageMaskActions, useWidgetText } from '../context/WidgetImageMaskContext';
-import { ImagePreviewSplitList, SyncButton } from '@sdppp/ui-library';
-import { Button } from 'antd';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Plus } from 'lucide-react';
-import { UploadableImagePreviewSplit } from './common/UploadableImagePreviewSplit';
+
+import { ImageSelector } from './ImageSelector';
+import { UploadIndicator } from './common/UploadIndicator';
+
+type SlotUploadState = {
+  status: 'idle' | 'uploading' | 'error';
+  errorMessage: string | null;
+  progress: { current: number; total: number };
+};
 
 interface MultiImageSelectorProps {
   widgetableId: string;
   value: string[];
   maxCount: number;
+  workBoundary: string;
   onValueChange?: (value: string[]) => void;
+  showActionButtons?: boolean;
 }
 
-const ADVANCED_HINT_TRANSLATIONS = [
-  { key: 'image.upload.primary.hint.line1', defaultValue: '本节点默认使用' },
-  { key: 'image.upload.primary.hint.line2', defaultValue: '当前图层+遮罩' },
-];
+const ensureArray = (input: string[] | undefined): string[] => {
+  if (!Array.isArray(input)) return [];
+  return input.filter(item => typeof item === 'string');
+};
 
 export const MultiImageSelector: React.FC<MultiImageSelectorProps> = ({
   widgetableId,
-  value = [],
+  value,
   maxCount,
+  workBoundary,
   onValueChange,
+  showActionButtons = true,
 }) => {
-  const t = useWidgetText();
-  const actions = useWidgetImageMaskActions();
+  const limit = Math.max(1, maxCount || 1);
+
+  const propValues = useMemo(() => {
+    const safeValues = ensureArray(value);
+    const next = safeValues.slice(0, limit);
+    while (next.length < limit) {
+      next.push('');
+    }
+    return next;
+  }, [value, limit]);
+
+  const [localValues, setLocalValues] = useState<string[]>(propValues);
+
+  useEffect(() => {
+    setLocalValues(prev => {
+      if (prev.length === propValues.length && prev.every((item, index) => item === propValues[index])) {
+        return prev;
+      }
+      return propValues;
+    });
+  }, [propValues]);
+
+  const slots = useMemo(
+    () => Array.from({ length: limit }, (_, index) => index),
+    [limit],
+  );
+
   const emitValue = useCallback(
     (next: string[]) => {
       if (!onValueChange) return;
-      onValueChange(next);
+      const trimmed = next.slice(0, limit);
+      let lastIndex = trimmed.length - 1;
+      while (lastIndex >= 0 && !trimmed[lastIndex]) {
+        trimmed.pop();
+        lastIndex -= 1;
+      }
+      onValueChange(trimmed);
     },
-    [onValueChange],
+    [limit, onValueChange],
   );
 
-  const limit = Math.max(1, maxCount || 1);
-  const initialCount = Math.min(limit, Math.max(1, Array.isArray(value) ? value.length : 0));
-  const [previews, setPreviews] = useState<string[]>(() => {
-    const arr = Array.from({ length: initialCount }, (_, i) => value?.[i] ?? '');
-    return arr;
-  });
+  const handleSlotValueChange = useCallback(
+    (index: number, slotValue: string[]) => {
+      const normalized = (slotValue?.[0] ?? '').trim();
+      setLocalValues(prev => {
+        const next = prev.slice(0, limit);
+        while (next.length < limit) {
+          next.push('');
+        }
+        if (next[index] === normalized) {
+          return prev;
+        }
+        next[index] = normalized;
+        emitValue(next);
+        return next;
+      });
+    },
+    [emitValue, limit],
+  );
 
-  useEffect(() => {
-    const count = Math.min(limit, Math.max(1, Array.isArray(value) ? value.length : 0));
-    setPreviews(prev => {
-      const next = Array.from({ length: count }, (_, i) => value?.[i] ?? prev[i] ?? '');
+  const [slotStates, setSlotStates] = useState<Record<number, SlotUploadState>>({});
+  const [errorDismissSignals, setErrorDismissSignals] = useState<Record<number, number>>({});
+
+  const handleSlotUploadStateChange = useCallback((index: number, state: SlotUploadState) => {
+    setSlotStates(prev => {
+      const prevState = prev[index];
+      if (prevState) {
+        const sameStatus = prevState.status === state.status;
+        const sameError = prevState.errorMessage === state.errorMessage;
+        const sameProgress =
+          prevState.progress?.current === state.progress?.current &&
+          prevState.progress?.total === state.progress?.total;
+        if (sameStatus && sameError && sameProgress) {
+          return prev;
+        }
+      } else if (
+        state.status === 'idle' &&
+        !state.errorMessage &&
+        (state.progress?.current ?? 0) === 0 &&
+        (state.progress?.total ?? 0) === 0
+      ) {
+        return prev;
+      }
+      const next = { ...prev };
+      if (
+        state.status === 'idle' &&
+        !state.errorMessage &&
+        (state.progress?.current ?? 0) === 0
+      ) {
+        delete next[index];
+      } else {
+        next[index] = state;
+      }
       return next;
     });
-  }, [value, limit]);
-
-  const [uploadingCounts, setUploadingCounts] = useState<Record<number, number>>({});
-  const [uploadErrors, setUploadErrors] = useState<Record<number, string>>({});
-  const [uploadProgressByIndex, setUploadProgressByIndex] = useState<
-    Record<number, { current: number; total: number }>
-  >({});
-
-  const setErrorForIndex = useCallback((index: number, message: string | null) => {
-    setUploadErrors(prev => {
-      if (!message) {
-        if (!(index in prev)) return prev;
-        const { [index]: _removed, ...rest } = prev;
-        return rest;
-      }
-      return {
-        ...prev,
-        [index]: message,
-      };
-    });
   }, []);
 
-  const markUploadingStart = useCallback((index: number) => {
-    setUploadingCounts(prev => ({
-      ...prev,
-      [index]: (prev[index] ?? 0) + 1,
-    }));
-  }, []);
+  const aggregatedState = useMemo(() => {
+    let status: 'idle' | 'uploading' | 'error' = 'idle';
+    let errorMessage: string | null = null;
+    let progressCurrent = 0;
+    let progressTotal = 0;
 
-  const markUploadingEnd = useCallback((index: number) => {
-    setUploadingCounts(prev => {
-      const current = prev[index] ?? 0;
-      if (current <= 1) {
-        const { [index]: _removed, ...rest } = prev;
-        return rest;
+    slots.forEach(index => {
+      const state = slotStates[index];
+      if (!state) return;
+      if (state.status === 'error' && status !== 'error') {
+        status = 'error';
+        errorMessage = state.errorMessage ?? null;
       }
-      return {
-        ...prev,
-        [index]: current - 1,
-      };
-    });
-  }, []);
-
-  const slots = useMemo(() => {
-    return Array.from({ length: previews.length }, (_, i) => i);
-  }, [previews.length]);
-
-  const advancedHintLines = ADVANCED_HINT_TRANSLATIONS.map(({ key, defaultValue }) =>
-    t(key, { defaultValue })
-  );
-
-  const handleAddFromFile = useCallback(
-    async (index: number) => {
-      markUploadingStart(index);
-      setUploadProgressByIndex(prev => ({
-        ...prev,
-        [index]: { current: 0, total: 1 },
-      }));
-      setErrorForIndex(index, null);
-      let encounteredError = false;
-      try {
-        const createResult = await actions['resource.file.createFromLocal']();
-        if (!createResult || createResult.error) {
-          encounteredError = true;
-          const message =
-            (typeof createResult?.error === 'string' && createResult.error.trim().length
-              ? createResult.error.trim()
-              : t('image.upload.error', { defaultValue: '上传失败，请重试' }));
-          setErrorForIndex(index, message);
-          return;
-        }
-        const resource = createResult.resource;
-        if (!resource) {
-          encounteredError = true;
-          setErrorForIndex(index, t('image.upload.error', { defaultValue: '上传失败，请重试' }));
-          return;
-        }
-        const inlineThumb = createResult.thumbnail;
-        const previewSource =
-          inlineThumb ??
-          ((await actions['resource.thumbnail']({ resource }))?.thumbnail ?? null);
-
-        setPreviews(curr => {
-          const next = curr.slice();
-          while (next.length <= index) next.push('');
-          next[index] = previewSource ?? resource;
-          return next;
-        });
-
-        const base = Array.isArray(value) ? value.slice() : [];
-        while (base.length <= index) base.push('');
-        base[index] = resource;
-        emitValue(base);
-        setErrorForIndex(index, null);
-        setUploadProgressByIndex(prev => ({
-          ...prev,
-          [index]: { current: 1, total: prev[index]?.total ?? 1 },
-        }));
-      } catch (err) {
-        const message =
-          err instanceof Error && err.message
-            ? err.message
-            : t('image.upload.error', { defaultValue: '上传失败，请重试' });
-        setErrorForIndex(index, message);
-        encounteredError = true;
-      } finally {
-        markUploadingEnd(index);
-        if (!encounteredError) {
-          setUploadProgressByIndex(prev => {
-            if (!(index in prev)) return prev;
-            const { [index]: _removed, ...rest } = prev;
-            return rest;
-          });
-        }
+      if (state.status === 'uploading' && status !== 'error') {
+        status = 'uploading';
+        progressCurrent += state.progress?.current ?? 0;
+        progressTotal += state.progress?.total ?? 0;
       }
-    },
-    [
-      actions,
-      emitValue,
-      value,
-      markUploadingStart,
-      markUploadingEnd,
-      setErrorForIndex,
-      t,
-      setUploadProgressByIndex,
-    ],
-  );
-
-  const items = useMemo(() => {
-    return slots.map(index => {
-      const imageUrl = previews?.[index] ?? '';
-      const isUploading = (uploadingCounts[index] ?? 0) > 0;
-       const errorMessage = uploadErrors[index];
-       const uploadStatus = errorMessage ? 'error' : isUploading ? 'uploading' : 'idle';
-      const progress = uploadProgressByIndex[index];
-      const leftNode = (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {/* Advanced hint + modify (fixed total width 160) */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 0, width: 160 }}>
-            <div style={{ width: 96, fontSize: 12, lineHeight: 1.2, paddingRight: 4 }}>
-              {advancedHintLines.map((line, idx) => (
-                <React.Fragment key={idx}>
-                  {line}
-                  {idx < advancedHintLines.length - 1 ? <br /> : null}
-                </React.Fragment>
-              ))}
-            </div>
-            <SyncButton
-              className="modify-no-padding"
-              buttonSize={64}
-              disabled={true}
-              isAutoSync={false}
-              autoSyncEnabled={false}
-              onSync={() => {}}
-              onAutoSyncToggle={() => {}}
-            >
-              {t('image.upload.primary.advanced.modify', { defaultValue: '修改' })}
-            </SyncButton>
-          </div>
-          {/* Primary button with auto */}
-          <div>
-            <SyncButton
-              buttonSize={160}
-              disabled={false}
-              isAutoSync={false}
-              onSync={() => {
-                void handleAddFromFile(index);
-              }}
-              onAutoSyncToggle={() => {}}
-              autoSyncEnabled={false}
-              descText={undefined}
-            >
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                <Plus size={16} strokeWidth={2} />
-                {t('image.upload.primary.manual', { defaultValue: '使用主图' })}
-              </span>
-            </SyncButton>
-          </div>
-          <div style={{ height: 1, background: 'var(--ant-color-border,#d9d9d9)' }} />
-          {/* Mask button */}
-          <div>
-            <SyncButton
-              buttonSize={160}
-              disabled={true}
-              isAutoSync={false}
-              autoSyncEnabled={true}
-              onSync={() => {}}
-              onAutoSyncToggle={() => {}}
-            >
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                <Plus size={16} strokeWidth={2} />
-                {t('image.upload.mask.button', { defaultValue: '选区遮罩' })}
-              </span>
-            </SyncButton>
-          </div>
-        </div>
-      );
-
-      return (
-        <UploadableImagePreviewSplit
-          key={`multi-image-${widgetableId}-${index}`}
-          left={leftNode}
-          imageUrl={imageUrl}
-          background="checkerboard"
-          indicatorPlacement="below"
-          uploadStatus={uploadStatus}
-          uploadIndicatorErrorMessage={errorMessage}
-          uploadIndicatorProgressCurrent={progress?.current}
-          uploadIndicatorProgressTotal={progress?.total}
-          onUploadDismiss={
-            errorMessage
-              ? () => {
-                  setErrorForIndex(index, null);
-                  setUploadProgressByIndex(prev => {
-                    if (!(index in prev)) return prev;
-                    const { [index]: _removed, ...rest } = prev;
-                    return rest;
-                  });
-                }
-              : undefined
-          }
-        />
-      );
     });
-  }, [
-    slots,
-    previews,
-    t,
-    advancedHintLines,
-    handleAddFromFile,
-    widgetableId,
-    uploadingCounts,
-    uploadErrors,
-    setErrorForIndex,
-    uploadProgressByIndex,
-    setUploadProgressByIndex,
-  ]);
 
-  const showAddRemove = limit !== 1;
+    if (status !== 'uploading') {
+      progressCurrent = 0;
+      progressTotal = 0;
+    }
+
+    return {
+      status,
+      errorMessage,
+      progress: {
+        current: progressCurrent,
+        total: progressTotal,
+      },
+    };
+  }, [slotStates, slots]);
+
+  const handleAggregatedDismiss = useCallback(() => {
+    setErrorDismissSignals(prev => {
+      const next = { ...prev };
+      slots.forEach(index => {
+        if (slotStates[index]?.status === 'error') {
+          next[index] = (next[index] ?? 0) + 1;
+        }
+      });
+      return next;
+    });
+  }, [slotStates, slots]);
 
   return (
-    <div>
-      <ImagePreviewSplitList items={items} />
-      {showAddRemove ? (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
-          <Button type="dashed" icon={<Plus size={16} strokeWidth={2} />} disabled>
-            {t('image.upload.add_slot', { defaultValue: '新增槽位' })}
-          </Button>
-          <div style={{ display: 'flex', gap: 8 }}>
-            {slots.map(index => (
-              <Button key={`remove-${index}`} size="small" type="default" disabled>
-                {index}
-              </Button>
-            ))}
-          </div>
-        </div>
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 16,
+      }}
+    >
+      {slots.map(index => {
+        const slotValue = localValues[index] ?? '';
+        return (
+          <ImageSelector
+            key={`${widgetableId}-${index}`}
+            widgetableId={`${widgetableId}-${index}`}
+            value={[slotValue]}
+            workBoundary={workBoundary}
+            onValueChange={next => {
+              handleSlotValueChange(index, next);
+            }}
+            showActionButtons={showActionButtons}
+            showUploadIndicator={false}
+            externalErrorDismissSignal={errorDismissSignals[index] ?? 0}
+            onUploadStateChange={state => {
+              handleSlotUploadStateChange(index, state);
+            }}
+          />
+        );
+      })}
+      {aggregatedState.status !== 'idle' || aggregatedState.errorMessage ? (
+        <UploadIndicator
+          status={aggregatedState.status}
+          errorMessage={aggregatedState.errorMessage ?? undefined}
+          progressCurrent={aggregatedState.progress.current}
+          progressTotal={aggregatedState.progress.total}
+          onDismiss={aggregatedState.errorMessage ? handleAggregatedDismiss : undefined}
+          containerStyle={{
+            position: 'static',
+            width: '100%',
+            marginTop: 4,
+          }}
+        />
       ) : null}
     </div>
   );
 };
+
+export default MultiImageSelector;

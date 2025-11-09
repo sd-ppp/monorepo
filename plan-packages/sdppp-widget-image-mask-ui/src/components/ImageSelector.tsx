@@ -26,6 +26,13 @@ interface ImageSelectorProps {
   showActionButtons?: boolean;
   workBoundary: string;
   onValueChange?: (value: string[]) => void;
+  showUploadIndicator?: boolean;
+  externalErrorDismissSignal?: number;
+  onUploadStateChange?: (state: {
+    status: 'idle' | 'uploading' | 'error';
+    errorMessage: string | null;
+    progress: { current: number; total: number };
+  }) => void;
 }
 
 const SECTION_SIZE = 100;
@@ -37,6 +44,9 @@ export const ImageSelector: React.FC<ImageSelectorProps> = ({
   showActionButtons = true,
   workBoundary,
   onValueChange,
+  showUploadIndicator = true,
+  externalErrorDismissSignal,
+  onUploadStateChange,
 }) => {
   const t = useWidgetText();
   const actions = useWidgetImageMaskActions();
@@ -169,21 +179,18 @@ export const ImageSelector: React.FC<ImageSelectorProps> = ({
   const autoUploadPassRef = useRef<{ pass: WidgetUploadPass } | null>(null);
   const autoUploadInFlightRef = useRef<boolean>(false);
 
-  const clearAutoUploadPass = useCallback(
-    (options?: { markEnd?: boolean }) => {
-      const current = autoUploadPassRef.current;
-      if (!current) return;
-      removeUploadPass(current.pass);
-      autoUploadPassRef.current = null;
-      pendingAutoOverridesRef.current = null;
-      if (autoUploadInFlightRef.current) {
-        markUploadEnd();
-        setUploadProgress(prev => (prev.total === 0 ? prev : { current: 0, total: 0 }));
-      }
-      autoUploadInFlightRef.current = false;
-    },
-    [markUploadEnd, removeUploadPass, setUploadProgress],
-  );
+  const clearAutoUploadPass = useCallback(() => {
+    const current = autoUploadPassRef.current;
+    if (!current) return;
+    removeUploadPass(current.pass);
+    autoUploadPassRef.current = null;
+    pendingAutoOverridesRef.current = null;
+    if (autoUploadInFlightRef.current) {
+      markUploadEnd();
+      setUploadProgress(prev => (prev.total === 0 ? prev : { current: 0, total: 0 }));
+    }
+    autoUploadInFlightRef.current = false;
+  }, [markUploadEnd, removeUploadPass, setUploadProgress]);
 
   const applyUploadSuccess = useCallback(
     (uploaded: string | null | undefined, resource: string, mode: 'auto' | 'manual') => {
@@ -347,6 +354,41 @@ export const ImageSelector: React.FC<ImageSelectorProps> = ({
     ],
   );
 
+  const lastReportedStateRef = useRef<string>('');
+  useEffect(() => {
+    if (!onUploadStateChange) return;
+    const serialized = JSON.stringify({
+      status: uploadStatus,
+      errorMessage: uploadError,
+      progress: uploadProgress,
+    });
+    if (serialized === lastReportedStateRef.current) return;
+    lastReportedStateRef.current = serialized;
+    onUploadStateChange({
+      status: uploadStatus,
+      errorMessage: uploadError,
+      progress: uploadProgress,
+    });
+  }, [onUploadStateChange, uploadError, uploadProgress, uploadStatus]);
+
+  const lastExternalDismissRef = useRef<number | undefined>(externalErrorDismissSignal);
+  useEffect(() => {
+    if (externalErrorDismissSignal === undefined) {
+      lastExternalDismissRef.current = externalErrorDismissSignal;
+      return;
+    }
+    if (lastExternalDismissRef.current === undefined) {
+      lastExternalDismissRef.current = externalErrorDismissSignal;
+      return;
+    }
+    if (externalErrorDismissSignal !== lastExternalDismissRef.current) {
+      lastExternalDismissRef.current = externalErrorDismissSignal;
+      if (uploadError) {
+        handleDismissError();
+      }
+    }
+  }, [externalErrorDismissSignal, handleDismissError, uploadError]);
+
   useEffect(() => {
     if (auto) {
       pendingAutoOverridesRef.current = null;
@@ -358,7 +400,7 @@ export const ImageSelector: React.FC<ImageSelectorProps> = ({
 
   useEffect(
     () => () => {
-      clearAutoUploadPass({ markEnd: false });
+      clearAutoUploadPass();
     },
     [clearAutoUploadPass],
   );
@@ -516,18 +558,20 @@ export const ImageSelector: React.FC<ImageSelectorProps> = ({
           </div>
         ) : null}
       </div>
-      <UploadIndicator
-        status={uploadStatus}
-        errorMessage={uploadError ?? undefined}
-        onDismiss={uploadError ? handleDismissError : undefined}
-        progressCurrent={uploadProgress.current}
-        progressTotal={uploadProgress.total}
-        containerStyle={{
-          position: 'static',
-          width: '100%',
-          marginTop: 4,
-        }}
-      />
+      {showUploadIndicator ? (
+        <UploadIndicator
+          status={uploadStatus}
+          errorMessage={uploadError ?? undefined}
+          onDismiss={uploadError ? handleDismissError : undefined}
+          progressCurrent={uploadProgress.current}
+          progressTotal={uploadProgress.total}
+          containerStyle={{
+            position: 'static',
+            width: '100%',
+            marginTop: 4,
+          }}
+        />
+      ) : null}
     </div>
   );
 };

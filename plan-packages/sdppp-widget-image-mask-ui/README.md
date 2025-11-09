@@ -5,7 +5,7 @@
 ## 组件列表
 
 - ImageSelector：单图，左侧包含“默认继承+修改”行、主图按钮（带 auto）、分隔线、遮罩按钮；右侧预览。
-- MultiImageSelector：多图，与单图一致的左侧布局，每个槽位一组；底部展示禁用的新增/移除行；右侧预览。
+- MultiImageSelector：多图，每个槽位复用完整的 `ImageSelector` 行为，支持独立的 Auto/Action 流程与上传。
 - MaskSelector：遮罩，左侧包含“+ 选区遮罩”“+ 图层遮罩”“重置”三个同宽按钮；右侧预览（白底）。
 - SingleVideoSelector：单视频，左侧一个大号“+ 添加视频”按钮；右侧预览。
 - LocalImagePackSelector：本地图片包，左侧一个大号“+ 本地图片包”按钮；右侧预览。
@@ -106,6 +106,8 @@ export default function Demo() {
           "https://picsum.photos/seed/sdppp-3/400/300",
           "https://picsum.photos/seed/sdppp-4/400/300",
         ]}
+        workBoundary="uxp://boundary/canvas"
+        showActionButtons
       />
 
       {/* 遮罩（左侧三按钮） */}

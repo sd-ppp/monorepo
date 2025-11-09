@@ -1,3 +1,4 @@
+import { useArgs } from '@storybook/preview-api';
 import type { Meta, StoryObj } from '@storybook/react';
 import React from 'react';
 import { MultiImageSelector } from '@sdppp/widget-image-mask-ui/components/MultiImageSelector';
@@ -8,11 +9,13 @@ const meta: Meta<typeof MultiImageSelector> = {
   args: {
     widgetableId: 'demo-multi-image-selector',
     maxCount: 3,
+    workBoundary: 'uxp://boundary/0/canvas',
     value: [
       'https://picsum.photos/seed/sdppp-2/400/300',
       'https://picsum.photos/seed/sdppp-3/400/300',
       'https://picsum.photos/seed/sdppp-4/400/300',
     ],
+    showActionButtons: true,
   },
   argTypes: {
     value: {
@@ -20,6 +23,12 @@ const meta: Meta<typeof MultiImageSelector> = {
     },
     maxCount: {
       control: { type: 'number', min: 1, max: 9, step: 1 },
+    },
+    workBoundary: {
+      control: 'text',
+    },
+    showActionButtons: {
+      control: 'boolean',
     },
   },
 };
@@ -29,9 +38,23 @@ export default meta;
 type Story = StoryObj<typeof MultiImageSelector>;
 
 export const MultipleImages: Story = {
-  render: args => (
-    <div style={{ width: 320, maxWidth: 320 }}>
-      <MultiImageSelector {...args} />
-    </div>
-  ),
+  render: args => {
+    const [{ value }, updateArgs] = useArgs<{
+      value: string[];
+    }>();
+
+    const handleValueChange = (next: string[]) => {
+      updateArgs({ value: next });
+    };
+
+    return (
+      <div style={{ width: 320, maxWidth: 320 }}>
+        <MultiImageSelector
+          {...args}
+          value={value}
+          onValueChange={handleValueChange}
+        />
+      </div>
+    );
+  },
 };

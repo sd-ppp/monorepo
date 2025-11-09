@@ -59,6 +59,7 @@ const renderSelector = (
           widgetableId={fieldInfo.id}
           value={value as string[]}
           maxCount={maxCount}
+          workBoundary={resolveWorkBoundary()}
           onValueChange={onValueChange}
         />
       );
