@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { useStore } from 'zustand';
 import { UploadPassProvider } from '../../base/upload-pass-context';
 import { createImageMaskWidgetRegistry } from '../../base/widgetable-image-mask/widgetable-widgets';
+import { WidgetablePhotoshopProvider } from '../../base/widgetable-photoshop';
 import { ComfyCloudRecommendBanner } from './cloud_recommend';
 import { WorkflowListProvider } from './comfy_frontend';
 import './comfy_frontend.less';
@@ -127,11 +128,13 @@ export function ComfyFrontendContent() {
                 return name;
             }}
         >
-        <WidgetableProvider widgetRegistry={createImageMaskWidgetRegistry()}>
-            {statusTextType === 'empty' ? null :
-                <Alert message={statusText} type={statusTextType} />}
-            {showRenderer && comfyURL && <ComfyFrontendRendererContent />}
-        </WidgetableProvider>
+        <WidgetablePhotoshopProvider>
+            <WidgetableProvider widgetRegistry={createImageMaskWidgetRegistry()}>
+                {statusTextType === 'empty' ? null :
+                    <Alert message={statusText} type={statusTextType} />}
+                {showRenderer && comfyURL && <ComfyFrontendRendererContent />}
+            </WidgetableProvider>
+        </WidgetablePhotoshopProvider>
         </UploadPassProvider>
     )
 }

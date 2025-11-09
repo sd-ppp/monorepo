@@ -8,7 +8,7 @@ import {
   buildImageContentUri,
   buildMaskContentUri,
 } from '../../../../../base/realtime-thumbnail/utils';
-import { useRealtimeImageThumbnail } from '../../../../../base/realtime-thumbnail/hooks';
+import { useThumbnail, type UseThumbnailParams } from 'sdppp-photoshop-widgets/useThumbnail';
 import type { BoundarySetting } from '../../../../../base/realtime-thumbnail/types';
 import { EMPTY_OBJECT } from '../constants';
 
@@ -119,7 +119,7 @@ export const BoundaryPreview: React.FC<BoundaryPreviewProps> = ({ previewQuality
   );
   const boundary = (workBoundaries as any)?.[activeDocumentID] as BoundarySetting | undefined;
 
-  const realtimeConfig = useMemo(() => {
+  const thumbnailConfig = useMemo(() => {
     if (typeof activeDocumentID !== 'number' || !Number.isFinite(activeDocumentID)) {
       return null;
     }
@@ -136,8 +136,8 @@ export const BoundaryPreview: React.FC<BoundaryPreviewProps> = ({ previewQuality
     };
   }, [activeDocumentID, boundary, previewQuality]);
 
-  const realtimeParams = useMemo(() => {
-    if (!realtimeConfig) {
+  const thumbnailParams = useMemo<UseThumbnailParams>(() => {
+    if (!thumbnailConfig) {
       return {
         contentUri: buildImageContentUri(0, 'canvas'),
         boundaryUri: buildBoundaryUri(0, null, {
@@ -145,45 +145,37 @@ export const BoundaryPreview: React.FC<BoundaryPreviewProps> = ({ previewQuality
           imageQuality: previewQuality,
         }),
         maskUri: buildMaskContentUri(0, 'canvas'),
-        autoFetch: false,
-        realtime: false,
-        compose: false,
-      } as const;
+      };
     }
     return {
-      contentUri: realtimeConfig.contentUri,
-      boundaryUri: realtimeConfig.boundaryUri,
-      maskUri: realtimeConfig.maskUri,
-      autoFetch: false,
-      realtime: false,
-      compose: false,
-    } as const;
-  }, [realtimeConfig, previewQuality]);
+      contentUri: thumbnailConfig.contentUri,
+      boundaryUri: thumbnailConfig.boundaryUri,
+      maskUri: thumbnailConfig.maskUri,
+    };
+  }, [thumbnailConfig, previewQuality]);
 
   const {
-    data: realtimeComposite,
-    image: realtimeImage,
-    isFetching: realtimeLoading,
-    error: realtimeError,
-    refetch: realtimeRefetch,
-  } = useRealtimeImageThumbnail(realtimeParams);
+    data: previewUrl,
+    isFetching: thumbnailLoading,
+    error: thumbnailError,
+    refetch: refetchThumbnail,
+  } = useThumbnail(thumbnailParams);
 
   const lastBoundaryUriRef = useRef<string | null>(null);
 
-  const previewUrl = useMemo(() => {
-    return realtimeComposite || realtimeImage || null;
-  }, [realtimeComposite, realtimeImage]);
-
   useEffect(() => {
-    if (!realtimeConfig) return;
-    if (lastBoundaryUriRef.current === realtimeConfig.boundaryUri) {
+    if (!thumbnailConfig) {
+      lastBoundaryUriRef.current = null;
       return;
     }
-    lastBoundaryUriRef.current = realtimeConfig.boundaryUri;
-    void realtimeRefetch().catch(error => {
+    if (lastBoundaryUriRef.current === thumbnailConfig.boundaryUri) {
+      return;
+    }
+    lastBoundaryUriRef.current = thumbnailConfig.boundaryUri;
+    void refetchThumbnail().catch(error => {
       console.warn('[BoundaryPreview] refetch failed', error);
     });
-  }, [realtimeConfig, realtimeRefetch]);
+  }, [thumbnailConfig, refetchThumbnail]);
 
   useEffect(() => {
     return () => {
@@ -254,8 +246,8 @@ export const BoundaryPreview: React.FC<BoundaryPreviewProps> = ({ previewQuality
   const previewClassNames = [
     'workflow-boundary-preview',
     !previewUrl && 'workflow-boundary-preview-empty',
-    realtimeLoading && 'workflow-boundary-preview-loading',
-    realtimeError && !previewUrl && 'workflow-boundary-preview-error',
+    thumbnailLoading && 'workflow-boundary-preview-loading',
+    thumbnailError && !previewUrl && 'workflow-boundary-preview-error',
     isHovered && 'workflow-boundary-preview-hovered',
   ]
     .filter(Boolean)

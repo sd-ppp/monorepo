@@ -32234,20 +32234,20 @@ function getAudioFingerprint() {
   }
   var hashFromIndex = 4500;
   var hashToIndex = 5e3;
-  var context = new AudioContext(1, hashToIndex, 44100);
-  var oscillator = context.createOscillator();
+  var context2 = new AudioContext(1, hashToIndex, 44100);
+  var oscillator = context2.createOscillator();
   oscillator.type = "triangle";
   oscillator.frequency.value = 1e4;
-  var compressor = context.createDynamicsCompressor();
+  var compressor = context2.createDynamicsCompressor();
   compressor.threshold.value = -50;
   compressor.knee.value = 40;
   compressor.ratio.value = 12;
   compressor.attack.value = 0;
   compressor.release.value = 0.25;
   oscillator.connect(compressor);
-  compressor.connect(context.destination);
+  compressor.connect(context2.destination);
   oscillator.start(0);
-  var _a3 = startRenderingAudio(context), renderPromise = _a3[0], finishRendering = _a3[1];
+  var _a3 = startRenderingAudio(context2), renderPromise = _a3[0], finishRendering = _a3[1];
   var fingerprintPromise = renderPromise.then(function(buffer2) {
     return getHash(buffer2.getChannelData(0).subarray(hashFromIndex));
   }, function(error) {
@@ -32265,7 +32265,7 @@ function getAudioFingerprint() {
 function doesCurrentBrowserSuspendAudioContext() {
   return isWebKit() && !isDesktopSafari() && !isWebKit606OrNewer();
 }
-function startRenderingAudio(context) {
+function startRenderingAudio(context2) {
   var renderTryMaxCount = 3;
   var renderRetryDelay = 500;
   var runningMaxAwaitTime = 500;
@@ -32277,7 +32277,7 @@ function startRenderingAudio(context) {
     var isFinalized = false;
     var renderTryCount = 0;
     var startedRunningAt = 0;
-    context.oncomplete = function(event) {
+    context2.oncomplete = function(event) {
       return resolve2(event.renderedBuffer);
     };
     var startRunningTimeout = function() {
@@ -32290,11 +32290,11 @@ function startRenderingAudio(context) {
     };
     var tryRender = function() {
       try {
-        var renderingPromise = context.startRendering();
+        var renderingPromise = context2.startRendering();
         if (isPromise(renderingPromise)) {
           suppressUnhandledRejectionWarning(renderingPromise);
         }
-        switch (context.state) {
+        switch (context2.state) {
           case "running":
             startedRunningAt = Date.now();
             if (isFinalized) {
@@ -32602,19 +32602,19 @@ function getCanvasFingerprint() {
   var winding = false;
   var geometry;
   var text;
-  var _a3 = makeCanvasContext(), canvas = _a3[0], context = _a3[1];
-  if (!isSupported(canvas, context)) {
+  var _a3 = makeCanvasContext(), canvas = _a3[0], context2 = _a3[1];
+  if (!isSupported(canvas, context2)) {
     geometry = text = "";
   } else {
-    winding = doesSupportWinding(context);
-    renderTextImage(canvas, context);
+    winding = doesSupportWinding(context2);
+    renderTextImage(canvas, context2);
     var textImage1 = canvasToString(canvas);
     var textImage2 = canvasToString(canvas);
     if (textImage1 !== textImage2) {
       geometry = text = "unstable";
     } else {
       text = textImage1;
-      renderGeometryImage(canvas, context);
+      renderGeometryImage(canvas, context2);
       geometry = canvasToString(canvas);
     }
   }
@@ -32626,51 +32626,51 @@ function makeCanvasContext() {
   canvas.height = 1;
   return [canvas, canvas.getContext("2d")];
 }
-function isSupported(canvas, context) {
-  return !!(context && canvas.toDataURL);
+function isSupported(canvas, context2) {
+  return !!(context2 && canvas.toDataURL);
 }
-function doesSupportWinding(context) {
-  context.rect(0, 0, 10, 10);
-  context.rect(2, 2, 6, 6);
-  return !context.isPointInPath(5, 5, "evenodd");
+function doesSupportWinding(context2) {
+  context2.rect(0, 0, 10, 10);
+  context2.rect(2, 2, 6, 6);
+  return !context2.isPointInPath(5, 5, "evenodd");
 }
-function renderTextImage(canvas, context) {
+function renderTextImage(canvas, context2) {
   canvas.width = 240;
   canvas.height = 60;
-  context.textBaseline = "alphabetic";
-  context.fillStyle = "#f60";
-  context.fillRect(100, 1, 62, 20);
-  context.fillStyle = "#069";
-  context.font = '11pt "Times New Roman"';
+  context2.textBaseline = "alphabetic";
+  context2.fillStyle = "#f60";
+  context2.fillRect(100, 1, 62, 20);
+  context2.fillStyle = "#069";
+  context2.font = '11pt "Times New Roman"';
   var printedText = "Cwm fjordbank gly ".concat(
     String.fromCharCode(55357, 56835)
     /* 😃 */
   );
-  context.fillText(printedText, 2, 15);
-  context.fillStyle = "rgba(102, 204, 0, 0.2)";
-  context.font = "18pt Arial";
-  context.fillText(printedText, 4, 45);
+  context2.fillText(printedText, 2, 15);
+  context2.fillStyle = "rgba(102, 204, 0, 0.2)";
+  context2.font = "18pt Arial";
+  context2.fillText(printedText, 4, 45);
 }
-function renderGeometryImage(canvas, context) {
+function renderGeometryImage(canvas, context2) {
   canvas.width = 122;
   canvas.height = 110;
-  context.globalCompositeOperation = "multiply";
+  context2.globalCompositeOperation = "multiply";
   for (var _i = 0, _a3 = [
     ["#f2f", 40, 40],
     ["#2ff", 80, 40],
     ["#ff2", 60, 80]
   ]; _i < _a3.length; _i++) {
     var _b2 = _a3[_i], color = _b2[0], x2 = _b2[1], y2 = _b2[2];
-    context.fillStyle = color;
-    context.beginPath();
-    context.arc(x2, y2, 40, 0, Math.PI * 2, true);
-    context.closePath();
-    context.fill();
+    context2.fillStyle = color;
+    context2.beginPath();
+    context2.arc(x2, y2, 40, 0, Math.PI * 2, true);
+    context2.closePath();
+    context2.fill();
   }
-  context.fillStyle = "#f9c";
-  context.arc(60, 60, 60, 0, Math.PI * 2, true);
-  context.arc(60, 60, 20, 0, Math.PI * 2, true);
-  context.fill("evenodd");
+  context2.fillStyle = "#f9c";
+  context2.arc(60, 60, 60, 0, Math.PI * 2, true);
+  context2.arc(60, 60, 20, 0, Math.PI * 2, true);
+  context2.fill("evenodd");
 }
 function canvasToString(canvas) {
   return canvas.toDataURL();
@@ -41987,9 +41987,9 @@ function requireTransformData() {
   var utils2 = requireUtils();
   var defaults = requireDefaults();
   transformData = function transformData2(data2, headers, status, fns) {
-    var context = this || defaults;
+    var context2 = this || defaults;
     utils2.forEach(fns, function transform(fn) {
-      data2 = fn.call(context, data2, headers, status);
+      data2 = fn.call(context2, data2, headers, status);
     });
     return data2;
   };
@@ -42474,10 +42474,10 @@ function requireAxios$1() {
   var defaults = requireDefaults();
   var formDataToJSON = requireFormDataToJSON();
   function createInstance(defaultConfig) {
-    var context = new Axios2(defaultConfig);
-    var instance2 = bind2(Axios2.prototype.request, context);
-    utils2.extend(instance2, Axios2.prototype, context);
-    utils2.extend(instance2, context);
+    var context2 = new Axios2(defaultConfig);
+    var instance2 = bind2(Axios2.prototype.request, context2);
+    utils2.extend(instance2, Axios2.prototype, context2);
+    utils2.extend(instance2, context2);
     instance2.create = function create2(instanceConfig) {
       return createInstance(mergeConfig2(defaultConfig, instanceConfig));
     };
@@ -43563,7 +43563,7 @@ var QrCodeAuthenticationClient = (
             });
           });
         }
-        var _a3, autoExchangeUserInfo, _b2, size, _c, containerSize, _d, interval, onStart, onResult, onScanned, onExpired, onSuccess, onCancel, onError, onCodeShow, onCodeLoaded, onCodeLoadFailed, onRetry, onMfa, onAuthFlow, _e, tips, context, customData, extIdpConnId, withCustomData, lang, nowLang, _f, title2, _h, expired, _j, succeed, _k, retry, _l, middleTitle, _m, referText, node2, nodeWrapper, needGenerate, styleNode, style, loading, unloading, genTip, editTipText, genImage, genLogoInCenter, genShadowMiddleStatus, genReferTextNode, removeReferTextNode, genShadow, displayScannedUser, start;
+        var _a3, autoExchangeUserInfo, _b2, size, _c, containerSize, _d, interval, onStart, onResult, onScanned, onExpired, onSuccess, onCancel, onError, onCodeShow, onCodeLoaded, onCodeLoadFailed, onRetry, onMfa, onAuthFlow, _e, tips, context2, customData, extIdpConnId, withCustomData, lang, nowLang, _f, title2, _h, expired, _j, succeed, _k, retry, _l, middleTitle, _m, referText, node2, nodeWrapper, needGenerate, styleNode, style, loading, unloading, genTip, editTipText, genImage, genLogoInCenter, genShadowMiddleStatus, genReferTextNode, removeReferTextNode, genShadow, displayScannedUser, start;
         var _this = this;
         return __generator$7(this, function(_o) {
           options2 = options2 || {};
@@ -43573,7 +43573,7 @@ var QrCodeAuthenticationClient = (
           } : _b2, _c = options2.containerSize, containerSize = _c === void 0 ? {
             height: 300,
             width: 300
-          } : _c, _d = options2.interval, interval = _d === void 0 ? 800 : _d, onStart = options2.onStart, onResult = options2.onResult, onScanned = options2.onScanned, onExpired = options2.onExpired, onSuccess = options2.onSuccess, onCancel = options2.onCancel, onError = options2.onError, onCodeShow = options2.onCodeShow, onCodeLoaded = options2.onCodeLoaded, onCodeLoadFailed = options2.onCodeLoadFailed, onRetry = options2.onRetry, onMfa = options2.onMfa, onAuthFlow = options2.onAuthFlow, _e = options2.tips, tips = _e === void 0 ? {} : _e, context = options2.context, customData = options2.customData, extIdpConnId = options2.extIdpConnId, withCustomData = options2.withCustomData;
+          } : _c, _d = options2.interval, interval = _d === void 0 ? 800 : _d, onStart = options2.onStart, onResult = options2.onResult, onScanned = options2.onScanned, onExpired = options2.onExpired, onSuccess = options2.onSuccess, onCancel = options2.onCancel, onError = options2.onError, onCodeShow = options2.onCodeShow, onCodeLoaded = options2.onCodeLoaded, onCodeLoadFailed = options2.onCodeLoadFailed, onRetry = options2.onRetry, onMfa = options2.onMfa, onAuthFlow = options2.onAuthFlow, _e = options2.tips, tips = _e === void 0 ? {} : _e, context2 = options2.context, customData = options2.customData, extIdpConnId = options2.extIdpConnId, withCustomData = options2.withCustomData;
           lang = this.options.lang;
           nowLang = lang === "zh-CN";
           _f = tips.title, title2 = _f === void 0 ? nowLang ? "请在移动端确认账号登录" : "Please be on the mobile" : _f, tips.canceled, _h = tips.expired, expired = _h === void 0 ? nowLang ? "二维码已过期" : "QR code has expired" : _h, _j = tips.succeed, succeed = _j === void 0 ? nowLang ? "扫码成功" : "Scan code successfully" : _j, _k = tips.retry, retry = _k === void 0 ? nowLang ? "重试" : "Retry" : _k, _l = tips.middleTitle, middleTitle = _l === void 0 ? nowLang ? "确认登录" : "Confirm login" : _l, _m = tips.referText, referText = _m === void 0 ? nowLang ? "重新扫码" : "Scan the code" : _m;
@@ -43753,7 +43753,7 @@ var QrCodeAuthenticationClient = (
                   case 1:
                     _b3.trys.push([1, 3, , 4]);
                     return [4, this.geneCode({
-                      context,
+                      context: context2,
                       customData,
                       extIdpConnId,
                       withCustomData
@@ -43908,11 +43908,11 @@ var QrCodeAuthenticationClient = (
     };
     QrCodeAuthenticationClient2.prototype.geneCode = function(options2) {
       return __awaiter$7(this, void 0, void 0, function() {
-        var _a3, context, customData, extIdpConnId, withCustomData, api2, data2;
+        var _a3, context2, customData, extIdpConnId, withCustomData, api2, data2;
         return __generator$7(this, function(_b2) {
           switch (_b2.label) {
             case 0:
-              _a3 = options2 || {}, context = _a3.context, customData = _a3.customData, extIdpConnId = _a3.extIdpConnId, withCustomData = _a3.withCustomData;
+              _a3 = options2 || {}, context2 = _a3.context, customData = _a3.customData, extIdpConnId = _a3.extIdpConnId, withCustomData = _a3.withCustomData;
               api2 = "".concat(this.baseClient.appHost, "/api/v2/qrcode/gene");
               return [4, this.httpClient.request({
                 method: "POST",
@@ -43920,7 +43920,7 @@ var QrCodeAuthenticationClient = (
                 data: {
                   autoMergeQrCode: false,
                   scene: this.scene,
-                  context,
+                  context: context2,
                   params: customData,
                   extIdpConnId,
                   withCustomData
@@ -44942,7 +44942,7 @@ var SocialAuthenticationClient = (
     SocialAuthenticationClient2.prototype.authorize = function(provider, options2) {
       var _this = this;
       options2 = options2 || {};
-      var position = options2.position, _a3 = options2.popup, popup = _a3 === void 0 ? true : _a3, onSuccess = options2.onSuccess, onError = options2.onError, authorization_params = options2.authorization_params, authorizationParams = options2.authorizationParams, context = options2.context, customData = options2.customData, _b2 = options2.withIdentities, withIdentities = _b2 === void 0 ? false : _b2, _c = options2.protocol, protocol = _c === void 0 ? "oidc" : _c, uuid = options2.uuid, _d = options2.withCustomData, withCustomData = _d === void 0 ? false : _d, targetUrl = options2.targetUrl, relayMethod = options2.relayMethod, guardVersion = options2.guardVersion;
+      var position = options2.position, _a3 = options2.popup, popup = _a3 === void 0 ? true : _a3, onSuccess = options2.onSuccess, onError = options2.onError, authorization_params = options2.authorization_params, authorizationParams = options2.authorizationParams, context2 = options2.context, customData = options2.customData, _b2 = options2.withIdentities, withIdentities = _b2 === void 0 ? false : _b2, _c = options2.protocol, protocol = _c === void 0 ? "oidc" : _c, uuid = options2.uuid, _d = options2.withCustomData, withCustomData = _d === void 0 ? false : _d, targetUrl = options2.targetUrl, relayMethod = options2.relayMethod, guardVersion = options2.guardVersion;
       if (!uuid) {
         uuid = generateRandomString(20);
       }
@@ -44958,8 +44958,8 @@ var SocialAuthenticationClient = (
         relay_method: relayMethod,
         guard_version: guardVersion
       };
-      if (context) {
-        query.context = JSON.stringify(context);
+      if (context2) {
+        query.context = JSON.stringify(context2);
       }
       if (this.options.tenantId) {
         query.tenant_id = this.options.tenantId;
@@ -45910,13 +45910,13 @@ var AuthenticationClient = (
     };
     AuthenticationClient2.prototype.registerByEmail = function(email, password, profile, options2) {
       return __awaiter(this, void 0, void 0, function() {
-        var _a3, forceLogin, _b2, generateToken, clientIp, params, context, customData, phoneToken, _c, _d, _e, extraParams, extraContext, user2;
+        var _a3, forceLogin, _b2, generateToken, clientIp, params, context2, customData, phoneToken, _c, _d, _e, extraParams, extraContext, user2;
         return __generator(this, function(_f) {
           switch (_f.label) {
             case 0:
               options2 = options2 || {};
               profile = profile || {};
-              _a3 = options2.forceLogin, forceLogin = _a3 === void 0 ? false : _a3, _b2 = options2.generateToken, generateToken = _b2 === void 0 ? false : _b2, clientIp = options2.clientIp, params = options2.params, context = options2.context, customData = options2.customData, phoneToken = options2.phoneToken;
+              _a3 = options2.forceLogin, forceLogin = _a3 === void 0 ? false : _a3, _b2 = options2.generateToken, generateToken = _b2 === void 0 ? false : _b2, clientIp = options2.clientIp, params = options2.params, context2 = options2.context, customData = options2.customData, phoneToken = options2.phoneToken;
               _d = (_c = this.options).encryptFunction;
               _e = [password];
               return [4, this.publicKeyManager.getPublicKey()];
@@ -45931,8 +45931,8 @@ var AuthenticationClient = (
                 extraParams = JSON.stringify(params);
               }
               extraContext = null;
-              if (context) {
-                extraContext = JSON.stringify(context);
+              if (context2) {
+                extraContext = JSON.stringify(context2);
               }
               return [4, registerByEmail(this.graphqlClient, this.tokenProvider, {
                 input: {
@@ -45977,13 +45977,13 @@ var AuthenticationClient = (
     };
     AuthenticationClient2.prototype.registerByUsername = function(username, password, profile, options2) {
       return __awaiter(this, void 0, void 0, function() {
-        var _a3, forceLogin, _b2, generateToken, clientIp, params, context, customData, phoneToken, emailToken, _c, _d, _e, extraParams, extraContext, user2;
+        var _a3, forceLogin, _b2, generateToken, clientIp, params, context2, customData, phoneToken, emailToken, _c, _d, _e, extraParams, extraContext, user2;
         return __generator(this, function(_f) {
           switch (_f.label) {
             case 0:
               options2 = options2 || {};
               profile = profile || {};
-              _a3 = options2.forceLogin, forceLogin = _a3 === void 0 ? false : _a3, _b2 = options2.generateToken, generateToken = _b2 === void 0 ? false : _b2, clientIp = options2.clientIp, params = options2.params, context = options2.context, customData = options2.customData, phoneToken = options2.phoneToken, emailToken = options2.emailToken;
+              _a3 = options2.forceLogin, forceLogin = _a3 === void 0 ? false : _a3, _b2 = options2.generateToken, generateToken = _b2 === void 0 ? false : _b2, clientIp = options2.clientIp, params = options2.params, context2 = options2.context, customData = options2.customData, phoneToken = options2.phoneToken, emailToken = options2.emailToken;
               _d = (_c = this.options).encryptFunction;
               _e = [password];
               return [4, this.publicKeyManager.getPublicKey()];
@@ -45998,8 +45998,8 @@ var AuthenticationClient = (
                 extraParams = JSON.stringify(params);
               }
               extraContext = null;
-              if (context) {
-                extraContext = JSON.stringify(context);
+              if (context2) {
+                extraContext = JSON.stringify(context2);
               }
               return [4, registerByUsername(this.graphqlClient, this.tokenProvider, {
                 input: {
@@ -46025,13 +46025,13 @@ var AuthenticationClient = (
     };
     AuthenticationClient2.prototype.registerByPhoneCode = function(phone, code, password, profile, options2) {
       return __awaiter(this, void 0, void 0, function() {
-        var _a3, forceLogin, _b2, generateToken, clientIp, params, context, customData, phoneCountryCode, emailToken, _c, _d, _e, extraParams, extraContext, user2;
+        var _a3, forceLogin, _b2, generateToken, clientIp, params, context2, customData, phoneCountryCode, emailToken, _c, _d, _e, extraParams, extraContext, user2;
         return __generator(this, function(_f) {
           switch (_f.label) {
             case 0:
               options2 = options2 || {};
               profile = profile || {};
-              _a3 = options2.forceLogin, forceLogin = _a3 === void 0 ? false : _a3, _b2 = options2.generateToken, generateToken = _b2 === void 0 ? false : _b2, clientIp = options2.clientIp, params = options2.params, context = options2.context, customData = options2.customData, phoneCountryCode = options2.phoneCountryCode, emailToken = options2.emailToken;
+              _a3 = options2.forceLogin, forceLogin = _a3 === void 0 ? false : _a3, _b2 = options2.generateToken, generateToken = _b2 === void 0 ? false : _b2, clientIp = options2.clientIp, params = options2.params, context2 = options2.context, customData = options2.customData, phoneCountryCode = options2.phoneCountryCode, emailToken = options2.emailToken;
               if (!password) return [3, 3];
               _d = (_c = this.options).encryptFunction;
               _e = [password];
@@ -46049,8 +46049,8 @@ var AuthenticationClient = (
                 extraParams = JSON.stringify(params);
               }
               extraContext = null;
-              if (context) {
-                extraContext = JSON.stringify(context);
+              if (context2) {
+                extraContext = JSON.stringify(context2);
               }
               return [4, registerByPhoneCode(this.graphqlClient, this.tokenProvider, {
                 input: {
@@ -46117,12 +46117,12 @@ var AuthenticationClient = (
     };
     AuthenticationClient2.prototype.loginByEmail = function(email, password, options2) {
       return __awaiter(this, void 0, void 0, function() {
-        var _a3, autoRegister, captchaCode, clientIp, params, context, customData, _b2, _c, _d, extraParams, extraContext, user2;
+        var _a3, autoRegister, captchaCode, clientIp, params, context2, customData, _b2, _c, _d, extraParams, extraContext, user2;
         return __generator(this, function(_e) {
           switch (_e.label) {
             case 0:
               options2 = options2 || {};
-              _a3 = options2.autoRegister, autoRegister = _a3 === void 0 ? false : _a3, captchaCode = options2.captchaCode, clientIp = options2.clientIp, params = options2.params, context = options2.context, customData = options2.customData;
+              _a3 = options2.autoRegister, autoRegister = _a3 === void 0 ? false : _a3, captchaCode = options2.captchaCode, clientIp = options2.clientIp, params = options2.params, context2 = options2.context, customData = options2.customData;
               _c = (_b2 = this.options).encryptFunction;
               _d = [password];
               return [4, this.publicKeyManager.getPublicKey()];
@@ -46137,8 +46137,8 @@ var AuthenticationClient = (
                 extraParams = JSON.stringify(params);
               }
               extraContext = null;
-              if (context) {
-                extraContext = JSON.stringify(context);
+              if (context2) {
+                extraContext = JSON.stringify(context2);
               }
               return [4, loginByEmail(this.graphqlClient, this.tokenProvider, {
                 input: {
@@ -46164,12 +46164,12 @@ var AuthenticationClient = (
     };
     AuthenticationClient2.prototype.loginByUsername = function(username, password, options2) {
       return __awaiter(this, void 0, void 0, function() {
-        var _a3, autoRegister, captchaCode, clientIp, params, context, customData, _b2, _c, _d, extraParams, extraContext, user2;
+        var _a3, autoRegister, captchaCode, clientIp, params, context2, customData, _b2, _c, _d, extraParams, extraContext, user2;
         return __generator(this, function(_e) {
           switch (_e.label) {
             case 0:
               options2 = options2 || {};
-              _a3 = options2.autoRegister, autoRegister = _a3 === void 0 ? false : _a3, captchaCode = options2.captchaCode, clientIp = options2.clientIp, params = options2.params, context = options2.context, customData = options2.customData;
+              _a3 = options2.autoRegister, autoRegister = _a3 === void 0 ? false : _a3, captchaCode = options2.captchaCode, clientIp = options2.clientIp, params = options2.params, context2 = options2.context, customData = options2.customData;
               _c = (_b2 = this.options).encryptFunction;
               _d = [password];
               return [4, this.publicKeyManager.getPublicKey()];
@@ -46184,8 +46184,8 @@ var AuthenticationClient = (
                 extraParams = JSON.stringify(params);
               }
               extraContext = null;
-              if (context) {
-                extraContext = JSON.stringify(context);
+              if (context2) {
+                extraContext = JSON.stringify(context2);
               }
               return [4, loginByUsername(this.graphqlClient, this.tokenProvider, {
                 input: {
@@ -46211,12 +46211,12 @@ var AuthenticationClient = (
     };
     AuthenticationClient2.prototype.loginByPhoneCode = function(phone, code, options2) {
       return __awaiter(this, void 0, void 0, function() {
-        var clientIp, params, context, customData, phoneCountryCode, extraParams, extraContext, user2;
+        var clientIp, params, context2, customData, phoneCountryCode, extraParams, extraContext, user2;
         return __generator(this, function(_a3) {
           switch (_a3.label) {
             case 0:
               options2 = options2 || {};
-              clientIp = options2.clientIp, params = options2.params, context = options2.context, customData = options2.customData, phoneCountryCode = options2.phoneCountryCode;
+              clientIp = options2.clientIp, params = options2.params, context2 = options2.context, customData = options2.customData, phoneCountryCode = options2.phoneCountryCode;
               extraParams = null;
               if (customData) {
                 extraParams = JSON.stringify(convertObjectToKeyValueList(customData));
@@ -46224,8 +46224,8 @@ var AuthenticationClient = (
                 extraParams = JSON.stringify(params);
               }
               extraContext = null;
-              if (context) {
-                extraContext = JSON.stringify(context);
+              if (context2) {
+                extraContext = JSON.stringify(context2);
               }
               return [4, loginByPhoneCode(this.graphqlClient, this.tokenProvider, {
                 input: {
@@ -46251,12 +46251,12 @@ var AuthenticationClient = (
     AuthenticationClient2.prototype.loginByEmailCode = function(email, code, options2) {
       var _a3;
       return __awaiter(this, void 0, void 0, function() {
-        var clientIp, params, context, customData, phoneCountryCode, extraParams, extraContext, url, user2;
+        var clientIp, params, context2, customData, phoneCountryCode, extraParams, extraContext, url, user2;
         return __generator(this, function(_b2) {
           switch (_b2.label) {
             case 0:
               options2 = options2 || {};
-              clientIp = options2.clientIp, params = options2.params, context = options2.context, customData = options2.customData, phoneCountryCode = options2.phoneCountryCode;
+              clientIp = options2.clientIp, params = options2.params, context2 = options2.context, customData = options2.customData, phoneCountryCode = options2.phoneCountryCode;
               extraParams = null;
               if (customData) {
                 extraParams = JSON.stringify(convertObjectToKeyValueList(customData));
@@ -46264,8 +46264,8 @@ var AuthenticationClient = (
                 extraParams = JSON.stringify(params);
               }
               extraContext = null;
-              if (context) {
-                extraContext = JSON.stringify(context);
+              if (context2) {
+                extraContext = JSON.stringify(context2);
               }
               url = "".concat((_a3 = this.options.appHost) !== null && _a3 !== void 0 ? _a3 : "", "/api/v2/login/email-code");
               return [4, this.httpClient.request({
@@ -46294,12 +46294,12 @@ var AuthenticationClient = (
     };
     AuthenticationClient2.prototype.loginByPhonePassword = function(phone, password, options2) {
       return __awaiter(this, void 0, void 0, function() {
-        var captchaCode, _a3, autoRegister, clientIp, params, context, customData, _b2, _c, _d, extraParams, extraContext, user2;
+        var captchaCode, _a3, autoRegister, clientIp, params, context2, customData, _b2, _c, _d, extraParams, extraContext, user2;
         return __generator(this, function(_e) {
           switch (_e.label) {
             case 0:
               options2 = options2 || {};
-              captchaCode = options2.captchaCode, _a3 = options2.autoRegister, autoRegister = _a3 === void 0 ? false : _a3, clientIp = options2.clientIp, params = options2.params, context = options2.context, customData = options2.customData;
+              captchaCode = options2.captchaCode, _a3 = options2.autoRegister, autoRegister = _a3 === void 0 ? false : _a3, clientIp = options2.clientIp, params = options2.params, context2 = options2.context, customData = options2.customData;
               _c = (_b2 = this.options).encryptFunction;
               _d = [password];
               return [4, this.publicKeyManager.getPublicKey()];
@@ -46314,8 +46314,8 @@ var AuthenticationClient = (
                 extraParams = JSON.stringify(params);
               }
               extraContext = null;
-              if (context) {
-                extraContext = JSON.stringify(context);
+              if (context2) {
+                extraContext = JSON.stringify(context2);
               }
               return [4, loginByPhonePassword(this.graphqlClient, this.tokenProvider, {
                 input: {
@@ -48755,9 +48755,9 @@ function requireReact_development() {
         {
           Object.freeze(emptyObject);
         }
-        function Component(props, context, updater) {
+        function Component(props, context2, updater) {
           this.props = props;
-          this.context = context;
+          this.context = context2;
           this.refs = emptyObject;
           this.updater = updater || ReactNoopUpdateQueue;
         }
@@ -48793,9 +48793,9 @@ function requireReact_development() {
         function ComponentDummy() {
         }
         ComponentDummy.prototype = Component.prototype;
-        function PureComponent(props, context, updater) {
+        function PureComponent(props, context2, updater) {
           this.props = props;
-          this.context = context;
+          this.context = context2;
           this.refs = emptyObject;
           this.updater = updater || ReactNoopUpdateQueue;
         }
@@ -48887,8 +48887,8 @@ function requireReact_development() {
           if (typeof type2 === "object") {
             switch (type2.$$typeof) {
               case REACT_CONTEXT_TYPE:
-                var context = type2;
-                return getContextName(context) + ".Consumer";
+                var context2 = type2;
+                return getContextName(context2) + ".Consumer";
               case REACT_PROVIDER_TYPE:
                 var provider = type2;
                 return getContextName(provider._context) + ".Provider";
@@ -49267,14 +49267,14 @@ function requireReact_development() {
           }
           return subtreeCount;
         }
-        function mapChildren(children, func, context) {
+        function mapChildren(children, func, context2) {
           if (children == null) {
             return children;
           }
           var result = [];
           var count = 0;
           mapIntoArray(children, result, "", "", function(child) {
-            return func.call(context, child, count++);
+            return func.call(context2, child, count++);
           });
           return result;
         }
@@ -49302,7 +49302,7 @@ function requireReact_development() {
           return children;
         }
         function createContext(defaultValue) {
-          var context = {
+          var context2 = {
             $$typeof: REACT_CONTEXT_TYPE,
             // As a workaround to support multiple concurrent renderers, we categorize
             // some renderers as primary and others as secondary. We only expect
@@ -49321,9 +49321,9 @@ function requireReact_development() {
             _defaultValue: null,
             _globalName: null
           };
-          context.Provider = {
+          context2.Provider = {
             $$typeof: REACT_PROVIDER_TYPE,
-            _context: context
+            _context: context2
           };
           var hasWarnedAboutUsingNestedContextConsumers = false;
           var hasWarnedAboutUsingConsumerProvider = false;
@@ -49331,7 +49331,7 @@ function requireReact_development() {
           {
             var Consumer = {
               $$typeof: REACT_CONTEXT_TYPE,
-              _context: context
+              _context: context2
             };
             Object.defineProperties(Consumer, {
               Provider: {
@@ -49340,34 +49340,34 @@ function requireReact_development() {
                     hasWarnedAboutUsingConsumerProvider = true;
                     error("Rendering <Context.Consumer.Provider> is not supported and will be removed in a future major release. Did you mean to render <Context.Provider> instead?");
                   }
-                  return context.Provider;
+                  return context2.Provider;
                 },
                 set: function(_Provider) {
-                  context.Provider = _Provider;
+                  context2.Provider = _Provider;
                 }
               },
               _currentValue: {
                 get: function() {
-                  return context._currentValue;
+                  return context2._currentValue;
                 },
                 set: function(_currentValue) {
-                  context._currentValue = _currentValue;
+                  context2._currentValue = _currentValue;
                 }
               },
               _currentValue2: {
                 get: function() {
-                  return context._currentValue2;
+                  return context2._currentValue2;
                 },
                 set: function(_currentValue2) {
-                  context._currentValue2 = _currentValue2;
+                  context2._currentValue2 = _currentValue2;
                 }
               },
               _threadCount: {
                 get: function() {
-                  return context._threadCount;
+                  return context2._threadCount;
                 },
                 set: function(_threadCount) {
-                  context._threadCount = _threadCount;
+                  context2._threadCount = _threadCount;
                 }
               },
               Consumer: {
@@ -49376,12 +49376,12 @@ function requireReact_development() {
                     hasWarnedAboutUsingNestedContextConsumers = true;
                     error("Rendering <Context.Consumer.Consumer> is not supported and will be removed in a future major release. Did you mean to render <Context.Consumer> instead?");
                   }
-                  return context.Consumer;
+                  return context2.Consumer;
                 }
               },
               displayName: {
                 get: function() {
-                  return context.displayName;
+                  return context2.displayName;
                 },
                 set: function(displayName) {
                   if (!hasWarnedAboutDisplayNameOnConsumer) {
@@ -49391,13 +49391,13 @@ function requireReact_development() {
                 }
               }
             });
-            context.Consumer = Consumer;
+            context2.Consumer = Consumer;
           }
           {
-            context._currentRenderer = null;
-            context._currentRenderer2 = null;
+            context2._currentRenderer = null;
+            context2._currentRenderer2 = null;
           }
-          return context;
+          return context2;
         }
         var Uninitialized = -1;
         var Pending = 0;
@@ -52314,8 +52314,8 @@ function requireReactDom_development() {
         if (typeof type2 === "object") {
           switch (type2.$$typeof) {
             case REACT_CONTEXT_TYPE:
-              var context = type2;
-              return getContextName(context) + ".Consumer";
+              var context2 = type2;
+              return getContextName(context2) + ".Consumer";
             case REACT_PROVIDER_TYPE:
               var provider = type2;
               return getContextName(provider._context) + ".Provider";
@@ -52354,8 +52354,8 @@ function requireReactDom_development() {
           case CacheComponent:
             return "Cache";
           case ContextConsumer:
-            var context = type2;
-            return getContextName$1(context) + ".Consumer";
+            var context2 = type2;
+            return getContextName$1(context2) + ".Consumer";
           case ContextProvider:
             var provider = type2;
             return getContextName$1(provider._context) + ".Provider";
@@ -54324,10 +54324,10 @@ function requireReactDom_development() {
           passiveBrowserEventsSupported = false;
         }
       }
-      function invokeGuardedCallbackProd(name, func, context, a2, b2, c2, d, e4, f2) {
+      function invokeGuardedCallbackProd(name, func, context2, a2, b2, c2, d, e4, f2) {
         var funcArgs = Array.prototype.slice.call(arguments, 3);
         try {
-          func.apply(context, funcArgs);
+          func.apply(context2, funcArgs);
         } catch (error2) {
           this.onError(error2);
         }
@@ -54336,7 +54336,7 @@ function requireReactDom_development() {
       {
         if (typeof window !== "undefined" && typeof window.dispatchEvent === "function" && typeof document !== "undefined" && typeof document.createEvent === "function") {
           var fakeNode = document.createElement("react");
-          invokeGuardedCallbackImpl = function invokeGuardedCallbackDev(name, func, context, a2, b2, c2, d, e4, f2) {
+          invokeGuardedCallbackImpl = function invokeGuardedCallbackDev(name, func, context2, a2, b2, c2, d, e4, f2) {
             if (typeof document === "undefined" || document === null) {
               throw new Error("The `document` global was defined when React was initialized, but is not defined anymore. This can happen in a test environment if a component schedules an update from an asynchronous callback, but the test has already finished running. To solve this, you can either unmount the component at the end of your test (and ensure that any asynchronous operations get canceled in `componentWillUnmount`), or you can change the test itself to be asynchronous.");
             }
@@ -54355,7 +54355,7 @@ function requireReactDom_development() {
             function callCallback2() {
               didCall = true;
               restoreAfterDispatch();
-              func.apply(context, funcArgs);
+              func.apply(context2, funcArgs);
               didError = false;
             }
             var error2;
@@ -54411,12 +54411,12 @@ function requireReactDom_development() {
           caughtError = error2;
         }
       };
-      function invokeGuardedCallback(name, func, context, a2, b2, c2, d, e4, f2) {
+      function invokeGuardedCallback(name, func, context2, a2, b2, c2, d, e4, f2) {
         hasError = false;
         caughtError = null;
         invokeGuardedCallbackImpl$1.apply(reporter2, arguments);
       }
-      function invokeGuardedCallbackAndCatchFirstError(name, func, context, a2, b2, c2, d, e4, f2) {
+      function invokeGuardedCallbackAndCatchFirstError(name, func, context2, a2, b2, c2, d, e4, f2) {
         invokeGuardedCallback.apply(this, arguments);
         if (hasError) {
           var error2 = clearCaughtError();
@@ -59692,18 +59692,18 @@ function requireReactDom_development() {
           if (instance2 && instance2.__reactInternalMemoizedUnmaskedChildContext === unmaskedContext) {
             return instance2.__reactInternalMemoizedMaskedChildContext;
           }
-          var context = {};
+          var context2 = {};
           for (var key2 in contextTypes) {
-            context[key2] = unmaskedContext[key2];
+            context2[key2] = unmaskedContext[key2];
           }
           {
             var name = getComponentNameFromFiber(workInProgress2) || "Unknown";
-            checkPropTypes(contextTypes, context, "context", name);
+            checkPropTypes(contextTypes, context2, "context", name);
           }
           if (instance2) {
-            cacheContext(workInProgress2, unmaskedContext, context);
+            cacheContext(workInProgress2, unmaskedContext, context2);
           }
-          return context;
+          return context2;
         }
       }
       function hasContextChanged() {
@@ -59729,12 +59729,12 @@ function requireReactDom_development() {
           pop(contextStackCursor, fiber);
         }
       }
-      function pushTopLevelContextObject(fiber, context, didChange) {
+      function pushTopLevelContextObject(fiber, context2, didChange) {
         {
           if (contextStackCursor.current !== emptyContextObject) {
             throw new Error("Unexpected context found on stack. This error is likely caused by a bug in React. Please file an issue.");
           }
-          push(contextStackCursor, context, fiber);
+          push(contextStackCursor, context2, fiber);
           push(didPerformWorkStackCursor, didChange, fiber);
         }
       }
@@ -61363,24 +61363,24 @@ function requireReactDom_development() {
           isDisallowedContextReadInDEV = false;
         }
       }
-      function pushProvider(providerFiber, context, nextValue) {
+      function pushProvider(providerFiber, context2, nextValue) {
         {
-          push(valueCursor, context._currentValue, providerFiber);
-          context._currentValue = nextValue;
+          push(valueCursor, context2._currentValue, providerFiber);
+          context2._currentValue = nextValue;
           {
-            if (context._currentRenderer !== void 0 && context._currentRenderer !== null && context._currentRenderer !== rendererSigil) {
+            if (context2._currentRenderer !== void 0 && context2._currentRenderer !== null && context2._currentRenderer !== rendererSigil) {
               error("Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.");
             }
-            context._currentRenderer = rendererSigil;
+            context2._currentRenderer = rendererSigil;
           }
         }
       }
-      function popProvider(context, providerFiber) {
+      function popProvider(context2, providerFiber) {
         var currentValue = valueCursor.current;
         pop(valueCursor, providerFiber);
         {
           {
-            context._currentValue = currentValue;
+            context2._currentValue = currentValue;
           }
         }
       }
@@ -61407,12 +61407,12 @@ function requireReactDom_development() {
           }
         }
       }
-      function propagateContextChange(workInProgress2, context, renderLanes2) {
+      function propagateContextChange(workInProgress2, context2, renderLanes2) {
         {
-          propagateContextChange_eager(workInProgress2, context, renderLanes2);
+          propagateContextChange_eager(workInProgress2, context2, renderLanes2);
         }
       }
-      function propagateContextChange_eager(workInProgress2, context, renderLanes2) {
+      function propagateContextChange_eager(workInProgress2, context2, renderLanes2) {
         var fiber = workInProgress2.child;
         if (fiber !== null) {
           fiber.return = workInProgress2;
@@ -61424,7 +61424,7 @@ function requireReactDom_development() {
             nextFiber = fiber.child;
             var dependency = list.firstContext;
             while (dependency !== null) {
-              if (dependency.context === context) {
+              if (dependency.context === context2) {
                 if (fiber.tag === ClassComponent) {
                   var lane = pickArbitraryLane(renderLanes2);
                   var update = createUpdate(NoTimestamp, lane);
@@ -61509,17 +61509,17 @@ function requireReactDom_development() {
           }
         }
       }
-      function readContext(context) {
+      function readContext(context2) {
         {
           if (isDisallowedContextReadInDEV) {
             error("Context can only be read while React is rendering. In classes, you can read it in the render method or getDerivedStateFromProps. In function components, you can read it directly in the function body, but not inside Hooks like useReducer() or useMemo().");
           }
         }
-        var value = context._currentValue;
-        if (lastFullyObservedContext === context) ;
+        var value = context2._currentValue;
+        if (lastFullyObservedContext === context2) ;
         else {
           var contextItem = {
-            context,
+            context: context2,
             memoizedValue: value,
             next: null
           };
@@ -61976,11 +61976,11 @@ function requireReactDom_development() {
           currentlyProcessingQueue = null;
         }
       }
-      function callCallback(callback, context) {
+      function callCallback(callback, context2) {
         if (typeof callback !== "function") {
           throw new Error("Invalid argument passed as callback. Expected a function. Instead " + ("received: " + callback));
         }
-        callback.call(context);
+        callback.call(context2);
       }
       function resetHasForceUpdateBeforeProcessing() {
         hasForceUpdate = false;
@@ -62030,14 +62030,14 @@ function requireReactDom_development() {
         pop(rootInstanceStackCursor, fiber);
       }
       function getHostContext() {
-        var context = requiredContext(contextStackCursor$1.current);
-        return context;
+        var context2 = requiredContext(contextStackCursor$1.current);
+        return context2;
       }
       function pushHostContext(fiber) {
         requiredContext(rootInstanceStackCursor.current);
-        var context = requiredContext(contextStackCursor$1.current);
-        var nextContext = getChildHostContext(context, fiber.type);
-        if (context === nextContext) {
+        var context2 = requiredContext(contextStackCursor$1.current);
+        var nextContext = getChildHostContext(context2, fiber.type);
+        if (context2 === nextContext) {
           return;
         }
         push(contextFiberStackCursor, fiber, fiber);
@@ -63205,8 +63205,8 @@ function requireReactDom_development() {
           error("Do not call Hooks inside useEffect(...), useMemo(...), or other built-in Hooks. You can only call Hooks at the top level of your React function. For more information, see https://reactjs.org/link/rules-of-hooks");
         };
         HooksDispatcherOnMountInDEV = {
-          readContext: function(context) {
-            return readContext(context);
+          readContext: function(context2) {
+            return readContext(context2);
           },
           useCallback: function(callback, deps) {
             currentHookNameInDev = "useCallback";
@@ -63214,10 +63214,10 @@ function requireReactDom_development() {
             checkDepsAreArrayDev(deps);
             return mountCallback(callback, deps);
           },
-          useContext: function(context) {
+          useContext: function(context2) {
             currentHookNameInDev = "useContext";
             mountHookTypesDev();
-            return readContext(context);
+            return readContext(context2);
           },
           useEffect: function(create2, deps) {
             currentHookNameInDev = "useEffect";
@@ -63315,18 +63315,18 @@ function requireReactDom_development() {
           unstable_isNewReconciler: enableNewReconciler
         };
         HooksDispatcherOnMountWithHookTypesInDEV = {
-          readContext: function(context) {
-            return readContext(context);
+          readContext: function(context2) {
+            return readContext(context2);
           },
           useCallback: function(callback, deps) {
             currentHookNameInDev = "useCallback";
             updateHookTypesDev();
             return mountCallback(callback, deps);
           },
-          useContext: function(context) {
+          useContext: function(context2) {
             currentHookNameInDev = "useContext";
             updateHookTypesDev();
-            return readContext(context);
+            return readContext(context2);
           },
           useEffect: function(create2, deps) {
             currentHookNameInDev = "useEffect";
@@ -63419,18 +63419,18 @@ function requireReactDom_development() {
           unstable_isNewReconciler: enableNewReconciler
         };
         HooksDispatcherOnUpdateInDEV = {
-          readContext: function(context) {
-            return readContext(context);
+          readContext: function(context2) {
+            return readContext(context2);
           },
           useCallback: function(callback, deps) {
             currentHookNameInDev = "useCallback";
             updateHookTypesDev();
             return updateCallback(callback, deps);
           },
-          useContext: function(context) {
+          useContext: function(context2) {
             currentHookNameInDev = "useContext";
             updateHookTypesDev();
-            return readContext(context);
+            return readContext(context2);
           },
           useEffect: function(create2, deps) {
             currentHookNameInDev = "useEffect";
@@ -63523,18 +63523,18 @@ function requireReactDom_development() {
           unstable_isNewReconciler: enableNewReconciler
         };
         HooksDispatcherOnRerenderInDEV = {
-          readContext: function(context) {
-            return readContext(context);
+          readContext: function(context2) {
+            return readContext(context2);
           },
           useCallback: function(callback, deps) {
             currentHookNameInDev = "useCallback";
             updateHookTypesDev();
             return updateCallback(callback, deps);
           },
-          useContext: function(context) {
+          useContext: function(context2) {
             currentHookNameInDev = "useContext";
             updateHookTypesDev();
-            return readContext(context);
+            return readContext(context2);
           },
           useEffect: function(create2, deps) {
             currentHookNameInDev = "useEffect";
@@ -63627,9 +63627,9 @@ function requireReactDom_development() {
           unstable_isNewReconciler: enableNewReconciler
         };
         InvalidNestedHooksDispatcherOnMountInDEV = {
-          readContext: function(context) {
+          readContext: function(context2) {
             warnInvalidContextAccess();
-            return readContext(context);
+            return readContext(context2);
           },
           useCallback: function(callback, deps) {
             currentHookNameInDev = "useCallback";
@@ -63637,11 +63637,11 @@ function requireReactDom_development() {
             mountHookTypesDev();
             return mountCallback(callback, deps);
           },
-          useContext: function(context) {
+          useContext: function(context2) {
             currentHookNameInDev = "useContext";
             warnInvalidHookAccess();
             mountHookTypesDev();
-            return readContext(context);
+            return readContext(context2);
           },
           useEffect: function(create2, deps) {
             currentHookNameInDev = "useEffect";
@@ -63748,9 +63748,9 @@ function requireReactDom_development() {
           unstable_isNewReconciler: enableNewReconciler
         };
         InvalidNestedHooksDispatcherOnUpdateInDEV = {
-          readContext: function(context) {
+          readContext: function(context2) {
             warnInvalidContextAccess();
-            return readContext(context);
+            return readContext(context2);
           },
           useCallback: function(callback, deps) {
             currentHookNameInDev = "useCallback";
@@ -63758,11 +63758,11 @@ function requireReactDom_development() {
             updateHookTypesDev();
             return updateCallback(callback, deps);
           },
-          useContext: function(context) {
+          useContext: function(context2) {
             currentHookNameInDev = "useContext";
             warnInvalidHookAccess();
             updateHookTypesDev();
-            return readContext(context);
+            return readContext(context2);
           },
           useEffect: function(create2, deps) {
             currentHookNameInDev = "useEffect";
@@ -63869,9 +63869,9 @@ function requireReactDom_development() {
           unstable_isNewReconciler: enableNewReconciler
         };
         InvalidNestedHooksDispatcherOnRerenderInDEV = {
-          readContext: function(context) {
+          readContext: function(context2) {
             warnInvalidContextAccess();
-            return readContext(context);
+            return readContext(context2);
           },
           useCallback: function(callback, deps) {
             currentHookNameInDev = "useCallback";
@@ -63879,11 +63879,11 @@ function requireReactDom_development() {
             updateHookTypesDev();
             return updateCallback(callback, deps);
           },
-          useContext: function(context) {
+          useContext: function(context2) {
             currentHookNameInDev = "useContext";
             warnInvalidHookAccess();
             updateHookTypesDev();
-            return readContext(context);
+            return readContext(context2);
           },
           useEffect: function(create2, deps) {
             currentHookNameInDev = "useEffect";
@@ -64377,7 +64377,7 @@ function requireReactDom_development() {
       function constructClassInstance(workInProgress2, ctor, props) {
         var isLegacyContextConsumer = false;
         var unmaskedContext = emptyContextObject;
-        var context = emptyContextObject;
+        var context2 = emptyContextObject;
         var contextType = ctor.contextType;
         {
           if ("contextType" in ctor) {
@@ -64404,19 +64404,19 @@ function requireReactDom_development() {
           }
         }
         if (typeof contextType === "object" && contextType !== null) {
-          context = readContext(contextType);
+          context2 = readContext(contextType);
         } else {
           unmaskedContext = getUnmaskedContext(workInProgress2, ctor, true);
           var contextTypes = ctor.contextTypes;
           isLegacyContextConsumer = contextTypes !== null && contextTypes !== void 0;
-          context = isLegacyContextConsumer ? getMaskedContext(workInProgress2, unmaskedContext) : emptyContextObject;
+          context2 = isLegacyContextConsumer ? getMaskedContext(workInProgress2, unmaskedContext) : emptyContextObject;
         }
-        var instance2 = new ctor(props, context);
+        var instance2 = new ctor(props, context2);
         {
           if (workInProgress2.mode & StrictLegacyMode) {
             setIsStrictModeForDevtools(true);
             try {
-              instance2 = new ctor(props, context);
+              instance2 = new ctor(props, context2);
             } finally {
               setIsStrictModeForDevtools(false);
             }
@@ -64462,7 +64462,7 @@ function requireReactDom_development() {
           }
         }
         if (isLegacyContextConsumer) {
-          cacheContext(workInProgress2, unmaskedContext, context);
+          cacheContext(workInProgress2, unmaskedContext, context2);
         }
         return instance2;
       }
@@ -65298,10 +65298,10 @@ function requireReactDom_development() {
             }
           }
         }
-        var context;
+        var context2;
         {
           var unmaskedContext = getUnmaskedContext(workInProgress2, Component, true);
-          context = getMaskedContext(workInProgress2, unmaskedContext);
+          context2 = getMaskedContext(workInProgress2, unmaskedContext);
         }
         var nextChildren;
         var hasId;
@@ -65312,12 +65312,12 @@ function requireReactDom_development() {
         {
           ReactCurrentOwner$1.current = workInProgress2;
           setIsRendering(true);
-          nextChildren = renderWithHooks(current2, workInProgress2, Component, nextProps, context, renderLanes2);
+          nextChildren = renderWithHooks(current2, workInProgress2, Component, nextProps, context2, renderLanes2);
           hasId = checkDidRenderIdHook();
           if (workInProgress2.mode & StrictLegacyMode) {
             setIsStrictModeForDevtools(true);
             try {
-              nextChildren = renderWithHooks(current2, workInProgress2, Component, nextProps, context, renderLanes2);
+              nextChildren = renderWithHooks(current2, workInProgress2, Component, nextProps, context2, renderLanes2);
               hasId = checkDidRenderIdHook();
             } finally {
               setIsStrictModeForDevtools(false);
@@ -65632,10 +65632,10 @@ function requireReactDom_development() {
       function mountIndeterminateComponent(_current, workInProgress2, Component, renderLanes2) {
         resetSuspendedCurrentOnMountInLegacyMode(_current, workInProgress2);
         var props = workInProgress2.pendingProps;
-        var context;
+        var context2;
         {
           var unmaskedContext = getUnmaskedContext(workInProgress2, Component, false);
-          context = getMaskedContext(workInProgress2, unmaskedContext);
+          context2 = getMaskedContext(workInProgress2, unmaskedContext);
         }
         prepareToReadContext(workInProgress2, renderLanes2);
         var value;
@@ -65656,7 +65656,7 @@ function requireReactDom_development() {
           }
           setIsRendering(true);
           ReactCurrentOwner$1.current = workInProgress2;
-          value = renderWithHooks(null, workInProgress2, Component, props, context, renderLanes2);
+          value = renderWithHooks(null, workInProgress2, Component, props, context2, renderLanes2);
           hasId = checkDidRenderIdHook();
           setIsRendering(false);
         }
@@ -65706,7 +65706,7 @@ function requireReactDom_development() {
             if (workInProgress2.mode & StrictLegacyMode) {
               setIsStrictModeForDevtools(true);
               try {
-                value = renderWithHooks(null, workInProgress2, Component, props, context, renderLanes2);
+                value = renderWithHooks(null, workInProgress2, Component, props, context2, renderLanes2);
                 hasId = checkDidRenderIdHook();
               } finally {
                 setIsStrictModeForDevtools(false);
@@ -66365,7 +66365,7 @@ function requireReactDom_development() {
       var hasWarnedAboutUsingNoValuePropOnContextProvider = false;
       function updateContextProvider(current2, workInProgress2, renderLanes2) {
         var providerType = workInProgress2.type;
-        var context = providerType._context;
+        var context2 = providerType._context;
         var newProps = workInProgress2.pendingProps;
         var oldProps = workInProgress2.memoizedProps;
         var newValue = newProps.value;
@@ -66381,7 +66381,7 @@ function requireReactDom_development() {
             checkPropTypes(providerPropTypes, newProps, "prop", "Context.Provider");
           }
         }
-        pushProvider(workInProgress2, context, newValue);
+        pushProvider(workInProgress2, context2, newValue);
         {
           if (oldProps !== null) {
             var oldValue = oldProps.value;
@@ -66390,7 +66390,7 @@ function requireReactDom_development() {
                 return bailoutOnAlreadyFinishedWork(current2, workInProgress2, renderLanes2);
               }
             } else {
-              propagateContextChange(workInProgress2, context, renderLanes2);
+              propagateContextChange(workInProgress2, context2, renderLanes2);
             }
           }
         }
@@ -66400,17 +66400,17 @@ function requireReactDom_development() {
       }
       var hasWarnedAboutUsingContextAsConsumer = false;
       function updateContextConsumer(current2, workInProgress2, renderLanes2) {
-        var context = workInProgress2.type;
+        var context2 = workInProgress2.type;
         {
-          if (context._context === void 0) {
-            if (context !== context.Consumer) {
+          if (context2._context === void 0) {
+            if (context2 !== context2.Consumer) {
               if (!hasWarnedAboutUsingContextAsConsumer) {
                 hasWarnedAboutUsingContextAsConsumer = true;
                 error("Rendering <Context> directly is not supported and will be removed in a future major release. Did you mean to render <Context.Consumer> instead?");
               }
             }
           } else {
-            context = context._context;
+            context2 = context2._context;
           }
         }
         var newProps = workInProgress2.pendingProps;
@@ -66421,7 +66421,7 @@ function requireReactDom_development() {
           }
         }
         prepareToReadContext(workInProgress2, renderLanes2);
-        var newValue = readContext(context);
+        var newValue = readContext(context2);
         {
           markComponentRenderStarted(workInProgress2);
         }
@@ -66534,8 +66534,8 @@ function requireReactDom_development() {
             break;
           case ContextProvider: {
             var newValue = workInProgress2.memoizedProps.value;
-            var context = workInProgress2.type._context;
-            pushProvider(workInProgress2, context, newValue);
+            var context2 = workInProgress2.type._context;
+            pushProvider(workInProgress2, context2, newValue);
             break;
           }
           case Profiler:
@@ -67121,8 +67121,8 @@ function requireReactDom_development() {
             bubbleProperties(workInProgress2);
             return null;
           case ContextProvider:
-            var context = workInProgress2.type._context;
-            popProvider(context, workInProgress2);
+            var context2 = workInProgress2.type._context;
+            popProvider(context2, workInProgress2);
             bubbleProperties(workInProgress2);
             return null;
           case IncompleteClassComponent: {
@@ -67334,8 +67334,8 @@ function requireReactDom_development() {
             popHostContainer(workInProgress2);
             return null;
           case ContextProvider:
-            var context = workInProgress2.type._context;
-            popProvider(context, workInProgress2);
+            var context2 = workInProgress2.type._context;
+            popProvider(context2, workInProgress2);
             return null;
           case OffscreenComponent:
           case LegacyHiddenComponent:
@@ -67378,8 +67378,8 @@ function requireReactDom_development() {
             popSuspenseContext(interruptedWork);
             break;
           case ContextProvider:
-            var context = interruptedWork.type._context;
-            popProvider(context, interruptedWork);
+            var context2 = interruptedWork.type._context;
+            popProvider(context2, interruptedWork);
             break;
           case OffscreenComponent:
           case LegacyHiddenComponent:
@@ -71480,11 +71480,11 @@ function requireReactDom_development() {
         {
           markRenderScheduled(lane);
         }
-        var context = getContextForSubtree(parentComponent);
+        var context2 = getContextForSubtree(parentComponent);
         if (container.context === null) {
-          container.context = context;
+          container.context = context2;
         } else {
-          container.pendingContext = context;
+          container.pendingContext = context2;
         }
         {
           if (isRendering && current !== null && !didWarnAboutNestedUpdates) {
@@ -72480,8 +72480,8 @@ function requireReactJsxDevRuntime_development() {
         if (typeof type2 === "object") {
           switch (type2.$$typeof) {
             case REACT_CONTEXT_TYPE:
-              var context = type2;
-              return getContextName(context) + ".Consumer";
+              var context2 = type2;
+              return getContextName(context2) + ".Consumer";
             case REACT_PROVIDER_TYPE:
               var provider = type2;
               return getContextName(provider._context) + ".Provider";
@@ -79820,6 +79820,19 @@ const uxpPhotoshopActions = {
       cancelled: booleanType$1().optional()
     })
   },
+  selectContentSource: {
+    requestSchema: objectType$1({
+      additionalData: recordType$1(anyType$1()).optional()
+    }).optional(),
+    responseSchema: objectType$1({
+      resource: stringType$1().optional(),
+      fileName: stringType$1().optional(),
+      mimeType: stringType$1().optional(),
+      size: numberType$1().optional(),
+      layerIdentify: stringType$1().optional(),
+      cancelled: booleanType$1().optional()
+    })
+  },
   // Split image selection dialogs
   selectCanvasImage: {
     requestSchema: objectType$1({
@@ -80050,6 +80063,101 @@ const uxpUtilActions = {
     })
   }
 };
+const uxpResourcingActions = {
+  "fileResource.createFromExternal": {
+    requestSchema: objectType$1({
+      url: stringType$1()
+    }),
+    responseSchema: objectType$1({
+      resource: stringType$1().optional(),
+      thumbnail: stringType$1().optional(),
+      width: numberType$1().optional(),
+      height: numberType$1().optional(),
+      mime: stringType$1().optional(),
+      mimeType: stringType$1().optional(),
+      error: stringType$1().optional()
+    })
+  },
+  "fileResource.createFromLocal": {
+    requestSchema: objectType$1({
+      types: arrayType$1(objectType$1({
+        description: stringType$1().optional(),
+        extensions: arrayType$1(stringType$1()).optional()
+      })).optional()
+    }),
+    responseSchema: objectType$1({
+      resource: stringType$1().optional(),
+      thumbnail: stringType$1().optional(),
+      width: numberType$1().optional(),
+      height: numberType$1().optional(),
+      mime: stringType$1().optional(),
+      error: stringType$1().optional()
+    })
+  },
+  "fileResource.createFromCBM": {
+    requestSchema: objectType$1({
+      contentUri: stringType$1().optional(),
+      boundaryUri: stringType$1().optional(),
+      maskUri: stringType$1().optional(),
+      options: recordType$1(unknownType$1()).optional()
+    }),
+    responseSchema: objectType$1({
+      resource: stringType$1().optional(),
+      thumbnail: stringType$1().optional(),
+      width: numberType$1().optional(),
+      height: numberType$1().optional(),
+      mime: stringType$1().optional(),
+      error: stringType$1().optional()
+    })
+  },
+  "fileResource.delete": {
+    requestSchema: objectType$1({
+      resources: arrayType$1(stringType$1())
+    }),
+    responseSchema: objectType$1({
+      error: stringType$1().optional()
+    })
+  },
+  "fileResource.thumbnail": {
+    requestSchema: objectType$1({
+      resource: stringType$1(),
+      maxSize: numberType$1().optional()
+    }),
+    responseSchema: objectType$1({
+      thumbnail: stringType$1().optional(),
+      width: numberType$1().optional(),
+      height: numberType$1().optional(),
+      error: stringType$1().optional()
+    })
+  },
+  "fileResource.saveAs": {
+    requestSchema: objectType$1({
+      resources: arrayType$1(stringType$1())
+    }),
+    responseSchema: objectType$1({
+      error: stringType$1().optional()
+    })
+  },
+  "boundary.normalize": {
+    requestSchema: objectType$1({
+      boundary: stringType$1()
+    }),
+    responseSchema: objectType$1({
+      boundary: stringType$1().optional(),
+      error: stringType$1().optional()
+    })
+  },
+  "layer.resolve": {
+    requestSchema: objectType$1({
+      uri: stringType$1(),
+      type: enumType$1(["content", "mask"])
+    }),
+    responseSchema: objectType$1({
+      uri: stringType$1().optional(),
+      error: stringType$1().optional()
+    })
+  }
+};
 const BoundaryRectUtils = {
   /**
    * Calculate width from a BoundaryRect
@@ -80181,6 +80289,7 @@ const meshDef = defineGraph({
       store: UXPStoreSchema,
       actions: {
         ...uxpImagingActions,
+        ...uxpResourcingActions,
         ...uxpUtilActions,
         ...uxpAuthActions,
         ...uxpTaskManagementActions,
@@ -88946,9 +89055,9 @@ function v4(options2, buf, offset) {
   return unsafeStringify(rnds);
 }
 const RESOURCE_PREFIX = "uxp://";
-const resourceMap = /* @__PURE__ */ new Map();
-const legacyPromiseMap = /* @__PURE__ */ new Map();
-function toUint8Array(data2) {
+const resourceMap$1 = /* @__PURE__ */ new Map();
+const legacyPromiseMap$1 = /* @__PURE__ */ new Map();
+function toUint8Array$2(data2) {
   if (data2 instanceof Uint8Array) {
     return data2;
   }
@@ -88970,21 +89079,21 @@ function toUint8Array(data2) {
 function buildResourceId(type2) {
   return `${RESOURCE_PREFIX}${type2}/${v4()}`;
 }
-function isResourceId(value) {
+function isResourceId$1(value) {
   return typeof value === "string" && value.startsWith(RESOURCE_PREFIX);
 }
-function createResource(entry) {
+function createResource$1(entry) {
   const id = buildResourceId(entry.type);
-  resourceMap.set(id, entry);
+  resourceMap$1.set(id, entry);
   return id;
 }
-function resolveResource(resourceId) {
-  return resourceMap.get(resourceId);
+function resolveResource$1(resourceId) {
+  return resourceMap$1.get(resourceId);
 }
-function updateResource(resourceId, entry) {
-  const existing = resourceMap.get(resourceId);
+function updateResource$1(resourceId, entry) {
+  const existing = resourceMap$1.get(resourceId);
   if (!existing) return;
-  resourceMap.set(resourceId, {
+  resourceMap$1.set(resourceId, {
     ...existing,
     ...entry,
     data: {
@@ -88995,15 +89104,15 @@ function updateResource(resourceId, entry) {
     thumbnailCache: entry.thumbnailCache ?? existing.thumbnailCache
   });
 }
-function deleteResource(resourceId) {
-  resourceMap.delete(resourceId);
-  legacyPromiseMap.delete(resourceId);
+function deleteResource$1(resourceId) {
+  resourceMap$1.delete(resourceId);
+  legacyPromiseMap$1.delete(resourceId);
 }
-async function getImageHolder(file_token) {
-  if (legacyPromiseMap.has(file_token)) {
-    return legacyPromiseMap.get(file_token);
+async function getImageHolder$1(file_token) {
+  if (legacyPromiseMap$1.has(file_token)) {
+    return legacyPromiseMap$1.get(file_token);
   }
-  const entry = resolveResource(file_token);
+  const entry = resolveResource$1(file_token);
   if (!entry) return void 0;
   if (entry.data.buffer && entry.data.mime) {
     return {
@@ -89013,7 +89122,7 @@ async function getImageHolder(file_token) {
   }
   return void 0;
 }
-async function readNativePath(nativePath) {
+async function readNativePath$1(nativePath) {
   const localFileSystem = uxp.storage.localFileSystem;
   const tempFolder = await localFileSystem.getTemporaryFolder();
   try {
@@ -89031,27 +89140,27 @@ async function readNativePath(nativePath) {
     return void 0;
   }
 }
-async function resolveResourceBuffer(resourceOrToken) {
+async function resolveResourceBuffer$1(resourceOrToken) {
   const loadLegacy = async () => {
-    const legacy2 = await getImageHolder(resourceOrToken);
+    const legacy2 = await getImageHolder$1(resourceOrToken);
     if (!legacy2) {
       throw new Error("Resource not found");
     }
     return {
-      buffer: toUint8Array(legacy2.file_buffer),
+      buffer: toUint8Array$2(legacy2.file_buffer),
       mime: legacy2.file_mimetype
     };
   };
-  if (!isResourceId(resourceOrToken)) {
+  if (!isResourceId$1(resourceOrToken)) {
     return loadLegacy();
   }
-  const entry = resolveResource(resourceOrToken);
+  const entry = resolveResource$1(resourceOrToken);
   if (!entry) {
     return loadLegacy();
   }
   if (entry.data.buffer) {
-    const buffer2 = toUint8Array(entry.data.buffer);
-    updateResource(resourceOrToken, {
+    const buffer2 = toUint8Array$2(entry.data.buffer);
+    updateResource$1(resourceOrToken, {
       data: {
         ...entry.data,
         buffer: buffer2
@@ -89063,9 +89172,9 @@ async function resolveResourceBuffer(resourceOrToken) {
     };
   }
   if (entry.data.path) {
-    const buffer2 = await readNativePath(String(entry.data.path));
+    const buffer2 = await readNativePath$1(String(entry.data.path));
     if (buffer2) {
-      updateResource(resourceOrToken, {
+      updateResource$1(resourceOrToken, {
         data: {
           ...entry.data,
           buffer: buffer2
@@ -89079,18 +89188,18 @@ async function resolveResourceBuffer(resourceOrToken) {
   }
   return loadLegacy();
 }
-async function ensureResourceTempFile(resourceOrToken, options2) {
-  if (!isResourceId(resourceOrToken)) {
+async function ensureResourceTempFile$1(resourceOrToken, options2) {
+  if (!isResourceId$1(resourceOrToken)) {
     throw new Error("ensureResourceTempFile expects a resource id");
   }
-  const entry = resolveResource(resourceOrToken);
+  const entry = resolveResource$1(resourceOrToken);
   if (!entry) {
     throw new Error("Resource not found");
   }
   if (entry.data.path) {
     return entry.data.path;
   }
-  const { buffer: buffer2, mime: mime2 } = await resolveResourceBuffer(resourceOrToken);
+  const { buffer: buffer2, mime: mime2 } = await resolveResourceBuffer$1(resourceOrToken);
   const localFileSystem = uxp.storage.localFileSystem;
   const tempFolder = await localFileSystem.getTemporaryFolder();
   const ext = (() => {
@@ -89125,7 +89234,7 @@ async function ensureResourceTempFile(resourceOrToken, options2) {
   const fileName = `resource_${Date.now()}_${Math.random().toString(36).slice(2, 8)}${ext}`;
   const tempFile = await tempFolder.createFile(fileName, { overwrite: true });
   await tempFile.write(new Uint8Array(buffer2), { format: uxp.storage.formats.binary });
-  updateResource(resourceOrToken, {
+  updateResource$1(resourceOrToken, {
     data: {
       ...entry.data,
       path: tempFile.nativePath
@@ -106762,12 +106871,12 @@ globalThis.fetch = async (input, init2) => {
 mcpMesh.implementAction("getImageBase64", async (params) => {
   try {
     try {
-      const { buffer: buffer2, mime: mime2 } = await resolveResourceBuffer(params.token);
+      const { buffer: buffer2, mime: mime2 } = await resolveResourceBuffer$1(params.token);
       const data64 = "data:" + (mime2 || "application/octet-stream") + ";base64," + Buffer.from(buffer2).toString("base64");
       return { base64: data64, mimeType: mime2 || "application/octet-stream" };
     } catch {
     }
-    const imageHolderResult = await getImageHolder(params.token);
+    const imageHolderResult = await getImageHolder$1(params.token);
     if (!imageHolderResult) {
       return { error: "Invalid image token" };
     }
@@ -106797,7 +106906,7 @@ mcpMesh.implementAction("proxiedFetch", async (params) => {
               if (fileData.data) {
                 if (value.mimeType == "image/uxp") {
                   const fileToken = Buffer.from(fileData.data, "base64").toString();
-                  const imageHolderResult = await getImageHolder(fileToken);
+                  const imageHolderResult = await getImageHolder$1(fileToken);
                   if (!imageHolderResult) {
                     throw new Error("Invalid file token");
                   }
@@ -106944,7 +107053,7 @@ mcpMesh.implementAction("pickLocalFile", async (params) => {
       mimeType = "application/octet-stream";
     }
     const resourceType = mimeType.startsWith("image/") ? "image" : "file";
-    const resourceId = createResource({
+    const resourceId = createResource$1({
       type: resourceType,
       data: {
         buffer: buffer2,
@@ -106988,8 +107097,8 @@ mcpMesh.implementAction("uploadComfyImage", async (request, extra, signal) => {
     if (data2 == null || isEmptyObject(data2)) {
       const token = typeof uploadInput.resource === "string" ? uploadInput.resource : uploadInput.resourceId ?? uploadInput.resource;
       if (token && typeof token === "string") {
-        const resolved = await resolveResourceBuffer(token).catch(async () => {
-          const legacy2 = await getImageHolder(token);
+        const resolved = await resolveResourceBuffer$1(token).catch(async () => {
+          const legacy2 = await getImageHolder$1(token);
           if (!legacy2) {
             return void 0;
           }
@@ -107034,13 +107143,13 @@ mcpMesh.implementAction("uploadComfyImage", async (request, extra, signal) => {
       throw new Error("Upload resource token missing");
     }
     try {
-      const resolved = await resolveResourceBuffer(token);
+      const resolved = await resolveResourceBuffer$1(token);
       uint8Array = new Uint8Array(resolved.buffer);
       if (resolved.mime) {
         mimeType = uploadInput.mimeType || resolved.mime;
       }
     } catch {
-      const legacy2 = await getImageHolder(token);
+      const legacy2 = await getImageHolder$1(token);
       if (!legacy2) {
         throw new Error("Image not found: " + token);
       }
@@ -107070,7 +107179,7 @@ mcpMesh.implementAction("openaiImageEdit", async (params, _extra, signal) => {
     if (signal == null ? void 0 : signal.aborted) {
       throw new DOMException("Request aborted", "AbortError");
     }
-    const imageHolderResult = await getImageHolder(params.imageToken);
+    const imageHolderResult = await getImageHolder$1(params.imageToken);
     if (!imageHolderResult) {
       return {
         success: false,
@@ -107145,7 +107254,7 @@ mcpMesh.implementAction("geminiImageGenerate", async (params, _extra, signal) =>
     for (const input of inputsArray) {
       let imageBuffer;
       if (params.imageInputType === "token") {
-        const imageHolderResult = await getImageHolder(input);
+        const imageHolderResult = await getImageHolder$1(input);
         if (!imageHolderResult) {
           return {
             success: false,
@@ -124607,7 +124716,7 @@ mcpMesh.implementAction("downloadImage", async (params) => {
             `);
     }
     const resourceType = "file";
-    const resourceId = createResource({
+    const resourceId = createResource$1({
       type: resourceType,
       data: {
         buffer: new Uint8Array(buffer2),
@@ -124623,7 +124732,7 @@ mcpMesh.implementAction("downloadImage", async (params) => {
       }
     });
     if (thumbnailBase64) {
-      updateResource(resourceId, {
+      updateResource$1(resourceId, {
         thumbnailCache: {
           base64: thumbnailBase64,
           width: imgWidth,
@@ -124651,7 +124760,7 @@ mcpMesh.implementAction("deleteDownloadedImage", async (params) => {
     const tempFolder = await localFileSystem.getTemporaryFolder();
     for (const resourceId of resources) {
       if (typeof resourceId !== "string") continue;
-      const entry = resolveResource(resourceId);
+      const entry = resolveResource$1(resourceId);
       if (entry == null ? void 0 : entry.data.path) {
         try {
           const nativePath = String(entry.data.path);
@@ -124664,7 +124773,7 @@ mcpMesh.implementAction("deleteDownloadedImage", async (params) => {
           console.warn("[deleteDownloadedImage] failed to delete temp file for resource", resourceId, error);
         }
       }
-      deleteResource(resourceId);
+      deleteResource$1(resourceId);
     }
     return {};
   } catch (error) {
@@ -124679,7 +124788,7 @@ mcpMesh.implementAction("getThumbnail", async (params) => {
     if (typeof resource !== "string" || !resource.length) {
       throw new Error("getThumbnail: resource is required");
     }
-    const entry = resolveResource(resource);
+    const entry = resolveResource$1(resource);
     if (!entry) {
       throw new Error("getThumbnail: resource not found");
     }
@@ -124691,14 +124800,14 @@ mcpMesh.implementAction("getThumbnail", async (params) => {
         height: cached.height
       };
     }
-    const { buffer: buffer2 } = await resolveResourceBuffer(resource);
+    const { buffer: buffer2 } = await resolveResourceBuffer$1(resource);
     const image = await Jimp.read(bufferExports.Buffer.from(buffer2));
     const origW = image.width;
     const origH = image.height;
     image.scaleToFit({ w: maxSize, h: maxSize });
     const thumbnailBuffer = await image.getBuffer(JimpMime.png);
     const base64 = "data:image/png;base64," + thumbnailBuffer.toString("base64");
-    updateResource(resource, {
+    updateResource$1(resource, {
       thumbnailCache: {
         base64,
         width: image.width,
@@ -124735,7 +124844,7 @@ mcpMesh.implementAction("requestAndDoSaveImage", async (params) => {
     for (const resourceId of resources) {
       if (typeof resourceId !== "string") continue;
       try {
-        const ensuredPath = await ensureResourceTempFile(resourceId).catch(() => void 0);
+        const ensuredPath = await ensureResourceTempFile$1(resourceId).catch(() => void 0);
         if (!ensuredPath) {
           console.warn("[requestAndDoSaveImage] failed to ensure path for resource", resourceId);
           continue;
@@ -124760,7 +124869,7 @@ mcpMesh.implementAction("requestAndDoSaveImage", async (params) => {
           console.warn(`[requestAndDoSaveImage] file entry not found for resource`, resourceId, nativePath);
           continue;
         }
-        const resourceEntry = resolveResource(resourceId);
+        const resourceEntry = resolveResource$1(resourceId);
         const fallbackName = typeof ((_a3 = resourceEntry == null ? void 0 : resourceEntry.originalMeta) == null ? void 0 : _a3.fileName) === "string" ? String(resourceEntry.originalMeta.fileName) : fileEntry.name || `resource-${Date.now()}`;
         const arrayBuffer = await fileEntry.read({ format: uxp.storage.formats.binary });
         const saveFile = await saveFolder.createFile(fallbackName, { overwrite: true });
@@ -124776,173 +124885,1100 @@ mcpMesh.implementAction("requestAndDoSaveImage", async (params) => {
     };
   }
 });
-class TaskEventEmitter {
-  constructor() {
-    __publicField2(this, "taskListeners", []);
-    __publicField2(this, "executionListeners", []);
+const RESOURCE_SCHEME = "uxp://";
+function createResourceId(type2, suffix) {
+  const idSegment = v4();
+  return `${RESOURCE_SCHEME}${type2}/${idSegment}`;
+}
+function isResourceId(value) {
+  return typeof value === "string" && value.startsWith(RESOURCE_SCHEME);
+}
+const resourceMap = /* @__PURE__ */ new Map();
+const legacyPromiseMap = /* @__PURE__ */ new Map();
+function toUint8Array$1(data2) {
+  if (data2 instanceof Uint8Array) {
+    return data2;
   }
-  // 订阅任务事件
-  onTaskEvent(listener) {
-    this.taskListeners.push(listener);
-    return () => {
-      const index2 = this.taskListeners.indexOf(listener);
-      if (index2 > -1) {
-        this.taskListeners.splice(index2, 1);
-      }
+  if (ArrayBuffer.isView(data2)) {
+    const view = data2;
+    return new Uint8Array(view.buffer.slice(view.byteOffset, view.byteOffset + view.byteLength));
+  }
+  if (data2 instanceof ArrayBuffer) {
+    return new Uint8Array(data2);
+  }
+  if (Array.isArray(data2)) {
+    return Uint8Array.from(data2);
+  }
+  if (typeof data2 === "string") {
+    return new Uint8Array(bufferExports.Buffer.from(data2, "base64"));
+  }
+  throw new Error("Unsupported buffer data");
+}
+function createResource(entry) {
+  const id = createResourceId(entry.type);
+  resourceMap.set(id, entry);
+  return id;
+}
+function resolveResource(resourceId) {
+  return resourceMap.get(resourceId);
+}
+function updateResource(resourceId, entry) {
+  const existing = resourceMap.get(resourceId);
+  if (!existing) return;
+  resourceMap.set(resourceId, {
+    ...existing,
+    ...entry,
+    data: {
+      ...existing.data,
+      ...entry.data ?? {}
+    },
+    originalMeta: entry.originalMeta ?? existing.originalMeta,
+    thumbnailCache: entry.thumbnailCache ?? existing.thumbnailCache
+  });
+}
+function deleteResource(resourceId) {
+  resourceMap.delete(resourceId);
+  legacyPromiseMap.delete(resourceId);
+}
+async function getImageHolder(fileToken) {
+  if (legacyPromiseMap.has(fileToken)) {
+    return legacyPromiseMap.get(fileToken);
+  }
+  if (!isResourceId(fileToken)) {
+    return void 0;
+  }
+  const entry = resolveResource(fileToken);
+  if (!entry) return void 0;
+  if (entry.data.buffer && entry.data.mime) {
+    return {
+      file_buffer: entry.data.buffer,
+      file_mimetype: entry.data.mime
     };
   }
-  // 订阅任务执行事件
-  onTaskExecution(listener) {
-    this.executionListeners.push(listener);
-    return () => {
-      const index2 = this.executionListeners.indexOf(listener);
-      if (index2 > -1) {
-        this.executionListeners.splice(index2, 1);
-      }
-    };
-  }
-  // 发射任务事件
-  async emitTaskEvent(event) {
-    const fullEvent = {
-      ...event,
-      timestamp: Date.now()
-    };
-    const promises = this.taskListeners.map(
-      (listener) => Promise.resolve(listener(fullEvent)).catch(
-        (error) => console.error("Task event listener error:", error)
-      )
-    );
-    await Promise.allSettled(promises);
-  }
-  // 发射任务执行事件
-  async emitTaskExecution(event) {
-    const fullEvent = {
-      ...event,
-      timestamp: Date.now()
-    };
-    const promises = this.executionListeners.map(
-      (listener) => Promise.resolve(listener(fullEvent)).catch(
-        (error) => console.error("Task execution event listener error:", error)
-      )
-    );
-    await Promise.allSettled(promises);
-  }
-  // 便捷方法：发射任务执行事件
-  async emitTaskExecutionEvent(taskId, action, metadata) {
-    await this.emitTaskExecution({
-      type: "task:execution",
-      taskId,
-      action,
-      metadata
-    });
+  return void 0;
+}
+async function readNativePath(nativePath) {
+  const localFileSystem = uxp.storage.localFileSystem;
+  const tempFolder = await localFileSystem.getTemporaryFolder();
+  try {
+    if (nativePath.includes(tempFolder.nativePath)) {
+      const relativePath = nativePath.replace(tempFolder.nativePath, "").replace(/^[\\/\\]/, "");
+      const tempEntry = await tempFolder.getEntry(relativePath);
+      const arrayBuffer2 = await (tempEntry == null ? void 0 : tempEntry.read({ format: uxp.storage.formats.binary }));
+      return arrayBuffer2 ? new Uint8Array(arrayBuffer2) : void 0;
+    }
+    const url = nativePath.startsWith("file://") ? nativePath : `file://${nativePath}`;
+    const fileEntry = await localFileSystem.getEntryWithUrl(url);
+    const arrayBuffer = await (fileEntry == null ? void 0 : fileEntry.read({ format: uxp.storage.formats.binary }));
+    return arrayBuffer ? new Uint8Array(arrayBuffer) : void 0;
+  } catch {
+    return void 0;
   }
 }
-const taskEventEmitter = new TaskEventEmitter();
-const emitTaskEvent = taskEventEmitter.emitTaskEvent.bind(taskEventEmitter);
-const emitTaskExecutionEvent = taskEventEmitter.emitTaskExecutionEvent.bind(taskEventEmitter);
-mcpMesh.implementAction("taskAdd", async (params) => {
-  try {
-    taskHelpers.addTask(params);
-    mcpMesh.store.setState({ taskLastRun: Date.now() });
-    await emitTaskEvent({
-      type: "task:added",
-      taskId: params.taskId,
-      task: params
-    });
-    if (params.status === "running") {
-      await emitTaskExecutionEvent(params.taskId, "start", params.metadata);
+async function resolveResourceBuffer(resourceOrToken) {
+  const loadLegacy = async () => {
+    const legacy2 = await getImageHolder(resourceOrToken);
+    if (!legacy2) {
+      throw new Error("Resource not found");
     }
-    return { success: true };
-  } catch (error) {
     return {
-      success: false,
-      error: error.message
+      buffer: toUint8Array$1(legacy2.file_buffer),
+      mime: legacy2.file_mimetype
+    };
+  };
+  if (!isResourceId(resourceOrToken)) {
+    return loadLegacy();
+  }
+  const entry = resolveResource(resourceOrToken);
+  if (!entry) {
+    return loadLegacy();
+  }
+  if (entry.data.buffer) {
+    const buffer2 = toUint8Array$1(entry.data.buffer);
+    updateResource(resourceOrToken, {
+      data: {
+        ...entry.data,
+        buffer: buffer2
+      }
+    });
+    return {
+      buffer: buffer2,
+      mime: entry.data.mime
     };
   }
-});
-mcpMesh.implementAction("taskUpdate", async (params) => {
-  try {
-    const existingTask = taskHelpers.getTask(params.taskId);
-    if (!existingTask) {
+  if (entry.data.path) {
+    const buffer2 = await readNativePath(String(entry.data.path));
+    if (buffer2) {
+      updateResource(resourceOrToken, {
+        data: {
+          ...entry.data,
+          buffer: buffer2
+        }
+      });
       return {
-        success: false,
-        error: `Task with ID ${params.taskId} not found`
+        buffer: buffer2,
+        mime: entry.data.mime
       };
     }
-    taskHelpers.updateTask(params.taskId, params);
-    const updatedTask = taskHelpers.getTask(params.taskId);
-    if (params.status === "running") {
-      mcpMesh.store.setState({ taskLastRun: Date.now() });
-    }
-    await emitTaskEvent({
-      type: "task:updated",
-      taskId: params.taskId,
-      task: updatedTask,
-      previousTask: existingTask
-    });
-    if (params.status && params.status !== existingTask.status) {
-      let action;
-      let eventType = "task:updated";
-      switch (params.status) {
-        case "running":
-          action = "start";
-          eventType = "task:started";
-          break;
-        case "completed":
-          action = "complete";
-          eventType = "task:completed";
-          break;
-        case "failed":
-          action = "fail";
-          eventType = "task:failed";
-          break;
-        case "cancelled":
-          action = "cancel";
-          break;
-        default:
-          action = "start";
+  }
+  return loadLegacy();
+}
+async function ensureResourceTempFile(resourceOrToken, options2) {
+  if (!isResourceId(resourceOrToken)) {
+    throw new Error("ensureResourceTempFile expects a resource id");
+  }
+  const entry = resolveResource(resourceOrToken);
+  if (!entry) {
+    throw new Error("Resource not found");
+  }
+  if (entry.data.path) {
+    return entry.data.path;
+  }
+  const { buffer: buffer2, mime: mime2 } = await resolveResourceBuffer(resourceOrToken);
+  const localFileSystem = uxp.storage.localFileSystem;
+  const tempFolder = await localFileSystem.getTemporaryFolder();
+  const ext = (() => {
+    var _a3;
+    if ((_a3 = entry.originalMeta) == null ? void 0 : _a3.fileName) {
+      const name = String(entry.originalMeta.fileName);
+      const idx = name.lastIndexOf(".");
+      if (idx >= 0) {
+        return name.substring(idx);
       }
-      if (eventType !== "task:updated") {
-        await emitTaskEvent({
-          type: eventType,
-          taskId: params.taskId,
-          task: updatedTask,
-          previousTask: existingTask
+    }
+    if (mime2) {
+      const map = {
+        "image/png": ".png",
+        "image/jpeg": ".jpg",
+        "image/jpg": ".jpg",
+        "image/webp": ".webp",
+        "image/gif": ".gif",
+        "image/bmp": ".bmp",
+        "image/tiff": ".tif",
+        "image/heic": ".heic"
+      };
+      if (map[mime2]) {
+        return map[mime2];
+      }
+    }
+    return ".bin";
+  })();
+  const fileName = `resource_${Date.now()}_${Math.random().toString(36).slice(2, 8)}${ext}`;
+  const tempFile = await tempFolder.createFile(fileName, { overwrite: true });
+  await tempFile.write(new Uint8Array(buffer2), { format: uxp.storage.formats.binary });
+  updateResource(resourceOrToken, {
+    data: {
+      ...entry.data,
+      path: tempFile.nativePath
+    }
+  });
+  return tempFile.nativePath;
+}
+const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp"];
+const VIDEO_EXTENSIONS = [".mp4", ".avi", ".mov", ".mkv", ".webm", ".flv", ".wmv"];
+const EXTENSION_TO_MIME = {
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".png": "image/png",
+  ".gif": "image/gif",
+  ".bmp": "image/bmp",
+  ".webp": "image/webp",
+  ".tif": "image/tiff",
+  ".tiff": "image/tiff",
+  ".svg": "image/svg+xml",
+  ".mp4": "video/mp4",
+  ".avi": "video/x-msvideo",
+  ".mov": "video/quicktime",
+  ".mkv": "video/x-matroska",
+  ".webm": "video/webm",
+  ".flv": "video/x-flv",
+  ".wmv": "video/x-ms-wmv"
+};
+const MIME_TO_EXTENSION = Object.entries(EXTENSION_TO_MIME).reduce(
+  (acc, [ext, mime2]) => {
+    if (!acc[mime2]) {
+      acc[mime2] = ext;
+    }
+    return acc;
+  },
+  {}
+);
+function encodeSvgData(svg) {
+  if (typeof btoa === "function") {
+    return btoa(svg);
+  }
+  return bufferExports.Buffer.from(svg, "utf8").toString("base64");
+}
+function buildGenericFileThumbnail(extension) {
+  return "data:image/svg+xml;base64," + encodeSvgData(`
+      <svg width="320" height="320" xmlns="http://www.w3.org/2000/svg">
+        <rect width="320" height="320" fill="#e0e0e0"/>
+        <rect x="80" y="80" width="160" height="160" fill="white" stroke="#ccc" stroke-width="2"/>
+        <text x="160" y="160" text-anchor="middle" font-family="Arial" font-size="16" fill="#666">File</text>
+        <text x="160" y="180" text-anchor="middle" font-family="Arial" font-size="12" fill="#999">${extension}</text>
+      </svg>
+    `);
+}
+function buildVideoThumbnail() {
+  return "data:image/svg+xml;base64," + encodeSvgData(`
+      <svg width="320" height="320" xmlns="http://www.w3.org/2000/svg">
+        <rect width="320" height="320" fill="#000" opacity="0.8"/>
+        <circle cx="160" cy="160" r="50" fill="white" opacity="0.9"/>
+        <polygon points="140,130 140,190 190,160" fill="black"/>
+        <text x="160" y="220" text-anchor="middle" font-family="Arial" font-size="14" fill="white">Video</text>
+      </svg>
+    `);
+}
+function normaliseExtension(value) {
+  if (!value) return void 0;
+  const trimmed = value.trim();
+  if (!trimmed) return void 0;
+  return trimmed.startsWith(".") ? trimmed.toLowerCase() : `.${trimmed.toLowerCase()}`;
+}
+function mimeFromExtension(extension) {
+  const normalised = normaliseExtension(extension);
+  if (!normalised) {
+    return "application/octet-stream";
+  }
+  return EXTENSION_TO_MIME[normalised] ?? "application/octet-stream";
+}
+function isImageExtension(extension) {
+  const normalised = normaliseExtension(extension);
+  if (!normalised) return false;
+  return IMAGE_EXTENSIONS.includes(normalised);
+}
+function extensionFromMime(mime2) {
+  if (!mime2) return void 0;
+  return MIME_TO_EXTENSION[mime2.toLowerCase()] ?? void 0;
+}
+function registerCreateFromExternalAction(context2) {
+  const { mcpMesh: mcpMesh2 } = context2;
+  mcpMesh2.implementAction("fileResource.createFromExternal", async (params) => {
+    try {
+      const { url } = params;
+      const localFileSystem = uxp.storage.localFileSystem;
+      const tempFolder = await localFileSystem.getTemporaryFolder();
+      let buffer2;
+      let extension = ".png";
+      let mimeType = "application/octet-stream";
+      let isImageMime = false;
+      if (url.startsWith("data:")) {
+        const match = url.match(/^data:([^;]+)(;base64)?,(.*)$/);
+        if (!match) {
+          throw new Error("Invalid data URL");
+        }
+        const mime2 = match[1].toLowerCase();
+        const isBase64 = !!match[2];
+        const dataPart = match[3];
+        const inferredExt = extensionFromMime(mime2) ?? ".png";
+        extension = inferredExt;
+        isImageMime = mime2.startsWith("image/");
+        mimeType = mime2;
+        buffer2 = isBase64 ? bufferExports.Buffer.from(dataPart, "base64") : bufferExports.Buffer.from(decodeURIComponent(dataPart), "utf8");
+      } else {
+        const urlObj = new URL(url);
+        const pathname = urlObj.pathname;
+        const lastDotIndex = pathname.lastIndexOf(".");
+        extension = lastDotIndex > -1 ? pathname.substring(lastDotIndex).toLowerCase() : ".png";
+        const filename = urlObj.searchParams.get("filename");
+        if (filename) {
+          const filenameDotIndex = filename.lastIndexOf(".");
+          if (filenameDotIndex > -1) {
+            extension = filename.substring(filenameDotIndex).toLowerCase();
+          }
+        }
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`Failed to download file: ${response.status} ${response.statusText}`);
+        }
+        const arrayBuffer = await response.arrayBuffer();
+        buffer2 = bufferExports.Buffer.from(arrayBuffer);
+        isImageMime = isImageExtension(extension);
+        if (isImageMime) {
+          mimeType = mimeFromExtension(extension);
+        } else {
+          mimeType = response.headers.get("content-type") || "application/octet-stream";
+        }
+      }
+      const timestamp = Date.now();
+      const randomSuffix = Math.random().toString(36).substring(2, 8);
+      const finalFilename = `downloaded_file_${timestamp}_${randomSuffix}${extension}`;
+      const tempFile = await tempFolder.createFile(finalFilename, { overwrite: true });
+      await tempFile.write(new Uint8Array(buffer2), { format: uxp.storage.formats.binary });
+      let thumbnailBase64;
+      let imgWidth;
+      let imgHeight;
+      if (isImageExtension(extension) || isImageMime) {
+        try {
+          const image = await Jimp.read(buffer2);
+          imgWidth = image.width;
+          imgHeight = image.height;
+          image.scaleToFit({ w: 320, h: 320 });
+          const thumbnailBuffer = await image.getBuffer(JimpMime.png);
+          thumbnailBase64 = "data:image/png;base64," + thumbnailBuffer.toString("base64");
+        } catch (error) {
+          thumbnailBase64 = buildGenericFileThumbnail(extension);
+        }
+      } else if (VIDEO_EXTENSIONS.includes(extension)) {
+        thumbnailBase64 = buildVideoThumbnail();
+      } else {
+        thumbnailBase64 = buildGenericFileThumbnail(extension);
+      }
+      const resourceId = createResource({
+        type: "file",
+        data: {
+          buffer: new Uint8Array(buffer2),
+          mime: mimeType,
+          path: tempFile.nativePath
+        },
+        originalMeta: {
+          url,
+          fileName: finalFilename,
+          width: imgWidth,
+          height: imgHeight,
+          extension
+        }
+      });
+      updateResource(resourceId, {
+        thumbnailCache: {
+          base64: thumbnailBase64,
+          width: imgWidth,
+          height: imgHeight,
+          mime: "image/png",
+          generatedAt: Date.now()
+        }
+      });
+      return {
+        resource: resourceId,
+        thumbnail: thumbnailBase64,
+        width: imgWidth,
+        height: imgHeight,
+        mimeType
+      };
+    } catch (error) {
+      return { error: (error == null ? void 0 : error.stack) || (error == null ? void 0 : error.message) || String(error) };
+    }
+  });
+}
+function registerDeleteDownloadedImageAction(context2) {
+  const { mcpMesh: mcpMesh2 } = context2;
+  mcpMesh2.implementAction("fileResource.delete", async (params) => {
+    try {
+      const { resources } = params;
+      const localFileSystem = uxp.storage.localFileSystem;
+      const tempFolder = await localFileSystem.getTemporaryFolder();
+      for (const resourceId of resources) {
+        if (typeof resourceId !== "string") continue;
+        const entry = isResourceId(resourceId) ? resolveResource(resourceId) : void 0;
+        if (entry == null ? void 0 : entry.data.path) {
+          try {
+            const nativePath = String(entry.data.path);
+            if (nativePath.includes(tempFolder.nativePath)) {
+              const relativePath = nativePath.replace(tempFolder.nativePath, "").replace(/^[\\/\\]/, "");
+              const file = await tempFolder.getEntry(relativePath);
+              await (file == null ? void 0 : file.delete());
+            }
+          } catch {
+          }
+        }
+        if (isResourceId(resourceId)) {
+          deleteResource(resourceId);
+        }
+      }
+      return {};
+    } catch (error) {
+      return {
+        error: (error == null ? void 0 : error.stack) || (error == null ? void 0 : error.message) || String(error)
+      };
+    }
+  });
+}
+function registerThumbnailAction(context2) {
+  const { mcpMesh: mcpMesh2 } = context2;
+  mcpMesh2.implementAction("fileResource.thumbnail", async (params) => {
+    try {
+      const { resource, maxSize = 192 } = params;
+      if (typeof resource !== "string" || !resource.length) {
+        throw new Error("fileResource.thumbnail: resource is required");
+      }
+      if (!isResourceId(resource)) {
+        throw new Error("fileResource.thumbnail: invalid resource id");
+      }
+      const entry = resolveResource(resource);
+      if (!entry) {
+        throw new Error("fileResource.thumbnail: resource not found");
+      }
+      const cached = entry.thumbnailCache;
+      if (cached == null ? void 0 : cached.base64) {
+        return {
+          thumbnail: cached.base64,
+          width: cached.width,
+          height: cached.height
+        };
+      }
+      const { buffer: buffer2 } = await resolveResourceBuffer(resource);
+      const image = await Jimp.read(bufferExports.Buffer.from(buffer2));
+      const origW = image.width;
+      const origH = image.height;
+      image.scaleToFit({ w: maxSize, h: maxSize });
+      const thumbnailBuffer = await image.getBuffer(JimpMime.png);
+      const base64 = "data:image/png;base64," + thumbnailBuffer.toString("base64");
+      updateResource(resource, {
+        thumbnailCache: {
+          base64,
+          width: image.width,
+          height: image.height,
+          mime: "image/png",
+          generatedAt: Date.now()
+        }
+      });
+      return {
+        thumbnail: base64,
+        width: origW,
+        height: origH
+      };
+    } catch (error) {
+      return { error: (error == null ? void 0 : error.message) || String(error) };
+    }
+  });
+}
+function registerSaveAsAction(context2) {
+  const { mcpMesh: mcpMesh2 } = context2;
+  mcpMesh2.implementAction("fileResource.saveAs", async (params) => {
+    var _a3;
+    try {
+      const { resources = [] } = params;
+      const localFileSystem = uxp.storage.localFileSystem;
+      const tempFolder = await localFileSystem.getTemporaryFolder();
+      let saveFolder;
+      try {
+        saveFolder = await localFileSystem.getFolder();
+      } catch (error) {
+        const message = ((error == null ? void 0 : error.message) || "").toLowerCase();
+        if (message.includes("cancel")) {
+          return { error: "cancelled" };
+        }
+        throw error;
+      }
+      for (const resourceId of resources) {
+        if (typeof resourceId !== "string") continue;
+        try {
+          const ensuredPath = isResourceId(resourceId) ? await ensureResourceTempFile(resourceId).catch(() => void 0) : void 0;
+          if (!ensuredPath) {
+            continue;
+          }
+          const nativePath = String(ensuredPath);
+          if (nativePath.includes(tempFolder.nativePath)) {
+            const relativePath = nativePath.replace(tempFolder.nativePath, "").replace(/^[\\/\\]/, "");
+            const tempFile = await tempFolder.getEntry(relativePath);
+            if (!tempFile) {
+              continue;
+            }
+            const fileName = tempFile.name;
+            const arrayBuffer2 = await tempFile.read({ format: uxp.storage.formats.binary });
+            const saveFile2 = await saveFolder.createFile(fileName, { overwrite: true });
+            await saveFile2.write(arrayBuffer2, { format: uxp.storage.formats.binary });
+            continue;
+          }
+          const entryUrl = nativePath.startsWith("file://") ? nativePath : `file://${nativePath}`;
+          const fileEntry = await localFileSystem.getEntryWithUrl(entryUrl);
+          if (!fileEntry) {
+            continue;
+          }
+          const resourceEntry = isResourceId(resourceId) ? resolveResource(resourceId) : void 0;
+          const fallbackName = typeof ((_a3 = resourceEntry == null ? void 0 : resourceEntry.originalMeta) == null ? void 0 : _a3.fileName) === "string" ? String(resourceEntry.originalMeta.fileName) : fileEntry.name || `resource-${Date.now()}`;
+          const arrayBuffer = await fileEntry.read({ format: uxp.storage.formats.binary });
+          const saveFile = await saveFolder.createFile(fallbackName, { overwrite: true });
+          await saveFile.write(arrayBuffer, { format: uxp.storage.formats.binary });
+        } catch {
+        }
+      }
+      return {};
+    } catch (error) {
+      return {
+        error: (error == null ? void 0 : error.stack) || (error == null ? void 0 : error.message) || String(error)
+      };
+    }
+  });
+}
+function toUint8Array(buffer2) {
+  return buffer2 instanceof Uint8Array ? buffer2 : new Uint8Array(buffer2);
+}
+function isVideoExtension(extension) {
+  const normalised = normaliseExtension(extension);
+  if (!normalised) return false;
+  return VIDEO_EXTENSIONS.includes(normalised);
+}
+function extensionFromName(name) {
+  if (!name) return void 0;
+  const dot = name.lastIndexOf(".");
+  if (dot === -1) return void 0;
+  return normaliseExtension(name.slice(dot));
+}
+async function materializeViaSystemDialog(params) {
+  const options2 = (params == null ? void 0 : params.types) ? { types: params.types } : void 0;
+  const file = await uxp.storage.localFileSystem.getFileForOpening(options2).catch(() => void 0);
+  if (!file) {
+    throw new Error("cancelled");
+  }
+  const name = file.name ?? "local-file";
+  const extension = extensionFromName(name);
+  const mime2 = mimeFromExtension(extension);
+  const arrayBuffer = await file.read({ format: uxp.storage.formats.binary });
+  return {
+    buffer: toUint8Array(arrayBuffer),
+    mime: mime2,
+    name,
+    meta: {
+      nativePath: file.nativePath
+    }
+  };
+}
+function registerCreateFromLocalAction(context2) {
+  const { mcpMesh: mcpMesh2 } = context2;
+  mcpMesh2.implementAction(
+    "fileResource.createFromLocal",
+    async (params = {}) => {
+      var _a3, _b2;
+      try {
+        const payload = ((_a3 = context2.materializers) == null ? void 0 : _a3.fromLocalFile) ? await context2.materializers.fromLocalFile(params) : await materializeViaSystemDialog(params);
+        const buffer2 = toUint8Array(payload.buffer);
+        let extension = extensionFromName(payload.name);
+        if (!extension && payload.mime) {
+          extension = extensionFromMime(payload.mime);
+        }
+        const mime2 = payload.mime ?? mimeFromExtension(extension);
+        let thumbnailBase64 = payload.thumbnail;
+        let imgWidth = payload.width;
+        let imgHeight = payload.height;
+        if (!thumbnailBase64) {
+          if (isImageExtension(extension)) {
+            try {
+              const image = await Jimp.read(bufferExports.Buffer.from(buffer2));
+              imgWidth = imgWidth ?? image.width;
+              imgHeight = imgHeight ?? image.height;
+              image.scaleToFit({ w: 320, h: 320 });
+              const thumbnailBuffer = await image.getBuffer(JimpMime.png);
+              thumbnailBase64 = "data:image/png;base64," + thumbnailBuffer.toString("base64");
+            } catch {
+              thumbnailBase64 = buildGenericFileThumbnail(extension ?? "");
+            }
+          } else if (isVideoExtension(extension)) {
+            thumbnailBase64 = buildVideoThumbnail();
+          } else {
+            thumbnailBase64 = buildGenericFileThumbnail(extension ?? "");
+          }
+        }
+        const resourceId = createResource({
+          type: "file",
+          data: {
+            buffer: buffer2,
+            mime: mime2,
+            path: (_b2 = payload.meta) == null ? void 0 : _b2.nativePath
+          },
+          originalMeta: {
+            fileName: payload.name,
+            width: imgWidth,
+            height: imgHeight,
+            ...payload.meta
+          }
         });
+        if (thumbnailBase64) {
+          updateResource(resourceId, {
+            thumbnailCache: {
+              base64: thumbnailBase64,
+              width: imgWidth,
+              height: imgHeight,
+              mime: "image/png",
+              generatedAt: Date.now()
+            }
+          });
+        }
+        return {
+          resource: resourceId,
+          thumbnail: thumbnailBase64,
+          width: imgWidth,
+          height: imgHeight,
+          mime: mime2
+        };
+      } catch (error) {
+        const message = ((error == null ? void 0 : error.message) || String(error)).toLowerCase();
+        if (message.includes("cancel")) {
+          return { error: "cancelled" };
+        }
+        return { error: (error == null ? void 0 : error.stack) || (error == null ? void 0 : error.message) || String(error) };
       }
-      await emitTaskExecutionEvent(params.taskId, action, updatedTask == null ? void 0 : updatedTask.metadata);
     }
-    return { success: true };
-  } catch (error) {
-    return {
-      success: false,
-      error: error.message
-    };
+  );
+}
+const PNG_MIME$1 = "image/png";
+async function buildThumbnail(image) {
+  const clone2 = image.clone();
+  clone2.scaleToFit({ w: 320, h: 320 });
+  const buffer2 = await clone2.getBuffer(JimpMime.png);
+  return "data:image/png;base64," + bufferExports.Buffer.from(buffer2).toString("base64");
+}
+function ensureParams(params) {
+  if (!params) {
+    return {};
   }
-});
-mcpMesh.implementAction("taskRemove", async (params) => {
+  return params;
+}
+function registerCreateFromCBMAction(context2) {
+  const { mcpMesh: mcpMesh2 } = context2;
+  mcpMesh2.implementAction(
+    "fileResource.createFromCBM",
+    async (rawParams) => {
+      var _a3;
+      try {
+        try {
+          console.log("[createFromCBM] invoke", JSON.stringify(rawParams));
+        } catch {
+          console.log("[createFromCBM] invoke", rawParams);
+        }
+        const materializer = (_a3 = context2.materializers) == null ? void 0 : _a3.fromCBM;
+        if (!materializer) {
+          return { error: "materializers.fromCBM is not provided" };
+        }
+        const params = ensureParams(rawParams);
+        const materialized = await materializer(params);
+        if (!(materialized == null ? void 0 : materialized.image)) {
+          throw new Error("fromCBM returned empty image payload");
+        }
+        const image = materialized.image;
+        const width = image.bitmap.width;
+        const height = image.bitmap.height;
+        const mime2 = materialized.mime ?? PNG_MIME$1;
+        const pngBuffer = await image.getBuffer(JimpMime.png);
+        const resourceId = createResource({
+          type: "file",
+          data: {
+            buffer: new Uint8Array(pngBuffer),
+            mime: mime2
+          },
+          originalMeta: {
+            width,
+            height,
+            ...materialized.meta ?? {}
+          }
+        });
+        const thumbnail = typeof materialized.thumbnail === "string" ? materialized.thumbnail : await buildThumbnail(image);
+        updateResource(resourceId, {
+          thumbnailCache: {
+            base64: thumbnail,
+            width,
+            height,
+            mime: PNG_MIME$1,
+            generatedAt: Date.now()
+          }
+        });
+        const response = {
+          resource: resourceId,
+          thumbnail,
+          width,
+          height,
+          mime: mime2
+        };
+        try {
+          console.log(
+            "[createFromCBM] response",
+            JSON.stringify({
+              resource: resourceId,
+              width,
+              height,
+              hasThumbnail: typeof thumbnail === "string"
+            })
+          );
+        } catch {
+          console.log("[createFromCBM] response", {
+            resource: resourceId,
+            width,
+            height,
+            hasThumbnail: typeof thumbnail === "string"
+          });
+        }
+        return response;
+      } catch (error) {
+        try {
+          console.error("[createFromCBM] error", error);
+        } catch {
+        }
+        return {
+          error: (error == null ? void 0 : error.message) || String(error)
+        };
+      }
+    }
+  );
+}
+function registerBoundaryNormalizeAction(context2) {
+  const { mcpMesh: mcpMesh2 } = context2;
+  mcpMesh2.implementAction("boundary.normalize", async (params) => {
+    var _a3;
+    try {
+      const resolver = (_a3 = context2.resolvers) == null ? void 0 : _a3.boundaryToRect;
+      if (!resolver) {
+        return { error: "resolvers.boundaryToRect is not provided" };
+      }
+      if (!(params == null ? void 0 : params.boundary)) {
+        throw new Error("boundary parameter is required");
+      }
+      const rectUri = await resolver(params.boundary);
+      return { boundary: rectUri };
+    } catch (error) {
+      return { error: (error == null ? void 0 : error.stack) || (error == null ? void 0 : error.message) || String(error) };
+    }
+  });
+}
+function registerLayerResolveAction(context2) {
+  const { mcpMesh: mcpMesh2 } = context2;
+  mcpMesh2.implementAction("layer.resolve", async (params) => {
+    var _a3, _b2;
+    try {
+      if (!(params == null ? void 0 : params.uri)) {
+        throw new Error("uri parameter is required");
+      }
+      if (!(params == null ? void 0 : params.type)) {
+        throw new Error("type parameter is required");
+      }
+      if (params.type === "content") {
+        const resolver = (_a3 = context2.resolvers) == null ? void 0 : _a3.contentToLayer;
+        if (!resolver) {
+          return { error: "resolvers.contentToLayer is not provided" };
+        }
+        const resolved = await resolver(params.uri);
+        return { uri: resolved };
+      }
+      if (params.type === "mask") {
+        const resolver = (_b2 = context2.resolvers) == null ? void 0 : _b2.maskToLayer;
+        if (!resolver) {
+          return { error: "resolvers.maskToLayer is not provided" };
+        }
+        const resolved = await resolver(params.uri);
+        return { uri: resolved };
+      }
+      throw new Error(`Unsupported type: ${params.type}`);
+    } catch (error) {
+      return { error: (error == null ? void 0 : error.stack) || (error == null ? void 0 : error.message) || String(error) };
+    }
+  });
+}
+function registerImagingActions(context2) {
+  registerCreateFromExternalAction(context2);
+  registerCreateFromLocalAction(context2);
+  registerCreateFromCBMAction(context2);
+  registerDeleteDownloadedImageAction(context2);
+  registerThumbnailAction(context2);
+  registerSaveAsAction(context2);
+  registerBoundaryNormalizeAction(context2);
+  registerLayerResolveAction(context2);
+}
+const UXP_PROTOCOL = "uxp:";
+const BOUNDARY_HOST$1 = "boundary";
+const CONTENT_HOST$1 = "content";
+const MASK_HOST$1 = "mask";
+const BOUNDARY_SCHEME$1 = `uxp://${BOUNDARY_HOST$1}`;
+const CONTENT_SCHEME$1 = `uxp://${CONTENT_HOST$1}`;
+const MASK_SCHEME = `uxp://${MASK_HOST$1}`;
+const RECT_QUERY_KEYS = [
+  "leftDistance",
+  "topDistance",
+  "rightDistance",
+  "bottomDistance",
+  "width",
+  "height"
+];
+function normalizeDocId$1(docId) {
+  const numeric = Number(docId);
+  if (!Number.isFinite(numeric)) return 0;
+  const normalized = Math.floor(numeric);
+  return normalized < 0 ? 0 : normalized;
+}
+function appendQuery$1(base2, params) {
+  const searchParams = new URLSearchParams();
+  for (const [key2, value] of Object.entries(params)) {
+    if (value === void 0 || value === null || value === "") continue;
+    searchParams.set(key2, String(value));
+  }
+  const query = searchParams.toString();
+  return query ? `${base2}?${query}` : base2;
+}
+function ensureFiniteNumber$1(value, label) {
+  if (!Number.isFinite(value)) {
+    throw new Error(`${label} must be a finite number`);
+  }
+}
+function parseNumberQuery$1(url, key2) {
+  const raw = url.searchParams.get(key2);
+  if (raw == null || raw === "") return void 0;
+  const num = Number(raw);
+  ensureFiniteNumber$1(num, key2);
+  return num;
+}
+function serializeBoundaryRect(rect) {
+  const serialized = {};
+  for (const key2 of RECT_QUERY_KEYS) {
+    serialized[key2] = Number(rect[key2]);
+  }
+  return serialized;
+}
+function deserializeBoundaryRect(url) {
+  const rect = {};
+  for (const key2 of RECT_QUERY_KEYS) {
+    const value = parseNumberQuery$1(url, key2);
+    if (value === void 0) {
+      throw new Error(`boundary rect missing query parameter "${key2}"`);
+    }
+    rect[key2] = value;
+  }
+  return rect;
+}
+function ensureUxpUrl(uri2, expectedHost) {
+  let parsed;
   try {
-    const existingTask = taskHelpers.getTask(params.taskId);
-    const deleted = taskHelpers.removeTask(params.taskId);
-    if (!deleted) {
-      return {
-        success: false,
-        error: `Task with ID ${params.taskId} not found`
-      };
-    }
-    await emitTaskEvent({
-      type: "task:removed",
-      taskId: params.taskId,
-      previousTask: existingTask
-    });
-    return { success: true };
-  } catch (error) {
+    parsed = new URL(uri2);
+  } catch {
+    throw new Error(`Invalid ${expectedHost} uri: ${uri2}`);
+  }
+  if (parsed.protocol !== UXP_PROTOCOL) {
+    throw new Error(`${expectedHost} uri must use uxp:// scheme`);
+  }
+  if (parsed.hostname !== expectedHost) {
+    throw new Error(`${expectedHost} uri host must be "${expectedHost}"`);
+  }
+  const [docSegment, ...rest] = parsed.pathname.split("/").filter(Boolean);
+  if (!docSegment) {
+    throw new Error(`${expectedHost} uri is missing required segments`);
+  }
+  const docId = Number(docSegment);
+  ensureFiniteNumber$1(docId, "docId");
+  if (!Number.isInteger(docId) || docId < 0) {
+    throw new Error("docId must be a non-negative integer");
+  }
+  return { parsed, docId, segments: rest };
+}
+function parseBoundaryResource$1(resource) {
+  const { parsed, docId, segments } = ensureUxpUrl(resource, BOUNDARY_HOST$1);
+  const boundaryType = segments[0];
+  if (!boundaryType || boundaryType === "canvas" || boundaryType === "curlayer" || boundaryType === "selection") {
     return {
-      success: false,
-      error: error.message
+      docId,
+      boundary: boundaryType ?? "canvas",
+      imageSize: parseNumberQuery$1(parsed, "imageSize"),
+      imageQuality: parseNumberQuery$1(parsed, "imageQuality")
     };
   }
-});
+  if (boundaryType !== "rect") {
+    throw new Error(`Unsupported boundary type "${boundaryType}"`);
+  }
+  return {
+    docId,
+    boundary: deserializeBoundaryRect(parsed),
+    imageSize: parseNumberQuery$1(parsed, "imageSize"),
+    imageQuality: parseNumberQuery$1(parsed, "imageQuality")
+  };
+}
+function parseContentResource$1(resource) {
+  const { parsed, docId, segments } = ensureUxpUrl(resource, CONTENT_HOST$1);
+  const contentType = segments[0];
+  if (!contentType) {
+    throw new Error("content uri is missing required segments");
+  }
+  if (contentType === "canvas" || contentType === "selection") {
+    return {
+      docId,
+      content: contentType
+    };
+  }
+  if (contentType === "curlayer") {
+    return {
+      docId,
+      content: "curlayer",
+      layerIdentify: parsed.searchParams.get("layerId") ?? void 0
+    };
+  }
+  if (contentType === "layer") {
+    const layerIdentify = parsed.searchParams.get("layerId");
+    if (!layerIdentify) {
+      throw new Error("content uri with /layer requires layerId query parameter");
+    }
+    return {
+      docId,
+      content: "curlayer",
+      layerIdentify
+    };
+  }
+  throw new Error(`Unsupported content type "${contentType}"`);
+}
+function parseMaskResource(resource) {
+  const { parsed, docId, segments } = ensureUxpUrl(resource, MASK_HOST$1);
+  const contentType = segments[0];
+  if (!contentType) {
+    throw new Error("mask content uri is missing required segments");
+  }
+  const reverseParam = parsed.searchParams.get("reverse");
+  const reverse = reverseParam === "1" || (reverseParam == null ? void 0 : reverseParam.toLowerCase()) === "true";
+  if (contentType === "canvas" || contentType === "selection") {
+    return { docId, content: contentType, reverse };
+  }
+  if (contentType === "curlayer") {
+    return {
+      docId,
+      content: "curlayer",
+      reverse,
+      layerIdentify: parsed.searchParams.get("layerId") ?? void 0
+    };
+  }
+  if (contentType === "layer") {
+    const layerIdentify = parsed.searchParams.get("layerId");
+    if (!layerIdentify) {
+      throw new Error("mask content uri with /layer requires layerId query parameter");
+    }
+    return {
+      docId,
+      content: "curlayer",
+      layerIdentify,
+      reverse
+    };
+  }
+  throw new Error(`Unsupported mask content type "${contentType}"`);
+}
+function buildBoundaryUri$1(docId, boundary, options2) {
+  const docSegment = normalizeDocId$1(docId);
+  if (!boundary || boundary === "canvas" || boundary === "curlayer" || boundary === "selection") {
+    return appendQuery$1(`${BOUNDARY_SCHEME$1}/${docSegment}/${boundary ?? "canvas"}`, {
+      imageSize: options2 == null ? void 0 : options2.imageSize,
+      imageQuality: options2 == null ? void 0 : options2.imageQuality
+    });
+  }
+  return appendQuery$1(`${BOUNDARY_SCHEME$1}/${docSegment}/rect`, {
+    ...serializeBoundaryRect(boundary),
+    imageSize: options2 == null ? void 0 : options2.imageSize,
+    imageQuality: options2 == null ? void 0 : options2.imageQuality
+  });
+}
+function buildContentUri$1(docId, content, layerIdentify) {
+  const docSegment = normalizeDocId$1(docId);
+  if (content === "curlayer") {
+    if (layerIdentify && layerIdentify !== "") {
+      return appendQuery$1(`${CONTENT_SCHEME$1}/${docSegment}/layer`, { layerId: layerIdentify });
+    }
+    return `${CONTENT_SCHEME$1}/${docSegment}/curlayer`;
+  }
+  return `${CONTENT_SCHEME$1}/${docSegment}/${content}`;
+}
+function buildMaskContentUri(docId, content, layerIdentify, reverse) {
+  const docSegment = normalizeDocId$1(docId);
+  if (content === "curlayer") {
+    return appendQuery$1(`${MASK_SCHEME}/${docSegment}/layer`, {
+      layerId: layerIdentify ?? void 0,
+      reverse: reverse ? 1 : void 0
+    });
+  }
+  return appendQuery$1(`${MASK_SCHEME}/${docSegment}/${content}`, {
+    reverse: reverse ? 1 : void 0
+  });
+}
+function extractDocIdFromUris(uris) {
+  for (const uri2 of uris) {
+    if (!uri2) continue;
+    try {
+      const parsed = new URL(uri2);
+      if (parsed.protocol !== UXP_PROTOCOL) continue;
+      const docSegment = parsed.pathname.split("/").filter(Boolean)[0];
+      if (!docSegment) continue;
+      const numeric = Number(docSegment);
+      if (!Number.isFinite(numeric)) continue;
+      const normalized = Math.floor(numeric);
+      if (normalized >= 0) {
+        return normalized;
+      }
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+const _SpeicialIDManager = class _SpeicialIDManager {
+  static is_SPECIAL_DOCUMENT_CURRENT(str) {
+    return this.SPECIAL_DOCUMENT_CURRENT == str;
+  }
+  static get_SPECIAL_DOCUMENT_CURRENT() {
+    return this.SPECIAL_DOCUMENT_CURRENT;
+  }
+  static is_SPECIAL_LAYER_FIT(str) {
+    return this.SPECIAL_LAYER_KEEP_SIZE == str;
+  }
+  static get_SPECIAL_LAYER_FIT() {
+    return this.SPECIAL_LAYER_KEEP_SIZE;
+  }
+  static is_SPECIAL_LAYER_USE_CANVAS(str) {
+    return this.SPECIAL_LAYER_USE_CANVAS == str;
+  }
+  static get_SPECIAL_LAYER_USE_CANVAS() {
+    return this.SPECIAL_LAYER_USE_CANVAS;
+  }
+  static is_SPECIAL_LAYER_NEW_LAYER(str) {
+    return this.SPECIAL_LAYER_NEW_LAYER == str;
+  }
+  static get_SPECIAL_LAYER_NEW_LAYER() {
+    return this.SPECIAL_LAYER_NEW_LAYER;
+  }
+  static is_SPECIAL_LAYER_SELECTED_LAYER(str) {
+    return this.SPECIAL_LAYER_SELECTED_LAYER == str;
+  }
+  static get_SPECIAL_LAYER_SELECTED_LAYER() {
+    return this.SPECIAL_LAYER_SELECTED_LAYER;
+  }
+  static is_SPECIAL_LAYER_PREVIEW_DOCUMENT(str) {
+    return this.SPECIAL_LAYER_PREVIEW_DOCUMENT == str;
+  }
+  static get_SPECIAL_LAYER_PREVIEW_DOCUMENT() {
+    return this.SPECIAL_LAYER_PREVIEW_DOCUMENT;
+  }
+  static getSpecialDocumentCurrent() {
+    return _SpeicialIDManager.SPECIAL_DOCUMENT_CURRENT;
+  }
+  static getSpecialLayerForGet() {
+    return [
+      _SpeicialIDManager.SPECIAL_LAYER_USE_CANVAS,
+      _SpeicialIDManager.SPECIAL_LAYER_SELECTED_LAYER
+    ];
+  }
+  static getSpecialLayerForSend() {
+    return [
+      _SpeicialIDManager.SPECIAL_LAYER_NEW_LAYER,
+      _SpeicialIDManager.SPECIAL_LAYER_SELECTED_LAYER
+    ];
+  }
+  static getSpecialDocumentForPreview() {
+    return _SpeicialIDManager.SPECIAL_LAYER_PREVIEW_DOCUMENT;
+  }
+  static fix(str) {
+    if (this.is_SPECIAL_DOCUMENT_CURRENT(str)) {
+      return this.SPECIAL_DOCUMENT_CURRENT;
+    }
+    if (this.is_SPECIAL_LAYER_NEW_LAYER(str)) {
+      return this.SPECIAL_LAYER_NEW_LAYER;
+    }
+    if (this.is_SPECIAL_LAYER_PREVIEW_DOCUMENT(str)) {
+      return this.SPECIAL_LAYER_PREVIEW_DOCUMENT;
+    }
+    if (this.is_SPECIAL_LAYER_USE_CANVAS(str)) {
+      return this.SPECIAL_LAYER_USE_CANVAS;
+    }
+    if (this.is_SPECIAL_LAYER_SELECTED_LAYER(str)) {
+      return this.SPECIAL_LAYER_SELECTED_LAYER;
+    }
+    return str;
+  }
+};
+__publicField2(_SpeicialIDManager, "SPECIAL_DOCUMENT_CURRENT", "### Active Document ###");
+__publicField2(_SpeicialIDManager, "SPECIAL_LAYER_KEEP_SIZE", "### Keep Size or Fit Canvas ###");
+__publicField2(_SpeicialIDManager, "SPECIAL_LAYER_USE_CANVAS", "### The Canvas ###");
+__publicField2(_SpeicialIDManager, "SPECIAL_LAYER_NEW_LAYER", "### New Layer ###");
+__publicField2(_SpeicialIDManager, "SPECIAL_LAYER_SELECTED_LAYER", "### Selected Layer ###");
+__publicField2(_SpeicialIDManager, "SPECIAL_LAYER_PREVIEW_DOCUMENT", "_SDPPP_PSD_");
+let SpeicialIDManager = _SpeicialIDManager;
 const zhCN = {
   // 已有的翻译资源（从 locales/zh-CN.ts）
   "preview.show": "显示预览框 ({{count}}张图片)",
@@ -125132,6 +126168,8 @@ const zhCN = {
   "image.upload.primary.manual": "获取图片",
   "image.upload.primary.hint.line1": "本节点默认继承:",
   "image.upload.primary.hint.line2": "主图",
+  "workflow.output.destination.title": "输出至：",
+  "workflow.output.destination.canvas": "全图",
   "image.upload.primary.advanced": "高级选图",
   "image.upload.primary.advanced.modify": "修改",
   "image.upload.primary.advanced.reset": "重置",
@@ -125212,7 +126250,7 @@ const zhCN = {
   "boundary.image_quality": "图像质量 (%)",
   "boundary.image_quality_required": "请输入质量百分比",
   "boundary.image_quality_range": "范围 1-100",
-  "boundary.preview_main_image": "主图",
+  "boundary.preview_main_image": "输出区域",
   "boundary.preview_select": "设为选区",
   "boundary.settings": "调整输入设置",
   "convert widget {0} failed:": "控件 {0} 转换失败：",
@@ -125230,7 +126268,13 @@ const zhCN = {
   "dialog.image_source.canvas_curlayer": "以画布边界获取当前图层",
   "dialog.image_source.curlayer_canvas": "以当前图层边界获取画布",
   "dialog.image_source.curlayer_curlayer": "以当前图层边界获取当前图层",
-  "dialog.image_source.local_file": "从磁盘获取"
+  "dialog.image_source.local_file": "从磁盘获取",
+  "dialog.simple_source.title": "选择素材来源",
+  "dialog.simple_source.canvas": "画布",
+  "dialog.simple_source.current_layer": "当前图层",
+  "dialog.simple_source.local_file": "选择文件",
+  "dialog.simple_source.no_active_layer": "当前没有可用图层",
+  "dialog.simple_source.pick_error": "选择文件失败，请重试"
 };
 const enUS = {
   // Existing translations (from locales/en-US.ts)
@@ -125422,6 +126466,8 @@ const enUS = {
   "image.upload.primary.hint": "This node defaults to current layer + mask",
   "image.upload.primary.hint.line1": "Defaults using",
   "image.upload.primary.hint.line2": "Main Image",
+  "workflow.output.destination.title": "Output to:",
+  "workflow.output.destination.canvas": "Full Canvas",
   "image.upload.primary.advanced": "Advanced selection",
   "image.upload.primary.advanced.modify": "Modify",
   "image.upload.primary.advanced.reset": "Reset",
@@ -125502,7 +126548,7 @@ const enUS = {
   "boundary.image_quality": "Image quality (%)",
   "boundary.image_quality_required": "Enter a quality percentage",
   "boundary.image_quality_range": "Range 1-100",
-  "boundary.preview_main_image": "Main Img",
+  "boundary.preview_main_image": "Output to",
   "boundary.preview_select": "Get selection",
   "boundary.settings": "Adjust input settings",
   "convert widget {0} failed:": "Failed to convert widget {0}:",
@@ -125520,7 +126566,13 @@ const enUS = {
   "dialog.image_source.canvas_curlayer": "Fetch current layer with canvas boundary",
   "dialog.image_source.curlayer_canvas": "Fetch canvas with current-layer boundary",
   "dialog.image_source.curlayer_curlayer": "Fetch current layer with current-layer boundary",
-  "dialog.image_source.local_file": "Import from disk"
+  "dialog.image_source.local_file": "Import from disk",
+  "dialog.simple_source.title": "Select Source",
+  "dialog.simple_source.canvas": "Canvas",
+  "dialog.simple_source.current_layer": "Current Layer",
+  "dialog.simple_source.local_file": "Choose File",
+  "dialog.simple_source.no_active_layer": "No active layer available",
+  "dialog.simple_source.pick_error": "Failed to pick file. Please try again."
 };
 const isString = (obj) => typeof obj === "string";
 const defer = () => {
@@ -127802,710 +128854,6 @@ if (!instance.isInitialized) {
   });
 }
 const sdpppSDK = globalThis.sdpppSDK;
-class ModalStateRestorer {
-  constructor() {
-    __publicField2(this, "promise");
-    __publicField2(this, "restore");
-    this.restore = () => {
-    };
-    this.promise = new Promise((resolve2) => {
-      this.restore = resolve2;
-    });
-  }
-  add(fn) {
-    this.promise.then(fn);
-  }
-}
-photoshop.core.setExecutionMode({ enableErrorStacktraces: true });
-let modalStatePromise = Promise.resolve();
-async function runNextModalState(fn, options2) {
-  const dontRecoverSelection = options2.dontRecoverSelection || false;
-  const suspendHistory = options2.suspendHistory === void 0 ? true : !!options2.suspendHistory;
-  let restorer = new ModalStateRestorer();
-  let anyLayerSelectedChanged = false;
-  let activeLayers = [];
-  let formerActiveLayersVisible = [];
-  let commandName = options2.commandName;
-  if (!dontRecoverSelection) {
-    photoshop.app.activeDocument.activeLayers.forEach((layer) => activeLayers.push(layer));
-    if (options2.document && photoshop.app.activeDocument.id != options2.document.id) {
-      options2.document.activeLayers.forEach((layer) => activeLayers.push(layer));
-    }
-    formerActiveLayersVisible = activeLayers.map((layer) => layer.visible);
-    restorer.add(() => {
-      activeLayers.forEach((formerActiveLayer) => {
-        if (!formerActiveLayer.selected) {
-          formerActiveLayer.selected = true;
-          anyLayerSelectedChanged = true;
-        }
-      });
-      if (options2.document == photoshop.app.activeDocument) {
-        activeLayers.forEach((formerActiveLayer, index2) => {
-          formerActiveLayer.visible = formerActiveLayersVisible[index2];
-        });
-      }
-    });
-  }
-  let suspensionID = null;
-  modalStatePromise = modalStatePromise.catch((e4) => e4).then(() => {
-    return new Promise((resolve2) => {
-      checkModal();
-      function checkModal() {
-        if (!photoshop.core.isModal()) resolve2();
-        else requestAnimationFrame(checkModal);
-      }
-    });
-  }).then(() => {
-    return photoshop.core.executeAsModal(async function(executionContext, ...args) {
-      suspensionID = suspendHistory && options2.document ? await executionContext.hostControl.suspendHistory({
-        "documentID": options2.document.id,
-        "name": commandName
-      }) : null;
-      restorer.add(async () => {
-        await new Promise(requestAnimationFrame);
-        if (!anyLayerSelectedChanged) {
-          if (suspendHistory && suspensionID) {
-            executionContext.hostControl.resumeHistory(suspensionID);
-          }
-        }
-      });
-      try {
-        const ret = await fn(restorer, executionContext, ...args);
-        restorer.restore(true);
-        return ret;
-      } catch (e4) {
-        restorer.restore(false);
-        throw e4;
-      }
-    }, { commandName: Math.random().toString() });
-  });
-  let res = null;
-  let error = null;
-  try {
-    await modalStatePromise;
-  } catch (e4) {
-    error = e4;
-  }
-  if (anyLayerSelectedChanged) {
-    modalStatePromise = photoshop.core.executeAsModal(async (executionContext) => {
-      activeLayers.forEach((layer, index2) => {
-        layer.visible = formerActiveLayersVisible[index2];
-      });
-      if (suspendHistory && suspensionID) {
-        executionContext.hostControl.resumeHistory(suspensionID);
-      }
-    }, {
-      commandName,
-      interactive: true
-    });
-    await modalStatePromise;
-  }
-  if (error) throw error;
-  return res;
-}
-const BOUNDARY_SCHEME = "uxp://boundary";
-const CONTENT_SCHEME = "uxp://content";
-const normalizeDocId = (docId) => {
-  const numeric = Number(docId);
-  if (!Number.isFinite(numeric)) {
-    return 0;
-  }
-  const normalized = Math.floor(numeric);
-  return normalized < 0 ? 0 : normalized;
-};
-const getActiveDocumentId = () => {
-  var _a3, _b2, _c;
-  try {
-    const storeId = (_b2 = (_a3 = sdpppSDK == null ? void 0 : sdpppSDK.stores) == null ? void 0 : _a3.PhotoshopStore) == null ? void 0 : _b2.getState().activeDocumentID;
-    if (typeof storeId === "number" && Number.isFinite(storeId)) {
-      return normalizeDocId(storeId);
-    }
-  } catch {
-  }
-  const doc = (_c = photoshop.app) == null ? void 0 : _c.activeDocument;
-  if (doc && doc.id !== void 0) {
-    const parsed = normalizeDocId(doc.id);
-    if (parsed >= 0) {
-      return parsed;
-    }
-  }
-  return 0;
-};
-const appendQuery = (base2, params) => {
-  const searchParams = new URLSearchParams();
-  Object.entries(params).forEach(([key2, value]) => {
-    if (value === void 0 || value === null || value === "") {
-      return;
-    }
-    searchParams.set(key2, String(value));
-  });
-  const query = searchParams.toString();
-  return query ? `${base2}?${query}` : base2;
-};
-const buildBoundaryUri = (docId, boundary) => {
-  const docSegment = normalizeDocId(docId);
-  if (typeof boundary === "string") {
-    const boundaryKey = boundary;
-    return `${BOUNDARY_SCHEME}/${docSegment}/${boundaryKey}`;
-  }
-  const rect = boundary;
-  return appendQuery(`${BOUNDARY_SCHEME}/${docSegment}/rect`, {
-    leftDistance: rect.leftDistance,
-    topDistance: rect.topDistance,
-    rightDistance: rect.rightDistance,
-    bottomDistance: rect.bottomDistance,
-    width: rect.width,
-    height: rect.height
-  });
-};
-const buildContentUri = (docId, content, layerIdentify) => {
-  const docSegment = normalizeDocId(docId);
-  if (content === "curlayer") {
-    return `${CONTENT_SCHEME}/${docSegment}/curlayer`;
-  }
-  return `${CONTENT_SCHEME}/${docSegment}/${content}`;
-};
-({
-  title: t("image.send.select_position"),
-  optionRows: [
-    [
-      {
-        id: "newlayer",
-        text: t("image.layer.new"),
-        keyboardShortcut: "Q",
-        thumbnailConfig: { content: "canvas", boundary: "canvas" }
-      },
-      {
-        id: "smartobject",
-        text: t("image.layer.smart_object"),
-        keyboardShortcut: "W",
-        thumbnailConfig: { content: "canvas", boundary: "canvas" }
-      },
-      {
-        id: "curlayer",
-        text: t("image.layer.current"),
-        keyboardShortcut: "E",
-        visibility: { requiresActiveLayers: true },
-        thumbnailConfig: { content: "curlayer", boundary: "curlayer" }
-      },
-      {
-        id: "newdoc",
-        text: t("image.document.new"),
-        keyboardShortcut: "R",
-        thumbnailConfig: { content: "canvas", boundary: "canvas" }
-      }
-    ]
-  ]
-});
-const GetCanvasDialog = {
-  dialogType: "get_canvas",
-  title: t("image.get.canvas"),
-  className: "w-[40rem] h-[30rem]",
-  optionRows: [
-    [
-      {
-        id: "canvas_crop_none",
-        text: t("image.crop.none"),
-        keyboardShortcut: "Q",
-        thumbnailConfig: { content: "canvas", boundary: "canvas" }
-      },
-      {
-        id: "canvas_crop_negative",
-        text: t("image.crop.inpaint"),
-        keyboardShortcut: "W",
-        visibility: { requiresSelection: true },
-        thumbnailConfig: { content: "canvas", boundary: "selection" }
-      },
-      {
-        id: "canvas_crop_positive",
-        text: t("image.crop.outpaint"),
-        keyboardShortcut: "E",
-        visibility: { requiresSelection: true },
-        thumbnailConfig: { content: "canvas", boundary: "selection" }
-      }
-    ]
-  ],
-  keyboardMapping: {
-    "KeyQ": "canvas_crop_none",
-    "KeyW": "canvas_crop_negative",
-    "KeyE": "canvas_crop_positive"
-  },
-  storeConfig: {
-    activeSelector: (state) => state.genericDialog.active,
-    resolveSelector: (state) => state.resolveGenericDialog,
-    rejectSelector: (state) => state.rejectGenericDialog,
-    additionalSelectors: {
-      imageQuality: (state) => (state.genericDialog.additionalData || {}).imageQuality
-    }
-  },
-  onSelect: async (selection, additionalData) => {
-    const cropBySelection = selection.endsWith("_none") ? "no" : selection.endsWith("_negative") ? "negative" : "positive";
-    const activeDocumentID = sdpppSDK.stores.PhotoshopStore.getState().activeDocumentID;
-    const webviewState = sdpppSDK.stores.WebviewStore.getState();
-    const boundarySizes = webviewState.workBoundaryMaxSizes || {};
-    const defaultSize = sdpppSDK.stores.PhotoshopStore.getState().sdpppX["settings.imaging.defaultImagesSizeLimit"];
-    const sizeFromBoundary = boundarySizes[activeDocumentID] || defaultSize;
-    const getImageParams = {
-      content: "canvas",
-      boundary: "canvas",
-      imageSize: sizeFromBoundary,
-      imageQuality: additionalData.imageQuality,
-      cropBySelection
-    };
-    return {
-      getImageParams,
-      source: JSON.stringify(getImageParams)
-    };
-  }
-};
-const GetLayerImageDialog = {
-  dialogType: "get_layer_image",
-  title: t("image.get.current_layer"),
-  className: "w-[40rem] h-[30rem]",
-  optionRows: [
-    [
-      {
-        id: "curlayer_crop_none",
-        text: t("image.crop.none"),
-        keyboardShortcut: "A",
-        visibility: { requiresActiveLayers: true },
-        thumbnailConfig: { content: "curlayer", boundary: "curlayer" }
-      },
-      {
-        id: "curlayer_crop_negative",
-        text: t("image.crop.inpaint"),
-        keyboardShortcut: "S",
-        visibility: { requiresActiveLayers: true, requiresSelection: true },
-        thumbnailConfig: { content: "curlayer", boundary: "selection" }
-      },
-      {
-        id: "curlayer_crop_positive",
-        text: t("image.crop.outpaint"),
-        keyboardShortcut: "D",
-        visibility: { requiresActiveLayers: true, requiresSelection: true },
-        thumbnailConfig: { content: "curlayer", boundary: "selection" }
-      }
-    ]
-  ],
-  keyboardMapping: {
-    "KeyA": "curlayer_crop_none",
-    "KeyS": "curlayer_crop_negative",
-    "KeyD": "curlayer_crop_positive"
-  },
-  storeConfig: {
-    activeSelector: (state) => state.genericDialog.active,
-    resolveSelector: (state) => state.resolveGenericDialog,
-    rejectSelector: (state) => state.rejectGenericDialog,
-    additionalSelectors: {
-      imageQuality: (state) => (state.genericDialog.additionalData || {}).imageQuality
-    }
-  },
-  onSelect: async (selection, additionalData) => {
-    const cropBySelection = selection.endsWith("_none") ? "no" : selection.endsWith("_negative") ? "negative" : "positive";
-    const activeDocumentID = sdpppSDK.stores.PhotoshopStore.getState().activeDocumentID;
-    const webviewState = sdpppSDK.stores.WebviewStore.getState();
-    const boundarySizes = webviewState.workBoundaryMaxSizes || {};
-    const defaultSize = sdpppSDK.stores.PhotoshopStore.getState().sdpppX["settings.imaging.defaultImagesSizeLimit"];
-    const sizeFromBoundary = boundarySizes[activeDocumentID] || defaultSize;
-    const getImageParams = {
-      content: "curlayer",
-      boundary: "curlayer",
-      imageSize: sizeFromBoundary,
-      imageQuality: additionalData.imageQuality,
-      cropBySelection
-    };
-    return {
-      getImageParams,
-      source: JSON.stringify(getImageParams)
-    };
-  }
-};
-const boundaryDialogConfig = {
-  dialogType: "boundary",
-  title: t("boundary.select_boundary"),
-  className: "w-[40rem] h-[30rem]",
-  optionRows: [
-    [
-      {
-        id: "canvas",
-        text: t("boundary.canvas"),
-        keyboardShortcut: "Q",
-        thumbnailConfig: { content: "canvas", boundary: "canvas" }
-      },
-      {
-        id: "curlayer",
-        text: t("boundary.current_layer"),
-        keyboardShortcut: "W",
-        visibility: { requiresActiveLayers: true },
-        thumbnailConfig: { content: "curlayer", boundary: "canvas" }
-      },
-      {
-        id: "selection",
-        text: t("boundary.selection"),
-        keyboardShortcut: "E",
-        visibility: { requiresSelection: true },
-        // Use the selection boundary so the thumbnail reflects the actual selection area
-        thumbnailConfig: { content: "selection", boundary: "canvas" }
-      }
-    ]
-  ],
-  keyboardMapping: {
-    "KeyQ": "canvas",
-    "KeyW": "curlayer",
-    "KeyE": "selection",
-    "KeyX": () => {
-      const state = DialogManagerStore.getState();
-      const defaultSize = sdpppX["settings.imaging.defaultImagesSizeLimit"];
-      const current = (state.genericDialog.additionalData || {}).imageSize || 0;
-      DialogManagerStore.setState({
-        genericDialog: {
-          ...state.genericDialog,
-          additionalData: {
-            ...state.genericDialog.additionalData || {},
-            imageSize: current === 0 ? defaultSize : 0
-          }
-        }
-      });
-    }
-  },
-  storeConfig: {
-    activeSelector: (state) => state.genericDialog.active,
-    resolveSelector: (state) => state.resolveGenericDialog,
-    rejectSelector: (state) => state.rejectGenericDialog,
-    additionalSelectors: {
-      imageSize: (state) => (state.genericDialog.additionalData || {}).imageSize
-    }
-  },
-  // Include imageSize in result so WorkBoundary can persist per-doc max size
-  onSelect: async (boundary, additionalData) => {
-    const inputSize = (additionalData == null ? void 0 : additionalData.imageSize) || 0;
-    const imageSize = inputSize > 0 ? inputSize : 999999;
-    return { boundary, imageSize };
-  },
-  // Add control to adjust max_wh (image size)
-  controls: [
-    {
-      type: "imageSize",
-      title: t("image.limit_size"),
-      keyboardShortcut: "X",
-      config: {
-        defaultSize: sdpppX["settings.imaging.defaultImagesSizeLimit"],
-        onChange: (enabled, size) => {
-          DialogManagerStore.setState((prev) => ({
-            ...prev,
-            genericDialog: {
-              ...prev.genericDialog,
-              additionalData: {
-                ...prev.genericDialog.additionalData || {},
-                imageSize: enabled ? size : 0
-              }
-            }
-          }));
-        }
-      }
-    }
-  ]
-};
-const imageSourceDialogConfig = {
-  dialogType: "image_source",
-  title: t("dialog.image_source.title", { defaultValue: "选择图像来源" }),
-  className: "w-[42rem] h-[38rem]",
-  optionRows: [
-    [
-      {
-        id: "primary_canvas",
-        text: t("dialog.image_source.primary_canvas", { defaultValue: "以主图边界获取画布" }),
-        keyboardShortcut: "Q",
-        thumbnailConfig: { content: "canvas", boundary: "canvas" },
-        usesPrimaryBoundary: true
-      },
-      {
-        id: "canvas_canvas",
-        text: t("dialog.image_source.canvas_canvas", { defaultValue: "以画布边界获取画布" }),
-        keyboardShortcut: "W",
-        thumbnailConfig: { content: "canvas", boundary: "canvas" }
-      },
-      {
-        id: "curlayer_canvas",
-        text: t("dialog.image_source.curlayer_canvas", { defaultValue: "以当前图层边界获取画布" }),
-        keyboardShortcut: "E",
-        visibility: { requiresActiveLayers: true },
-        thumbnailConfig: { content: "canvas", boundary: "curlayer" }
-      }
-    ],
-    [
-      {
-        id: "primary_curlayer",
-        text: t("dialog.image_source.primary_curlayer", { defaultValue: "以主图边界获取当前图层" }),
-        keyboardShortcut: "A",
-        thumbnailConfig: { content: "curlayer", boundary: "canvas" },
-        usesPrimaryBoundary: true
-      },
-      {
-        id: "canvas_curlayer",
-        text: t("dialog.image_source.canvas_curlayer", { defaultValue: "以画布边界获取当前图层" }),
-        keyboardShortcut: "S",
-        thumbnailConfig: { content: "curlayer", boundary: "canvas" }
-      },
-      {
-        id: "curlayer_curlayer",
-        text: t("dialog.image_source.curlayer_curlayer", { defaultValue: "以当前图层边界获取当前图层" }),
-        keyboardShortcut: "D",
-        visibility: { requiresActiveLayers: true },
-        thumbnailConfig: { content: "curlayer", boundary: "curlayer" }
-      }
-    ],
-    [
-      {
-        id: "local_file",
-        text: t("dialog.image_source.local_file", { defaultValue: "从磁盘获取" }),
-        keyboardShortcut: "F",
-        variant: "wide"
-      }
-    ]
-  ],
-  keyboardMapping: {
-    "KeyQ": "primary_canvas",
-    "KeyW": "canvas_canvas",
-    "KeyE": "curlayer_canvas",
-    "KeyA": "primary_curlayer",
-    "KeyS": "canvas_curlayer",
-    "KeyD": "curlayer_curlayer",
-    "KeyF": "local_file"
-  },
-  storeConfig: {
-    activeSelector: (state) => state.genericDialog.active,
-    resolveSelector: (state) => state.resolveGenericDialog,
-    rejectSelector: (state) => state.rejectGenericDialog,
-    additionalSelectors: {}
-  },
-  onSelect: async (selection, additionalData) => {
-    const optionMap = {
-      primary_canvas: { mode: "image", boundary: "primary", content: "canvas" },
-      canvas_canvas: { mode: "image", boundary: "canvas", content: "canvas" },
-      curlayer_canvas: { mode: "image", boundary: "curlayer", content: "canvas" },
-      primary_curlayer: { mode: "image", boundary: "primary", content: "curlayer" },
-      canvas_curlayer: { mode: "image", boundary: "canvas", content: "curlayer" },
-      curlayer_curlayer: { mode: "image", boundary: "curlayer", content: "curlayer" },
-      local_file: { mode: "file" }
-    };
-    const option = optionMap[selection];
-    if (!option) {
-      throw new Error(`Unknown image source selection: ${selection}`);
-    }
-    if (option.mode === "file") {
-      return {
-        mode: "file"
-      };
-    }
-    const inboundBoundaryResource = additionalData == null ? void 0 : additionalData.boundaryResource;
-    if (option.boundary === "primary") {
-      if (!inboundBoundaryResource || typeof inboundBoundaryResource !== "string") {
-        throw new Error("boundaryResource is required for image source dialog");
-      }
-    }
-    const activeDocumentId = getActiveDocumentId();
-    let boundaryResource;
-    if (option.boundary === "primary") {
-      boundaryResource = inboundBoundaryResource;
-    } else {
-      boundaryResource = buildBoundaryUri(activeDocumentId, option.boundary);
-    }
-    const contentResource = buildContentUri(activeDocumentId, option.content);
-    try {
-      console.log("[ImageSelectionDialog] return image resources", { contentResource, boundaryResource });
-    } catch {
-    }
-    return {
-      mode: "image",
-      boundaryResource,
-      contentResource
-    };
-  }
-};
-const GetLayerMaskDialog = {
-  dialogType: "mask_layer",
-  title: t("mask.get.select_mask"),
-  className: "w-[40rem] h-[30rem]",
-  optionRows: [
-    [
-      {
-        id: "curlayer",
-        text: t("mask.current_layer_bounds"),
-        keyboardShortcut: "Q",
-        visibility: { requiresActiveLayers: true },
-        thumbnailConfig: { content: "curlayer", boundary: "canvas" }
-      },
-      {
-        id: "curlayer_reverse",
-        text: t("mask.current_layer_exclude"),
-        keyboardShortcut: "W",
-        visibility: { requiresActiveLayers: true },
-        thumbnailConfig: { content: "curlayer", boundary: "canvas", reverse: true }
-      }
-    ]
-  ],
-  keyboardMapping: {
-    "KeyQ": "curlayer",
-    "KeyW": "curlayer_reverse"
-  },
-  storeConfig: {
-    activeSelector: (state) => state.genericDialog.active,
-    resolveSelector: (state) => state.resolveGenericDialog,
-    rejectSelector: (state) => state.rejectGenericDialog,
-    additionalSelectors: {
-      imageSize: (state) => (state.genericDialog.additionalData || {}).imageSize
-    }
-  },
-  onSelect: async (selection) => {
-    const activeDocumentID = sdpppSDK.stores.PhotoshopStore.getState().activeDocumentID;
-    const webviewState = sdpppSDK.stores.WebviewStore.getState();
-    const boundarySizes = webviewState.workBoundaryMaxSizes || {};
-    const defaultSize = sdpppSDK.stores.PhotoshopStore.getState().sdpppX["settings.imaging.defaultImagesSizeLimit"];
-    const sizeFromBoundary = boundarySizes[activeDocumentID] || defaultSize;
-    const getMaskParams = {
-      content: "curlayer",
-      reverse: selection.endsWith("_reverse"),
-      imageSize: sizeFromBoundary
-    };
-    return {
-      getMaskParams,
-      source: JSON.stringify(getMaskParams)
-    };
-  }
-};
-const GetSelectionMaskDialog = {
-  dialogType: "mask_selection",
-  title: t("mask.get.select_mask"),
-  className: "w-[40rem] h-[30rem]",
-  optionRows: [
-    [
-      {
-        id: "selection",
-        text: t("mask.selection"),
-        keyboardShortcut: "A",
-        visibility: { requiresSelection: true },
-        thumbnailConfig: { content: "selection", boundary: "canvas" }
-      },
-      {
-        id: "selection_reverse",
-        text: t("mask.selection_exclude"),
-        keyboardShortcut: "S",
-        visibility: { requiresSelection: true },
-        thumbnailConfig: { content: "selection", boundary: "canvas", reverse: true }
-      }
-    ]
-  ],
-  keyboardMapping: {
-    "KeyA": "selection",
-    "KeyS": "selection_reverse"
-  },
-  storeConfig: {
-    activeSelector: (state) => state.genericDialog.active,
-    resolveSelector: (state) => state.resolveGenericDialog,
-    rejectSelector: (state) => state.rejectGenericDialog,
-    additionalSelectors: {
-      imageSize: (state) => (state.genericDialog.additionalData || {}).imageSize
-    }
-  },
-  onSelect: async (selection) => {
-    const activeDocumentID = sdpppSDK.stores.PhotoshopStore.getState().activeDocumentID;
-    const webviewState = sdpppSDK.stores.WebviewStore.getState();
-    const boundarySizes = webviewState.workBoundaryMaxSizes || {};
-    const defaultSize = sdpppSDK.stores.PhotoshopStore.getState().sdpppX["settings.imaging.defaultImagesSizeLimit"];
-    const sizeFromBoundary = boundarySizes[activeDocumentID] || defaultSize;
-    const getMaskParams = {
-      content: "selection",
-      reverse: selection.endsWith("_reverse"),
-      imageSize: sizeFromBoundary
-    };
-    return {
-      getMaskParams,
-      source: JSON.stringify(getMaskParams)
-    };
-  }
-};
-const _SpeicialIDManager = class _SpeicialIDManager {
-  static is_SPECIAL_DOCUMENT_CURRENT(str) {
-    return this.SPECIAL_DOCUMENT_CURRENT == str;
-  }
-  static get_SPECIAL_DOCUMENT_CURRENT() {
-    return this.SPECIAL_DOCUMENT_CURRENT;
-  }
-  static is_SPECIAL_LAYER_FIT(str) {
-    return this.SPECIAL_LAYER_KEEP_SIZE == str;
-  }
-  static get_SPECIAL_LAYER_FIT() {
-    return this.SPECIAL_LAYER_KEEP_SIZE;
-  }
-  static is_SPECIAL_LAYER_USE_CANVAS(str) {
-    return this.SPECIAL_LAYER_USE_CANVAS == str;
-  }
-  static get_SPECIAL_LAYER_USE_CANVAS() {
-    return this.SPECIAL_LAYER_USE_CANVAS;
-  }
-  static is_SPECIAL_LAYER_NEW_LAYER(str) {
-    return this.SPECIAL_LAYER_NEW_LAYER == str;
-  }
-  static get_SPECIAL_LAYER_NEW_LAYER() {
-    return this.SPECIAL_LAYER_NEW_LAYER;
-  }
-  static is_SPECIAL_LAYER_SELECTED_LAYER(str) {
-    return this.SPECIAL_LAYER_SELECTED_LAYER == str;
-  }
-  static get_SPECIAL_LAYER_SELECTED_LAYER() {
-    return this.SPECIAL_LAYER_SELECTED_LAYER;
-  }
-  static is_SPECIAL_LAYER_PREVIEW_DOCUMENT(str) {
-    return this.SPECIAL_LAYER_PREVIEW_DOCUMENT == str;
-  }
-  static get_SPECIAL_LAYER_PREVIEW_DOCUMENT() {
-    return this.SPECIAL_LAYER_PREVIEW_DOCUMENT;
-  }
-  static getSpecialDocumentCurrent() {
-    return _SpeicialIDManager.SPECIAL_DOCUMENT_CURRENT;
-  }
-  static getSpecialLayerForGet() {
-    return [
-      _SpeicialIDManager.SPECIAL_LAYER_USE_CANVAS,
-      _SpeicialIDManager.SPECIAL_LAYER_SELECTED_LAYER
-    ];
-  }
-  static getSpecialLayerForSend() {
-    return [
-      _SpeicialIDManager.SPECIAL_LAYER_NEW_LAYER,
-      _SpeicialIDManager.SPECIAL_LAYER_SELECTED_LAYER
-    ];
-  }
-  static getSpecialDocumentForPreview() {
-    return _SpeicialIDManager.SPECIAL_LAYER_PREVIEW_DOCUMENT;
-  }
-  static fix(str) {
-    if (this.is_SPECIAL_DOCUMENT_CURRENT(str)) {
-      return this.SPECIAL_DOCUMENT_CURRENT;
-    }
-    if (this.is_SPECIAL_LAYER_NEW_LAYER(str)) {
-      return this.SPECIAL_LAYER_NEW_LAYER;
-    }
-    if (this.is_SPECIAL_LAYER_PREVIEW_DOCUMENT(str)) {
-      return this.SPECIAL_LAYER_PREVIEW_DOCUMENT;
-    }
-    if (this.is_SPECIAL_LAYER_USE_CANVAS(str)) {
-      return this.SPECIAL_LAYER_USE_CANVAS;
-    }
-    if (this.is_SPECIAL_LAYER_SELECTED_LAYER(str)) {
-      return this.SPECIAL_LAYER_SELECTED_LAYER;
-    }
-    return str;
-  }
-};
-__publicField2(_SpeicialIDManager, "SPECIAL_DOCUMENT_CURRENT", "### Active Document ###");
-__publicField2(_SpeicialIDManager, "SPECIAL_LAYER_KEEP_SIZE", "### Keep Size or Fit Canvas ###");
-__publicField2(_SpeicialIDManager, "SPECIAL_LAYER_USE_CANVAS", "### The Canvas ###");
-__publicField2(_SpeicialIDManager, "SPECIAL_LAYER_NEW_LAYER", "### New Layer ###");
-__publicField2(_SpeicialIDManager, "SPECIAL_LAYER_SELECTED_LAYER", "### Selected Layer ###");
-__publicField2(_SpeicialIDManager, "SPECIAL_LAYER_PREVIEW_DOCUMENT", "_SDPPP_PSD_");
-let SpeicialIDManager = _SpeicialIDManager;
 function getDocumentOrLayerID(name) {
   if (typeof name != "string") throw new Error("not a invalid identifer: " + name);
   const split = name.split("(id:");
@@ -128810,6 +129158,107 @@ function convertSDPPPBoundsToBoundaryRect(sdpppBounds, documentWidth, documentHe
     width: Math.max(0, Math.min(sdpppBounds.width, documentWidth)),
     height: Math.max(0, Math.min(sdpppBounds.height, documentHeight))
   };
+}
+class ModalStateRestorer {
+  constructor() {
+    __publicField2(this, "promise");
+    __publicField2(this, "restore");
+    this.restore = () => {
+    };
+    this.promise = new Promise((resolve2) => {
+      this.restore = resolve2;
+    });
+  }
+  add(fn) {
+    this.promise.then(fn);
+  }
+}
+photoshop.core.setExecutionMode({ enableErrorStacktraces: true });
+let modalStatePromise = Promise.resolve();
+async function runNextModalState(fn, options2) {
+  const dontRecoverSelection = options2.dontRecoverSelection || false;
+  const suspendHistory = options2.suspendHistory === void 0 ? true : !!options2.suspendHistory;
+  let restorer = new ModalStateRestorer();
+  let anyLayerSelectedChanged = false;
+  let activeLayers = [];
+  let formerActiveLayersVisible = [];
+  let commandName = options2.commandName;
+  if (!dontRecoverSelection) {
+    photoshop.app.activeDocument.activeLayers.forEach((layer) => activeLayers.push(layer));
+    if (options2.document && photoshop.app.activeDocument.id != options2.document.id) {
+      options2.document.activeLayers.forEach((layer) => activeLayers.push(layer));
+    }
+    formerActiveLayersVisible = activeLayers.map((layer) => layer.visible);
+    restorer.add(() => {
+      activeLayers.forEach((formerActiveLayer) => {
+        if (!formerActiveLayer.selected) {
+          formerActiveLayer.selected = true;
+          anyLayerSelectedChanged = true;
+        }
+      });
+      if (options2.document == photoshop.app.activeDocument) {
+        activeLayers.forEach((formerActiveLayer, index2) => {
+          formerActiveLayer.visible = formerActiveLayersVisible[index2];
+        });
+      }
+    });
+  }
+  let suspensionID = null;
+  modalStatePromise = modalStatePromise.catch((e4) => e4).then(() => {
+    return new Promise((resolve2) => {
+      checkModal();
+      function checkModal() {
+        if (!photoshop.core.isModal()) resolve2();
+        else requestAnimationFrame(checkModal);
+      }
+    });
+  }).then(() => {
+    return photoshop.core.executeAsModal(async function(executionContext, ...args) {
+      suspensionID = suspendHistory && options2.document ? await executionContext.hostControl.suspendHistory({
+        "documentID": options2.document.id,
+        "name": commandName
+      }) : null;
+      restorer.add(async () => {
+        await new Promise(requestAnimationFrame);
+        if (!anyLayerSelectedChanged) {
+          if (suspendHistory && suspensionID) {
+            executionContext.hostControl.resumeHistory(suspensionID);
+          }
+        }
+      });
+      try {
+        const ret = await fn(restorer, executionContext, ...args);
+        restorer.restore(true);
+        return ret;
+      } catch (e4) {
+        restorer.restore(false);
+        throw e4;
+      }
+    }, { commandName: Math.random().toString() });
+  });
+  let res = null;
+  let error = null;
+  try {
+    await modalStatePromise;
+  } catch (e4) {
+    error = e4;
+  }
+  if (anyLayerSelectedChanged) {
+    modalStatePromise = photoshop.core.executeAsModal(async (executionContext) => {
+      activeLayers.forEach((layer, index2) => {
+        layer.visible = formerActiveLayersVisible[index2];
+      });
+      if (suspendHistory && suspensionID) {
+        executionContext.hostControl.resumeHistory(suspensionID);
+      }
+    }, {
+      commandName,
+      interactive: true
+    });
+    await modalStatePromise;
+  }
+  if (error) throw error;
+  return res;
 }
 async function getPixelsData({ document: document2, layer, bounds, targetSize }) {
   let options2 = {
@@ -129182,6 +129631,89 @@ async function getSelection(params) {
     height: bounds.scaledDesire.height
   };
 }
+async function getBoundaryImpl(params) {
+  var _a3, _b2;
+  if (!photoshop.app.activeDocument) {
+    throw new Error(t("photoshop.no_active_document"));
+  }
+  const document2 = photoshop.app.activeDocument;
+  let boundaryRect;
+  switch (params.type) {
+    case "curlayer":
+      const activeLayer = (_a3 = document2.activeLayers) == null ? void 0 : _a3[0];
+      if (!activeLayer) {
+        throw new Error(t("photoshop.no_active_layer"));
+      }
+      const layerBounds = activeLayer.bounds;
+      if (!layerBounds) {
+        boundaryRect = BoundaryRectUtils.fromPositionAndSize(0, 0, document2.width, document2.height, document2.width, document2.height);
+      } else {
+        boundaryRect = BoundaryRectUtils.fromPhotoshopBounds(layerBounds, document2.width, document2.height);
+      }
+      break;
+    case "selection":
+      const selectionBounds = (_b2 = document2.selection) == null ? void 0 : _b2.bounds;
+      if (!selectionBounds) {
+        boundaryRect = BoundaryRectUtils.fromPositionAndSize(0, 0, document2.width, document2.height, document2.width, document2.height);
+      } else {
+        boundaryRect = BoundaryRectUtils.fromPhotoshopBounds(selectionBounds, document2.width, document2.height);
+      }
+      break;
+    default:
+      throw new Error(t("photoshop.invalid_boundary_type", { type: params.type }));
+  }
+  const thumbnail = await generateBoundaryThumbnail(document2, boundaryRect);
+  return {
+    boundary: boundaryRect,
+    thumbnail
+  };
+}
+async function generateBoundaryThumbnail(document2, boundaryRect) {
+  try {
+    const documentInfo = await getDocumentInfo({
+      document_identify: SpeicialIDManager.get_SPECIAL_DOCUMENT_CURRENT()
+    });
+    const canvasImage = await getImage.getJimpImage({
+      document_identify: SpeicialIDManager.get_SPECIAL_DOCUMENT_CURRENT(),
+      layer_identify: SpeicialIDManager.get_SPECIAL_LAYER_USE_CANVAS(),
+      boundary: documentInfo.document_boundary,
+      max_wh: 192,
+      quality: 8
+    });
+    const thumbWidth = canvasImage.width;
+    const thumbHeight = canvasImage.height;
+    const docWidth = document2.width;
+    const docHeight = document2.height;
+    const scaleX = thumbWidth / docWidth;
+    const scaleY = thumbHeight / docHeight;
+    const boundaryLeft = Math.round(boundaryRect.leftDistance * scaleX);
+    const boundaryTop = Math.round(boundaryRect.topDistance * scaleY);
+    const boundaryRight = Math.round((docWidth - boundaryRect.rightDistance) * scaleX);
+    const boundaryBottom = Math.round((docHeight - boundaryRect.bottomDistance) * scaleY);
+    canvasImage.scan(0, 0, thumbWidth, thumbHeight, function(x2, y2, idx) {
+      const isOutsideBoundary = x2 < boundaryLeft || x2 >= boundaryRight || y2 < boundaryTop || y2 >= boundaryBottom;
+      if (isOutsideBoundary) {
+        canvasImage.bitmap.data[idx + 3] = Math.round(canvasImage.bitmap.data[idx + 3] * 0.3);
+      }
+    });
+    const thumbnailBuffer = await canvasImage.getBuffer(JimpMime.png);
+    return "data:image/png;base64," + thumbnailBuffer.toString("base64");
+  } catch (error) {
+    console.error("Error generating boundary thumbnail:", error);
+    return "";
+  }
+}
+async function getCurrentLayerIdentify() {
+  if (!photoshop.app.activeDocument) {
+    throw new Error(t("photoshop.no_active_document"));
+  }
+  const activeLayer = photoshop.app.activeDocument.activeLayers && photoshop.app.activeDocument.activeLayers.length > 0 ? photoshop.app.activeDocument.activeLayers[0] : null;
+  if (!activeLayer) {
+    return { layer_identify: null };
+  }
+  const identify = makeLayerIdentify(activeLayer.id, activeLayer.name);
+  return { layer_identify: identify };
+}
 const BOUNDARY_HOST = "boundary";
 const CONTENT_HOST = "content";
 const MASK_HOST = "mask";
@@ -129401,6 +129933,1213 @@ function buildGetMaskParamsFromResources(boundaryResource, maskContentResource) 
     layer_identify: content.layerIdentify ?? null
   };
 }
+const PNG_MIME = "image/png";
+const DATA_URL_REGEX = /^data:([^;,]+)?(;base64)?,(.*)$/i;
+function logMaterializer(event, payload = {}) {
+  try {
+    console.log("[materializeFromCBM]", event, JSON.stringify(payload));
+  } catch {
+    console.log("[materializeFromCBM]", event, payload);
+  }
+}
+function normalizeUri(value) {
+  if (typeof value !== "string") return void 0;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : void 0;
+}
+function decodeDataUrl(dataUrl) {
+  const match = DATA_URL_REGEX.exec(dataUrl);
+  if (!match) {
+    throw new Error("Invalid data URL");
+  }
+  const mime2 = match[1] ?? void 0;
+  const isBase64 = !!match[2];
+  const payload = match[3] ?? "";
+  if (isBase64) {
+    return { buffer: bufferExports.Buffer.from(payload, "base64"), mime: mime2 };
+  }
+  return { buffer: bufferExports.Buffer.from(decodeURIComponent(payload), "utf8"), mime: mime2 };
+}
+async function resolveEffectiveBoundaryUri(params) {
+  const boundaryCandidate = normalizeUri(params.boundaryUri);
+  if (boundaryCandidate) {
+    logMaterializer("boundaryProvided", { boundaryUri: boundaryCandidate });
+    return boundaryCandidate;
+  }
+  const contentUri = normalizeUri(params.contentUri);
+  if (contentUri) {
+    const parsed = parseContentResource$1(contentUri);
+    const primitive = parsed.content === "selection" ? "selection" : parsed.content === "curlayer" ? "curlayer" : "canvas";
+    return buildBoundaryUri$1(parsed.docId, primitive);
+  }
+  const maskUri = normalizeUri(params.maskUri);
+  if (maskUri && maskUri.startsWith("uxp://mask/")) {
+    const parsed = parseMaskResource(maskUri);
+    const primitive = parsed.content === "selection" ? "selection" : parsed.content === "curlayer" ? "curlayer" : "canvas";
+    return buildBoundaryUri$1(parsed.docId, primitive);
+  }
+  const docId = extractDocIdFromUris([boundaryCandidate, contentUri, maskUri]);
+  if (docId != null) {
+    return buildBoundaryUri$1(docId, "canvas");
+  }
+  logMaterializer("boundaryResolutionFailed", {
+    contentUri,
+    maskUri
+  });
+  throw new Error("Unable to resolve boundary for CBM materialization");
+}
+function applyMaskToImage(image, mask) {
+  if (mask.bitmap.width !== image.bitmap.width || mask.bitmap.height !== image.bitmap.height) {
+    mask = mask.clone().resize(image.bitmap.width, image.bitmap.height);
+  }
+  const baseData = image.bitmap.data;
+  const maskData = mask.bitmap.data;
+  const width = Math.min(image.bitmap.width, mask.bitmap.width);
+  const height = Math.min(image.bitmap.height, mask.bitmap.height);
+  for (let y2 = 0; y2 < height; y2 += 1) {
+    for (let x2 = 0; x2 < width; x2 += 1) {
+      const baseIdx = (y2 * image.bitmap.width + x2) * 4;
+      const maskIdx = (y2 * mask.bitmap.width + x2) * 4;
+      const alpha = maskData[maskIdx + 3];
+      if (alpha <= 0) continue;
+      const factor = Math.max(0, 1 - Math.min(1, alpha / 255));
+      baseData[baseIdx + 3] = Math.round(baseData[baseIdx + 3] * factor);
+    }
+  }
+}
+async function loadMaskSnapshotForMaterializer(boundaryUri, maskUri) {
+  if (maskUri.startsWith("uxp://mask/")) {
+    logMaterializer("maskSnapshot.layer", { maskUri, boundaryUri });
+    return await loadMaskSnapshotJimp(boundaryUri, maskUri);
+  }
+  if (maskUri.startsWith("uxp://file/")) {
+    logMaterializer("maskSnapshot.resource", { maskUri });
+    const { buffer: buffer2 } = await resolveResourceBuffer(maskUri);
+    const jimpImage = await Jimp.read(bufferExports.Buffer.from(buffer2));
+    return {
+      jimp: jimpImage,
+      thumbnail: await buildThumbnailBase64(jimpImage)
+    };
+  }
+  if (DATA_URL_REGEX.test(maskUri)) {
+    logMaterializer("maskSnapshot.dataUrl", { maskUriLength: maskUri.length });
+    const decoded = decodeDataUrl(maskUri);
+    const jimpImage = await Jimp.read(decoded.buffer);
+    return {
+      jimp: jimpImage,
+      thumbnail: await buildThumbnailBase64(jimpImage)
+    };
+  }
+  logMaterializer("maskSnapshot.unsupported", { maskUri });
+  return null;
+}
+async function materializeFromCBM(params) {
+  logMaterializer("start", {
+    hasContent: !!params.contentUri,
+    hasMask: !!params.maskUri,
+    boundaryUri: params.boundaryUri
+  });
+  const contentUri = normalizeUri(params.contentUri);
+  const maskUri = normalizeUri(params.maskUri);
+  if (!contentUri && !maskUri) {
+    logMaterializer("errorMissingUris", {});
+    throw new Error("contentUri or maskUri must be provided");
+  }
+  const boundaryUri = await resolveEffectiveBoundaryUri(params);
+  logMaterializer("boundaryResolved", { boundaryUri });
+  if (!contentUri && maskUri) {
+    const maskSnapshot = await loadMaskSnapshotForMaterializer(boundaryUri, maskUri);
+    if (!maskSnapshot) {
+      logMaterializer("maskSnapshotMissing", { maskUri });
+      throw new Error("Unable to resolve mask snapshot");
+    }
+    logMaterializer("materializeMask", {
+      width: maskSnapshot.jimp.bitmap.width,
+      height: maskSnapshot.jimp.bitmap.height
+    });
+    return {
+      type: "mask",
+      image: maskSnapshot.jimp,
+      thumbnail: maskSnapshot.thumbnail,
+      mime: PNG_MIME,
+      meta: {
+        boundaryUri,
+        sourceMaskUri: maskUri
+      }
+    };
+  }
+  if (!contentUri) {
+    logMaterializer("errorMissingContent", { maskUri });
+    throw new Error("contentUri is required when maskUri is not provided");
+  }
+  const contentSnapshot = await loadContentSnapshotJimp(boundaryUri, contentUri);
+  logMaterializer("contentSnapshot", {
+    width: contentSnapshot.jimp.bitmap.width,
+    height: contentSnapshot.jimp.bitmap.height,
+    boundaryUri,
+    contentUri
+  });
+  const image = contentSnapshot.jimp;
+  let thumbnail = contentSnapshot.thumbnail;
+  const meta = {
+    boundaryUri,
+    contentUri
+  };
+  if (maskUri) {
+    const maskSnapshot = await loadMaskSnapshotForMaterializer(boundaryUri, maskUri);
+    if (!maskSnapshot) {
+      logMaterializer("maskSnapshotMissing", { maskUri });
+      throw new Error("Unable to resolve mask snapshot");
+    }
+    logMaterializer("applyMask", {
+      maskWidth: maskSnapshot.jimp.bitmap.width,
+      maskHeight: maskSnapshot.jimp.bitmap.height
+    });
+    applyMaskToImage(image, maskSnapshot.jimp);
+    thumbnail = await buildThumbnailBase64(image);
+    meta.maskApplied = maskUri;
+  }
+  const result = {
+    type: "image",
+    image,
+    thumbnail,
+    mime: PNG_MIME,
+    meta
+  };
+  logMaterializer("success", {
+    width: image.bitmap.width,
+    height: image.bitmap.height,
+    hasMask: !!maskUri
+  });
+  return result;
+}
+async function resolveBoundaryToRect(boundaryUri) {
+  const parsed = parseBoundaryResource$1(boundaryUri);
+  const { docId, boundary, imageSize, imageQuality } = parsed;
+  if (typeof boundary === "object") {
+    return buildBoundaryUri$1(docId, boundary, { imageSize, imageQuality });
+  }
+  if (!photoshop.app.activeDocument) {
+    throw new Error("No active document to resolve boundary.");
+  }
+  let resolved = boundary;
+  switch (boundary) {
+    case "canvas": {
+      const doc = photoshop.app.activeDocument;
+      const width = Number(doc.width);
+      const height = Number(doc.height);
+      resolved = BoundaryRectUtils.fromPositionAndSize(0, 0, width, height, width, height);
+      break;
+    }
+    case "curlayer": {
+      const { boundary: computed } = await getBoundaryImpl({ type: "curlayer" });
+      resolved = computed;
+      break;
+    }
+    case "selection": {
+      const { boundary: computed } = await getBoundaryImpl({ type: "selection" });
+      resolved = computed;
+      break;
+    }
+    default: {
+      throw new Error(`Unsupported boundary type "${boundary}"`);
+    }
+  }
+  return buildBoundaryUri$1(docId, resolved, { imageSize, imageQuality });
+}
+async function resolveContentToLayer(contentUri) {
+  const parsed = parseContentResource$1(contentUri);
+  const { docId, content, layerIdentify } = parsed;
+  if (content !== "curlayer") {
+    return buildContentUri$1(docId, content, layerIdentify);
+  }
+  if (layerIdentify && layerIdentify.length > 0) {
+    return buildContentUri$1(docId, content, layerIdentify);
+  }
+  const { layer_identify } = await getCurrentLayerIdentify();
+  if (!layer_identify) {
+    throw new Error("No active layer available to resolve content.");
+  }
+  return buildContentUri$1(docId, content, layer_identify);
+}
+async function resolveMaskToLayer(maskUri) {
+  const parsed = parseMaskResource(maskUri);
+  const { docId, content, reverse, layerIdentify } = parsed;
+  if (content !== "curlayer") {
+    return buildMaskContentUri(docId, content, void 0, reverse);
+  }
+  const existing = layerIdentify && layerIdentify.length > 0 ? layerIdentify : (await getCurrentLayerIdentify()).layer_identify;
+  if (!existing) {
+    throw new Error("No active layer available to resolve mask.");
+  }
+  return buildMaskContentUri(docId, content, existing, reverse);
+}
+function getEffectiveImageSize(requested) {
+  const activeNodeState = mcpMesh.getNode("uxp").store.getState();
+  const activeDocumentID = activeNodeState == null ? void 0 : activeNodeState.activeDocumentID;
+  const meshState = mcpMesh.store.getState();
+  const workBoundaryMaxSizes = (meshState == null ? void 0 : meshState.workBoundaryMaxSizes) ?? {};
+  const defaultSize = sdpppX["settings.imaging.defaultImagesSizeLimit"];
+  if (requested && requested > 0) {
+    return requested;
+  }
+  if (activeDocumentID != null && workBoundaryMaxSizes[activeDocumentID]) {
+    return workBoundaryMaxSizes[activeDocumentID];
+  }
+  return defaultSize;
+}
+async function resolveBoundaryParam(boundary, layerIdentify) {
+  const documentIdentify = SpeicialIDManager.get_SPECIAL_DOCUMENT_CURRENT();
+  if (typeof boundary === "string") {
+    switch (boundary) {
+      case "canvas": {
+        const docInfo = await getDocumentInfo({ document_identify: documentIdentify });
+        return docInfo.document_boundary;
+      }
+      case "curlayer": {
+        const layerInfo = await getLayerInfo({
+          document_identify: documentIdentify,
+          layer_identify: layerIdentify ?? SpeicialIDManager.get_SPECIAL_LAYER_SELECTED_LAYER()
+        });
+        return layerInfo.boundary;
+      }
+      case "selection": {
+        const docInfo = await getDocumentInfo({ document_identify: documentIdentify });
+        return docInfo.selection_boundary ?? docInfo.document_boundary;
+      }
+      default:
+        throw new Error(`Unsupported boundary specification: ${boundary}`);
+    }
+  }
+  const doc = photoshop.app.activeDocument;
+  if (!doc) {
+    throw new Error("No active document to compute boundary rect.");
+  }
+  const docWidth = Number(doc.width);
+  const docHeight = Number(doc.height);
+  return BoundaryRectUtils.toSDPPPBounds(boundary, docWidth, docHeight);
+}
+function resolveLayerIdentifyForContent(content, layerIdentify) {
+  if (layerIdentify && layerIdentify.length > 0) {
+    return layerIdentify;
+  }
+  switch (content) {
+    case "canvas":
+      return SpeicialIDManager.get_SPECIAL_LAYER_USE_CANVAS();
+    case "curlayer":
+      return SpeicialIDManager.get_SPECIAL_LAYER_SELECTED_LAYER();
+    case "selection":
+      return SpeicialIDManager.get_SPECIAL_LAYER_USE_CANVAS();
+    default:
+      return SpeicialIDManager.get_SPECIAL_LAYER_USE_CANVAS();
+  }
+}
+function resolveLayerIdentifyForMask(content, layerIdentify) {
+  if (layerIdentify && layerIdentify.length > 0) {
+    return layerIdentify;
+  }
+  switch (content) {
+    case "canvas":
+      return SpeicialIDManager.get_SPECIAL_LAYER_USE_CANVAS();
+    case "curlayer":
+      return SpeicialIDManager.get_SPECIAL_LAYER_SELECTED_LAYER();
+    case "selection":
+      return SpeicialIDManager.get_SPECIAL_LAYER_USE_CANVAS();
+    default:
+      return SpeicialIDManager.get_SPECIAL_LAYER_USE_CANVAS();
+  }
+}
+async function buildThumbnailBase64(image) {
+  const clone2 = image.clone();
+  clone2.scaleToFit({ w: 320, h: 320 });
+  const buffer2 = await clone2.getBuffer(JimpMime.png);
+  return "data:image/png;base64," + buffer2.toString("base64");
+}
+async function loadContentSnapshotJimp(boundaryUri, contentUri) {
+  const built = buildGetImageParamsFromResources(boundaryUri, contentUri);
+  const effectiveImageSize = getEffectiveImageSize(built.imageSize);
+  const boundaryParam = await resolveBoundaryParam(built.boundary, built.layer_identify ?? null);
+  const layerIdentify = resolveLayerIdentifyForContent(built.content, built.layer_identify ?? null);
+  const documentIdentify = SpeicialIDManager.get_SPECIAL_DOCUMENT_CURRENT();
+  const jimpImage = await getImage.getJimpImage({
+    document_identify: documentIdentify,
+    layer_identify: layerIdentify,
+    boundary: boundaryParam,
+    max_wh: effectiveImageSize,
+    quality: built.imageQuality
+  });
+  if (built.content === "selection") {
+    try {
+      const selection = await getSelection({
+        document_identify: documentIdentify,
+        boundary: boundaryParam,
+        max_wh: effectiveImageSize
+      });
+      const { blob, width, height } = selection;
+      if (blob && blob.length === width * height) {
+        for (let i2 = 0; i2 < width * height; i2++) {
+          const idx = i2 * 4;
+          const alpha = blob[i2];
+          if (idx + 3 < jimpImage.bitmap.data.length) {
+            jimpImage.bitmap.data[idx + 3] = alpha;
+          }
+        }
+      }
+    } catch (error) {
+      console.warn("[renderContentSnapshot] Failed to apply selection alpha", error);
+    }
+  }
+  return {
+    jimp: jimpImage,
+    thumbnail: await buildThumbnailBase64(jimpImage)
+  };
+}
+async function loadMaskSnapshotJimp(boundaryUri, maskUri) {
+  const built = buildGetMaskParamsFromResources(boundaryUri, maskUri);
+  const effectiveImageSize = getEffectiveImageSize(built.imageSize);
+  const boundaryParam = await resolveBoundaryParam(built.boundary, built.layer_identify ?? null);
+  const layerIdentify = resolveLayerIdentifyForMask(built.content, built.layer_identify ?? null);
+  const documentIdentify = SpeicialIDManager.get_SPECIAL_DOCUMENT_CURRENT();
+  const jimpImage = await getImage.getJimpImage({
+    document_identify: documentIdentify,
+    layer_identify: layerIdentify,
+    boundary: boundaryParam,
+    max_wh: effectiveImageSize
+  });
+  if (built.content === "selection") {
+    try {
+      const selection = await getSelection({
+        document_identify: documentIdentify,
+        boundary: boundaryParam,
+        max_wh: effectiveImageSize
+      });
+      const { blob, width, height } = selection;
+      if (blob && blob.length === width * height) {
+        for (let i2 = 0; i2 < width * height; i2++) {
+          const idx = i2 * 4;
+          const alpha = blob[i2];
+          if (idx + 3 < jimpImage.bitmap.data.length) {
+            jimpImage.bitmap.data[idx + 3] = alpha;
+          }
+        }
+      }
+    } catch (error) {
+      console.warn("[renderMaskSnapshot] Failed to apply selection alpha", error);
+    }
+  }
+  jimpImage.scan(0, 0, jimpImage.bitmap.width, jimpImage.bitmap.height, (_x, _y, idx) => {
+    const alpha = jimpImage.bitmap.data[idx + 3];
+    const grayValue = built.reverse ? 255 - alpha : alpha;
+    jimpImage.bitmap.data[idx + 0] = grayValue;
+    jimpImage.bitmap.data[idx + 1] = grayValue;
+    jimpImage.bitmap.data[idx + 2] = grayValue;
+    jimpImage.bitmap.data[idx + 3] = grayValue;
+  });
+  return {
+    jimp: jimpImage,
+    thumbnail: await buildThumbnailBase64(jimpImage)
+  };
+}
+const context = {
+  mcpMesh,
+  materializers: {
+    fromCBM: materializeFromCBM
+  },
+  resolvers: {
+    boundaryToRect: resolveBoundaryToRect,
+    contentToLayer: resolveContentToLayer,
+    maskToLayer: resolveMaskToLayer
+  }
+};
+registerImagingActions(context);
+class TaskEventEmitter {
+  constructor() {
+    __publicField2(this, "taskListeners", []);
+    __publicField2(this, "executionListeners", []);
+  }
+  // 订阅任务事件
+  onTaskEvent(listener) {
+    this.taskListeners.push(listener);
+    return () => {
+      const index2 = this.taskListeners.indexOf(listener);
+      if (index2 > -1) {
+        this.taskListeners.splice(index2, 1);
+      }
+    };
+  }
+  // 订阅任务执行事件
+  onTaskExecution(listener) {
+    this.executionListeners.push(listener);
+    return () => {
+      const index2 = this.executionListeners.indexOf(listener);
+      if (index2 > -1) {
+        this.executionListeners.splice(index2, 1);
+      }
+    };
+  }
+  // 发射任务事件
+  async emitTaskEvent(event) {
+    const fullEvent = {
+      ...event,
+      timestamp: Date.now()
+    };
+    const promises = this.taskListeners.map(
+      (listener) => Promise.resolve(listener(fullEvent)).catch(
+        (error) => console.error("Task event listener error:", error)
+      )
+    );
+    await Promise.allSettled(promises);
+  }
+  // 发射任务执行事件
+  async emitTaskExecution(event) {
+    const fullEvent = {
+      ...event,
+      timestamp: Date.now()
+    };
+    const promises = this.executionListeners.map(
+      (listener) => Promise.resolve(listener(fullEvent)).catch(
+        (error) => console.error("Task execution event listener error:", error)
+      )
+    );
+    await Promise.allSettled(promises);
+  }
+  // 便捷方法：发射任务执行事件
+  async emitTaskExecutionEvent(taskId, action, metadata) {
+    await this.emitTaskExecution({
+      type: "task:execution",
+      taskId,
+      action,
+      metadata
+    });
+  }
+}
+const taskEventEmitter = new TaskEventEmitter();
+const emitTaskEvent = taskEventEmitter.emitTaskEvent.bind(taskEventEmitter);
+const emitTaskExecutionEvent = taskEventEmitter.emitTaskExecutionEvent.bind(taskEventEmitter);
+mcpMesh.implementAction("taskAdd", async (params) => {
+  try {
+    taskHelpers.addTask(params);
+    mcpMesh.store.setState({ taskLastRun: Date.now() });
+    await emitTaskEvent({
+      type: "task:added",
+      taskId: params.taskId,
+      task: params
+    });
+    if (params.status === "running") {
+      await emitTaskExecutionEvent(params.taskId, "start", params.metadata);
+    }
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+});
+mcpMesh.implementAction("taskUpdate", async (params) => {
+  try {
+    const existingTask = taskHelpers.getTask(params.taskId);
+    if (!existingTask) {
+      return {
+        success: false,
+        error: `Task with ID ${params.taskId} not found`
+      };
+    }
+    taskHelpers.updateTask(params.taskId, params);
+    const updatedTask = taskHelpers.getTask(params.taskId);
+    if (params.status === "running") {
+      mcpMesh.store.setState({ taskLastRun: Date.now() });
+    }
+    await emitTaskEvent({
+      type: "task:updated",
+      taskId: params.taskId,
+      task: updatedTask,
+      previousTask: existingTask
+    });
+    if (params.status && params.status !== existingTask.status) {
+      let action;
+      let eventType = "task:updated";
+      switch (params.status) {
+        case "running":
+          action = "start";
+          eventType = "task:started";
+          break;
+        case "completed":
+          action = "complete";
+          eventType = "task:completed";
+          break;
+        case "failed":
+          action = "fail";
+          eventType = "task:failed";
+          break;
+        case "cancelled":
+          action = "cancel";
+          break;
+        default:
+          action = "start";
+      }
+      if (eventType !== "task:updated") {
+        await emitTaskEvent({
+          type: eventType,
+          taskId: params.taskId,
+          task: updatedTask,
+          previousTask: existingTask
+        });
+      }
+      await emitTaskExecutionEvent(params.taskId, action, updatedTask == null ? void 0 : updatedTask.metadata);
+    }
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+});
+mcpMesh.implementAction("taskRemove", async (params) => {
+  try {
+    const existingTask = taskHelpers.getTask(params.taskId);
+    const deleted = taskHelpers.removeTask(params.taskId);
+    if (!deleted) {
+      return {
+        success: false,
+        error: `Task with ID ${params.taskId} not found`
+      };
+    }
+    await emitTaskEvent({
+      type: "task:removed",
+      taskId: params.taskId,
+      previousTask: existingTask
+    });
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+});
+const BOUNDARY_SCHEME = "uxp://boundary";
+const CONTENT_SCHEME = "uxp://content";
+const normalizeDocId = (docId) => {
+  const numeric = Number(docId);
+  if (!Number.isFinite(numeric)) {
+    return 0;
+  }
+  const normalized = Math.floor(numeric);
+  return normalized < 0 ? 0 : normalized;
+};
+const getActiveDocumentId = () => {
+  var _a3, _b2, _c;
+  try {
+    const storeId = (_b2 = (_a3 = sdpppSDK == null ? void 0 : sdpppSDK.stores) == null ? void 0 : _a3.PhotoshopStore) == null ? void 0 : _b2.getState().activeDocumentID;
+    if (typeof storeId === "number" && Number.isFinite(storeId)) {
+      return normalizeDocId(storeId);
+    }
+  } catch {
+  }
+  const doc = (_c = photoshop.app) == null ? void 0 : _c.activeDocument;
+  if (doc && doc.id !== void 0) {
+    const parsed = normalizeDocId(doc.id);
+    if (parsed >= 0) {
+      return parsed;
+    }
+  }
+  return 0;
+};
+const appendQuery = (base2, params) => {
+  const searchParams = new URLSearchParams();
+  Object.entries(params).forEach(([key2, value]) => {
+    if (value === void 0 || value === null || value === "") {
+      return;
+    }
+    searchParams.set(key2, String(value));
+  });
+  const query = searchParams.toString();
+  return query ? `${base2}?${query}` : base2;
+};
+const buildBoundaryUri = (docId, boundary) => {
+  const docSegment = normalizeDocId(docId);
+  if (typeof boundary === "string") {
+    const boundaryKey = boundary;
+    return `${BOUNDARY_SCHEME}/${docSegment}/${boundaryKey}`;
+  }
+  const rect = boundary;
+  return appendQuery(`${BOUNDARY_SCHEME}/${docSegment}/rect`, {
+    leftDistance: rect.leftDistance,
+    topDistance: rect.topDistance,
+    rightDistance: rect.rightDistance,
+    bottomDistance: rect.bottomDistance,
+    width: rect.width,
+    height: rect.height
+  });
+};
+const buildContentUri = (docId, content, layerIdentify) => {
+  const docSegment = normalizeDocId(docId);
+  if (content === "curlayer") {
+    if (layerIdentify && layerIdentify !== "") {
+      return appendQuery(`${CONTENT_SCHEME}/${docSegment}/layer`, { layerId: layerIdentify });
+    }
+    return `${CONTENT_SCHEME}/${docSegment}/curlayer`;
+  }
+  return `${CONTENT_SCHEME}/${docSegment}/${content}`;
+};
+({
+  title: t("image.send.select_position"),
+  optionRows: [
+    [
+      {
+        id: "newlayer",
+        text: t("image.layer.new"),
+        keyboardShortcut: "Q",
+        thumbnailConfig: { content: "canvas", boundary: "canvas" }
+      },
+      {
+        id: "smartobject",
+        text: t("image.layer.smart_object"),
+        keyboardShortcut: "W",
+        thumbnailConfig: { content: "canvas", boundary: "canvas" }
+      },
+      {
+        id: "curlayer",
+        text: t("image.layer.current"),
+        keyboardShortcut: "E",
+        visibility: { requiresActiveLayers: true },
+        thumbnailConfig: { content: "curlayer", boundary: "curlayer" }
+      },
+      {
+        id: "newdoc",
+        text: t("image.document.new"),
+        keyboardShortcut: "R",
+        thumbnailConfig: { content: "canvas", boundary: "canvas" }
+      }
+    ]
+  ]
+});
+const GetCanvasDialog = {
+  dialogType: "get_canvas",
+  title: t("image.get.canvas"),
+  className: "w-[40rem] h-[30rem]",
+  optionRows: [
+    [
+      {
+        id: "canvas_crop_none",
+        text: t("image.crop.none"),
+        keyboardShortcut: "Q",
+        thumbnailConfig: { content: "canvas", boundary: "canvas" }
+      },
+      {
+        id: "canvas_crop_negative",
+        text: t("image.crop.inpaint"),
+        keyboardShortcut: "W",
+        visibility: { requiresSelection: true },
+        thumbnailConfig: { content: "canvas", boundary: "selection" }
+      },
+      {
+        id: "canvas_crop_positive",
+        text: t("image.crop.outpaint"),
+        keyboardShortcut: "E",
+        visibility: { requiresSelection: true },
+        thumbnailConfig: { content: "canvas", boundary: "selection" }
+      }
+    ]
+  ],
+  keyboardMapping: {
+    "KeyQ": "canvas_crop_none",
+    "KeyW": "canvas_crop_negative",
+    "KeyE": "canvas_crop_positive"
+  },
+  storeConfig: {
+    activeSelector: (state) => state.genericDialog.active,
+    resolveSelector: (state) => state.resolveGenericDialog,
+    rejectSelector: (state) => state.rejectGenericDialog,
+    additionalSelectors: {
+      imageQuality: (state) => (state.genericDialog.additionalData || {}).imageQuality
+    }
+  },
+  onSelect: async (selection, additionalData) => {
+    const cropBySelection = selection.endsWith("_none") ? "no" : selection.endsWith("_negative") ? "negative" : "positive";
+    const activeDocumentID = sdpppSDK.stores.PhotoshopStore.getState().activeDocumentID;
+    const webviewState = sdpppSDK.stores.WebviewStore.getState();
+    const boundarySizes = webviewState.workBoundaryMaxSizes || {};
+    const defaultSize = sdpppSDK.stores.PhotoshopStore.getState().sdpppX["settings.imaging.defaultImagesSizeLimit"];
+    const sizeFromBoundary = boundarySizes[activeDocumentID] || defaultSize;
+    const getImageParams = {
+      content: "canvas",
+      boundary: "canvas",
+      imageSize: sizeFromBoundary,
+      imageQuality: additionalData.imageQuality,
+      cropBySelection
+    };
+    return {
+      getImageParams,
+      source: JSON.stringify(getImageParams)
+    };
+  }
+};
+const GetLayerImageDialog = {
+  dialogType: "get_layer_image",
+  title: t("image.get.current_layer"),
+  className: "w-[40rem] h-[30rem]",
+  optionRows: [
+    [
+      {
+        id: "curlayer_crop_none",
+        text: t("image.crop.none"),
+        keyboardShortcut: "A",
+        visibility: { requiresActiveLayers: true },
+        thumbnailConfig: { content: "curlayer", boundary: "curlayer" }
+      },
+      {
+        id: "curlayer_crop_negative",
+        text: t("image.crop.inpaint"),
+        keyboardShortcut: "S",
+        visibility: { requiresActiveLayers: true, requiresSelection: true },
+        thumbnailConfig: { content: "curlayer", boundary: "selection" }
+      },
+      {
+        id: "curlayer_crop_positive",
+        text: t("image.crop.outpaint"),
+        keyboardShortcut: "D",
+        visibility: { requiresActiveLayers: true, requiresSelection: true },
+        thumbnailConfig: { content: "curlayer", boundary: "selection" }
+      }
+    ]
+  ],
+  keyboardMapping: {
+    "KeyA": "curlayer_crop_none",
+    "KeyS": "curlayer_crop_negative",
+    "KeyD": "curlayer_crop_positive"
+  },
+  storeConfig: {
+    activeSelector: (state) => state.genericDialog.active,
+    resolveSelector: (state) => state.resolveGenericDialog,
+    rejectSelector: (state) => state.rejectGenericDialog,
+    additionalSelectors: {
+      imageQuality: (state) => (state.genericDialog.additionalData || {}).imageQuality
+    }
+  },
+  onSelect: async (selection, additionalData) => {
+    const cropBySelection = selection.endsWith("_none") ? "no" : selection.endsWith("_negative") ? "negative" : "positive";
+    const activeDocumentID = sdpppSDK.stores.PhotoshopStore.getState().activeDocumentID;
+    const webviewState = sdpppSDK.stores.WebviewStore.getState();
+    const boundarySizes = webviewState.workBoundaryMaxSizes || {};
+    const defaultSize = sdpppSDK.stores.PhotoshopStore.getState().sdpppX["settings.imaging.defaultImagesSizeLimit"];
+    const sizeFromBoundary = boundarySizes[activeDocumentID] || defaultSize;
+    const getImageParams = {
+      content: "curlayer",
+      boundary: "curlayer",
+      imageSize: sizeFromBoundary,
+      imageQuality: additionalData.imageQuality,
+      cropBySelection
+    };
+    return {
+      getImageParams,
+      source: JSON.stringify(getImageParams)
+    };
+  }
+};
+const boundaryDialogConfig = {
+  dialogType: "boundary",
+  title: t("boundary.select_boundary"),
+  className: "w-[40rem] h-[30rem]",
+  optionRows: [
+    [
+      {
+        id: "canvas",
+        text: t("boundary.canvas"),
+        keyboardShortcut: "Q",
+        thumbnailConfig: { content: "canvas", boundary: "canvas" }
+      },
+      {
+        id: "curlayer",
+        text: t("boundary.current_layer"),
+        keyboardShortcut: "W",
+        visibility: { requiresActiveLayers: true },
+        thumbnailConfig: { content: "curlayer", boundary: "canvas" }
+      },
+      {
+        id: "selection",
+        text: t("boundary.selection"),
+        keyboardShortcut: "E",
+        visibility: { requiresSelection: true },
+        // Use the selection boundary so the thumbnail reflects the actual selection area
+        thumbnailConfig: { content: "selection", boundary: "canvas" }
+      }
+    ]
+  ],
+  keyboardMapping: {
+    "KeyQ": "canvas",
+    "KeyW": "curlayer",
+    "KeyE": "selection",
+    "KeyX": () => {
+      const state = DialogManagerStore.getState();
+      const defaultSize = sdpppX["settings.imaging.defaultImagesSizeLimit"];
+      const current = (state.genericDialog.additionalData || {}).imageSize || 0;
+      DialogManagerStore.setState({
+        genericDialog: {
+          ...state.genericDialog,
+          additionalData: {
+            ...state.genericDialog.additionalData || {},
+            imageSize: current === 0 ? defaultSize : 0
+          }
+        }
+      });
+    }
+  },
+  storeConfig: {
+    activeSelector: (state) => state.genericDialog.active,
+    resolveSelector: (state) => state.resolveGenericDialog,
+    rejectSelector: (state) => state.rejectGenericDialog,
+    additionalSelectors: {
+      imageSize: (state) => (state.genericDialog.additionalData || {}).imageSize
+    }
+  },
+  // Include imageSize in result so WorkBoundary can persist per-doc max size
+  onSelect: async (boundary, additionalData) => {
+    const inputSize = (additionalData == null ? void 0 : additionalData.imageSize) || 0;
+    const imageSize = inputSize > 0 ? inputSize : 999999;
+    return { boundary, imageSize };
+  },
+  // Add control to adjust max_wh (image size)
+  controls: [
+    {
+      type: "imageSize",
+      title: t("image.limit_size"),
+      keyboardShortcut: "X",
+      config: {
+        defaultSize: sdpppX["settings.imaging.defaultImagesSizeLimit"],
+        onChange: (enabled, size) => {
+          DialogManagerStore.setState((prev) => ({
+            ...prev,
+            genericDialog: {
+              ...prev.genericDialog,
+              additionalData: {
+                ...prev.genericDialog.additionalData || {},
+                imageSize: enabled ? size : 0
+              }
+            }
+          }));
+        }
+      }
+    }
+  ]
+};
+const contentSourceDialogConfig = {
+  dialogType: "content_source_simple",
+  title: t("dialog.simple_source.title", { defaultValue: "选择内容来源" }),
+  className: "w-[40rem] h-[30rem]",
+  optionRows: [
+    [
+      {
+        id: "canvas",
+        text: t("dialog.simple_source.canvas", { defaultValue: "画布" }),
+        keyboardShortcut: "Q",
+        thumbnailConfig: { content: "canvas", boundary: "canvas" }
+      },
+      {
+        id: "current_layer",
+        text: t("dialog.simple_source.current_layer", { defaultValue: "当前图层" }),
+        keyboardShortcut: "W",
+        visibility: { requiresActiveLayers: true },
+        thumbnailConfig: { content: "curlayer", boundary: "canvas" }
+      }
+    ],
+    [
+      {
+        id: "local_file",
+        text: t("dialog.simple_source.local_file", { defaultValue: "选择文件" }),
+        keyboardShortcut: "E",
+        variant: "wide"
+      }
+    ]
+  ],
+  keyboardMapping: {
+    "KeyQ": "canvas",
+    "KeyW": "current_layer",
+    "KeyE": "local_file"
+  },
+  storeConfig: {
+    activeSelector: (state) => state.genericDialog.active,
+    resolveSelector: (state) => state.resolveGenericDialog,
+    rejectSelector: (state) => state.rejectGenericDialog,
+    additionalSelectors: {}
+  },
+  onSelect: async (selection) => {
+    var _a3, _b2;
+    const activeDocId = getActiveDocumentId();
+    if (selection === "canvas") {
+      return {
+        resource: buildContentUri(activeDocId, "canvas")
+      };
+    }
+    if (selection === "current_layer") {
+      const layerIdentifyResult = await getCurrentLayerIdentify().catch(() => ({ layer_identify: null }));
+      const layerIdentify = layerIdentifyResult == null ? void 0 : layerIdentifyResult.layer_identify;
+      if (!layerIdentify) {
+        throw new Error(t("dialog.simple_source.no_active_layer", { defaultValue: "当前没有可用图层" }));
+      }
+      return {
+        resource: buildContentUri(activeDocId, "curlayer", layerIdentify),
+        layerIdentify
+      };
+    }
+    if (selection === "local_file") {
+      const pickResult = await ((_b2 = (_a3 = mcpMesh.actions).pickLocalFile) == null ? void 0 : _b2.call(_a3, { kind: "file" }).catch(() => null));
+      if (!pickResult || pickResult.cancelled) {
+        return { cancelled: true };
+      }
+      let resourceId = pickResult.resource;
+      if (!resourceId || typeof resourceId !== "string") {
+        throw new Error(t("dialog.simple_source.pick_error", { defaultValue: "选择文件失败，请重试" }));
+      }
+      if (!resourceId.startsWith("uxp://file/")) {
+        const entry = resolveResource$1(resourceId);
+        if (entry) {
+          const originalResourceId = resourceId;
+          resourceId = createResource$1({
+            type: "file",
+            data: { ...entry.data ?? {} },
+            originalMeta: {
+              ...entry.originalMeta ?? {},
+              fileName: pickResult.fileName,
+              mimeType: pickResult.mimeType,
+              size: pickResult.size,
+              convertedFrom: resourceId
+            }
+          });
+          deleteResource$1(originalResourceId);
+        }
+      }
+      return {
+        resource: resourceId,
+        fileName: pickResult.fileName,
+        mimeType: pickResult.mimeType,
+        size: pickResult.size
+      };
+    }
+    throw new Error(`Unknown simple content source selection: ${selection}`);
+  }
+};
+const imageSourceDialogConfig = {
+  dialogType: "image_source",
+  title: t("dialog.image_source.title", { defaultValue: "选择图像来源" }),
+  className: "w-[42rem] h-[38rem]",
+  optionRows: [
+    [
+      {
+        id: "primary_canvas",
+        text: t("dialog.image_source.primary_canvas", { defaultValue: "以主图边界获取画布" }),
+        keyboardShortcut: "Q",
+        thumbnailConfig: { content: "canvas", boundary: "canvas" },
+        usesPrimaryBoundary: true
+      },
+      {
+        id: "canvas_canvas",
+        text: t("dialog.image_source.canvas_canvas", { defaultValue: "以画布边界获取画布" }),
+        keyboardShortcut: "W",
+        thumbnailConfig: { content: "canvas", boundary: "canvas" }
+      },
+      {
+        id: "curlayer_canvas",
+        text: t("dialog.image_source.curlayer_canvas", { defaultValue: "以当前图层边界获取画布" }),
+        keyboardShortcut: "E",
+        visibility: { requiresActiveLayers: true },
+        thumbnailConfig: { content: "canvas", boundary: "curlayer" }
+      }
+    ],
+    [
+      {
+        id: "primary_curlayer",
+        text: t("dialog.image_source.primary_curlayer", { defaultValue: "以主图边界获取当前图层" }),
+        keyboardShortcut: "A",
+        thumbnailConfig: { content: "curlayer", boundary: "canvas" },
+        usesPrimaryBoundary: true
+      },
+      {
+        id: "canvas_curlayer",
+        text: t("dialog.image_source.canvas_curlayer", { defaultValue: "以画布边界获取当前图层" }),
+        keyboardShortcut: "S",
+        thumbnailConfig: { content: "curlayer", boundary: "canvas" }
+      },
+      {
+        id: "curlayer_curlayer",
+        text: t("dialog.image_source.curlayer_curlayer", { defaultValue: "以当前图层边界获取当前图层" }),
+        keyboardShortcut: "D",
+        visibility: { requiresActiveLayers: true },
+        thumbnailConfig: { content: "curlayer", boundary: "curlayer" }
+      }
+    ],
+    [
+      {
+        id: "local_file",
+        text: t("dialog.image_source.local_file", { defaultValue: "从磁盘获取" }),
+        keyboardShortcut: "F",
+        variant: "wide"
+      }
+    ]
+  ],
+  keyboardMapping: {
+    "KeyQ": "primary_canvas",
+    "KeyW": "canvas_canvas",
+    "KeyE": "curlayer_canvas",
+    "KeyA": "primary_curlayer",
+    "KeyS": "canvas_curlayer",
+    "KeyD": "curlayer_curlayer",
+    "KeyF": "local_file"
+  },
+  storeConfig: {
+    activeSelector: (state) => state.genericDialog.active,
+    resolveSelector: (state) => state.resolveGenericDialog,
+    rejectSelector: (state) => state.rejectGenericDialog,
+    additionalSelectors: {}
+  },
+  onSelect: async (selection, additionalData) => {
+    const optionMap = {
+      primary_canvas: { mode: "image", boundary: "primary", content: "canvas" },
+      canvas_canvas: { mode: "image", boundary: "canvas", content: "canvas" },
+      curlayer_canvas: { mode: "image", boundary: "curlayer", content: "canvas" },
+      primary_curlayer: { mode: "image", boundary: "primary", content: "curlayer" },
+      canvas_curlayer: { mode: "image", boundary: "canvas", content: "curlayer" },
+      curlayer_curlayer: { mode: "image", boundary: "curlayer", content: "curlayer" },
+      local_file: { mode: "file" }
+    };
+    const option = optionMap[selection];
+    if (!option) {
+      throw new Error(`Unknown image source selection: ${selection}`);
+    }
+    if (option.mode === "file") {
+      return {
+        mode: "file"
+      };
+    }
+    const inboundBoundaryResource = additionalData == null ? void 0 : additionalData.boundaryResource;
+    if (option.boundary === "primary") {
+      if (!inboundBoundaryResource || typeof inboundBoundaryResource !== "string") {
+        throw new Error("boundaryResource is required for image source dialog");
+      }
+    }
+    const activeDocumentId = getActiveDocumentId();
+    let boundaryResource;
+    if (option.boundary === "primary") {
+      boundaryResource = inboundBoundaryResource;
+    } else {
+      boundaryResource = buildBoundaryUri(activeDocumentId, option.boundary);
+    }
+    const contentResource = buildContentUri(activeDocumentId, option.content);
+    try {
+      console.log("[ImageSelectionDialog] return image resources", { contentResource, boundaryResource });
+    } catch {
+    }
+    return {
+      mode: "image",
+      boundaryResource,
+      contentResource
+    };
+  }
+};
+const GetLayerMaskDialog = {
+  dialogType: "mask_layer",
+  title: t("mask.get.select_mask"),
+  className: "w-[40rem] h-[30rem]",
+  optionRows: [
+    [
+      {
+        id: "curlayer",
+        text: t("mask.current_layer_bounds"),
+        keyboardShortcut: "Q",
+        visibility: { requiresActiveLayers: true },
+        thumbnailConfig: { content: "curlayer", boundary: "canvas" }
+      },
+      {
+        id: "curlayer_reverse",
+        text: t("mask.current_layer_exclude"),
+        keyboardShortcut: "W",
+        visibility: { requiresActiveLayers: true },
+        thumbnailConfig: { content: "curlayer", boundary: "canvas", reverse: true }
+      }
+    ]
+  ],
+  keyboardMapping: {
+    "KeyQ": "curlayer",
+    "KeyW": "curlayer_reverse"
+  },
+  storeConfig: {
+    activeSelector: (state) => state.genericDialog.active,
+    resolveSelector: (state) => state.resolveGenericDialog,
+    rejectSelector: (state) => state.rejectGenericDialog,
+    additionalSelectors: {
+      imageSize: (state) => (state.genericDialog.additionalData || {}).imageSize
+    }
+  },
+  onSelect: async (selection) => {
+    const activeDocumentID = sdpppSDK.stores.PhotoshopStore.getState().activeDocumentID;
+    const webviewState = sdpppSDK.stores.WebviewStore.getState();
+    const boundarySizes = webviewState.workBoundaryMaxSizes || {};
+    const defaultSize = sdpppSDK.stores.PhotoshopStore.getState().sdpppX["settings.imaging.defaultImagesSizeLimit"];
+    const sizeFromBoundary = boundarySizes[activeDocumentID] || defaultSize;
+    const getMaskParams = {
+      content: "curlayer",
+      reverse: selection.endsWith("_reverse"),
+      imageSize: sizeFromBoundary
+    };
+    return {
+      getMaskParams,
+      source: JSON.stringify(getMaskParams)
+    };
+  }
+};
+const GetSelectionMaskDialog = {
+  dialogType: "mask_selection",
+  title: t("mask.get.select_mask"),
+  className: "w-[40rem] h-[30rem]",
+  optionRows: [
+    [
+      {
+        id: "selection",
+        text: t("mask.selection"),
+        keyboardShortcut: "A",
+        visibility: { requiresSelection: true },
+        thumbnailConfig: { content: "selection", boundary: "canvas" }
+      },
+      {
+        id: "selection_reverse",
+        text: t("mask.selection_exclude"),
+        keyboardShortcut: "S",
+        visibility: { requiresSelection: true },
+        thumbnailConfig: { content: "selection", boundary: "canvas", reverse: true }
+      }
+    ]
+  ],
+  keyboardMapping: {
+    "KeyA": "selection",
+    "KeyS": "selection_reverse"
+  },
+  storeConfig: {
+    activeSelector: (state) => state.genericDialog.active,
+    resolveSelector: (state) => state.resolveGenericDialog,
+    rejectSelector: (state) => state.rejectGenericDialog,
+    additionalSelectors: {
+      imageSize: (state) => (state.genericDialog.additionalData || {}).imageSize
+    }
+  },
+  onSelect: async (selection) => {
+    const activeDocumentID = sdpppSDK.stores.PhotoshopStore.getState().activeDocumentID;
+    const webviewState = sdpppSDK.stores.WebviewStore.getState();
+    const boundarySizes = webviewState.workBoundaryMaxSizes || {};
+    const defaultSize = sdpppSDK.stores.PhotoshopStore.getState().sdpppX["settings.imaging.defaultImagesSizeLimit"];
+    const sizeFromBoundary = boundarySizes[activeDocumentID] || defaultSize;
+    const getMaskParams = {
+      content: "selection",
+      reverse: selection.endsWith("_reverse"),
+      imageSize: sizeFromBoundary
+    };
+    return {
+      getMaskParams,
+      source: JSON.stringify(getMaskParams)
+    };
+  }
+};
 async function getMaskImpl(params) {
   try {
     const { boundary, content, reverse, imageSize, layer_identify } = params;
@@ -129497,7 +131236,7 @@ async function getMaskImpl(params) {
     const thumbnailBuffer = await thumbnailImage.getBuffer(JimpMime.png);
     const thumbnail = "data:image/png;base64," + thumbnailBuffer.toString("base64");
     const imageBuffer = await jimpImage.getBuffer(JimpMime.png);
-    const resourceId = createResource({
+    const resourceId = createResource$1({
       type: "mask",
       data: {
         buffer: new Uint8Array(imageBuffer),
@@ -129509,7 +131248,7 @@ async function getMaskImpl(params) {
         params: JSON.stringify(params)
       }
     });
-    updateResource(resourceId, {
+    updateResource$1(resourceId, {
       thumbnailCache: {
         base64: thumbnail,
         width: thumbnailImage.bitmap.width,
@@ -129639,7 +131378,7 @@ async function getImageImpl(params) {
     const thumbnailBuffer = await thumbnailImage.getBuffer(JimpMime.png);
     const thumbnail = "data:image/png;base64," + thumbnailBuffer.toString("base64");
     const imageBuffer = await jimpImage.getBuffer(JimpMime.png);
-    const resourceId = createResource({
+    const resourceId = createResource$1({
       type: "image",
       data: {
         buffer: new Uint8Array(imageBuffer),
@@ -129651,7 +131390,7 @@ async function getImageImpl(params) {
         params: JSON.stringify(params)
       }
     });
-    updateResource(resourceId, {
+    updateResource$1(resourceId, {
       thumbnailCache: {
         base64: thumbnail,
         width: thumbnailImage.bitmap.width,
@@ -129718,10 +131457,10 @@ async function importImageImpl(params) {
   var _a3, _b2;
   try {
     const { resource, type: type2, boundary } = params;
-    const resourceEntry = resolveResource(resource);
+    const resourceEntry = resolveResource$1(resource);
     let nativePath;
     const extensionHint = typeof ((_a3 = resourceEntry == null ? void 0 : resourceEntry.originalMeta) == null ? void 0 : _a3.extension) === "string" ? String(resourceEntry.originalMeta.extension) : void 0;
-    nativePath = await ensureResourceTempFile(resource, { extensionHint }).catch(() => void 0);
+    nativePath = await ensureResourceTempFile$1(resource, { extensionHint }).catch(() => void 0);
     if (!nativePath) {
       throw new Error("Failed to materialize resource");
     }
@@ -129894,89 +131633,6 @@ async function importImageImpl(params) {
     };
   }
 }
-async function getBoundaryImpl(params) {
-  var _a3, _b2;
-  if (!photoshop.app.activeDocument) {
-    throw new Error(t("photoshop.no_active_document"));
-  }
-  const document2 = photoshop.app.activeDocument;
-  let boundaryRect;
-  switch (params.type) {
-    case "curlayer":
-      const activeLayer = (_a3 = document2.activeLayers) == null ? void 0 : _a3[0];
-      if (!activeLayer) {
-        throw new Error(t("photoshop.no_active_layer"));
-      }
-      const layerBounds = activeLayer.bounds;
-      if (!layerBounds) {
-        boundaryRect = BoundaryRectUtils.fromPositionAndSize(0, 0, document2.width, document2.height, document2.width, document2.height);
-      } else {
-        boundaryRect = BoundaryRectUtils.fromPhotoshopBounds(layerBounds, document2.width, document2.height);
-      }
-      break;
-    case "selection":
-      const selectionBounds = (_b2 = document2.selection) == null ? void 0 : _b2.bounds;
-      if (!selectionBounds) {
-        boundaryRect = BoundaryRectUtils.fromPositionAndSize(0, 0, document2.width, document2.height, document2.width, document2.height);
-      } else {
-        boundaryRect = BoundaryRectUtils.fromPhotoshopBounds(selectionBounds, document2.width, document2.height);
-      }
-      break;
-    default:
-      throw new Error(t("photoshop.invalid_boundary_type", { type: params.type }));
-  }
-  const thumbnail = await generateBoundaryThumbnail(document2, boundaryRect);
-  return {
-    boundary: boundaryRect,
-    thumbnail
-  };
-}
-async function generateBoundaryThumbnail(document2, boundaryRect) {
-  try {
-    const documentInfo = await getDocumentInfo({
-      document_identify: SpeicialIDManager.get_SPECIAL_DOCUMENT_CURRENT()
-    });
-    const canvasImage = await getImage.getJimpImage({
-      document_identify: SpeicialIDManager.get_SPECIAL_DOCUMENT_CURRENT(),
-      layer_identify: SpeicialIDManager.get_SPECIAL_LAYER_USE_CANVAS(),
-      boundary: documentInfo.document_boundary,
-      max_wh: 192,
-      quality: 8
-    });
-    const thumbWidth = canvasImage.width;
-    const thumbHeight = canvasImage.height;
-    const docWidth = document2.width;
-    const docHeight = document2.height;
-    const scaleX = thumbWidth / docWidth;
-    const scaleY = thumbHeight / docHeight;
-    const boundaryLeft = Math.round(boundaryRect.leftDistance * scaleX);
-    const boundaryTop = Math.round(boundaryRect.topDistance * scaleY);
-    const boundaryRight = Math.round((docWidth - boundaryRect.rightDistance) * scaleX);
-    const boundaryBottom = Math.round((docHeight - boundaryRect.bottomDistance) * scaleY);
-    canvasImage.scan(0, 0, thumbWidth, thumbHeight, function(x2, y2, idx) {
-      const isOutsideBoundary = x2 < boundaryLeft || x2 >= boundaryRight || y2 < boundaryTop || y2 >= boundaryBottom;
-      if (isOutsideBoundary) {
-        canvasImage.bitmap.data[idx + 3] = Math.round(canvasImage.bitmap.data[idx + 3] * 0.3);
-      }
-    });
-    const thumbnailBuffer = await canvasImage.getBuffer(JimpMime.png);
-    return "data:image/png;base64," + thumbnailBuffer.toString("base64");
-  } catch (error) {
-    console.error("Error generating boundary thumbnail:", error);
-    return "";
-  }
-}
-async function getCurrentLayerIdentify() {
-  if (!photoshop.app.activeDocument) {
-    throw new Error(t("photoshop.no_active_document"));
-  }
-  const activeLayer = photoshop.app.activeDocument.activeLayers && photoshop.app.activeDocument.activeLayers.length > 0 ? photoshop.app.activeDocument.activeLayers[0] : null;
-  if (!activeLayer) {
-    return { layer_identify: null };
-  }
-  const identify = makeLayerIdentify(activeLayer.id, activeLayer.name);
-  return { layer_identify: identify };
-}
 async function applyMaskToImageImpl(params) {
   const { imageResource, maskResource, invertMask = false } = params;
   if (!imageResource) {
@@ -129986,8 +131642,8 @@ async function applyMaskToImageImpl(params) {
     throw new Error("applyMaskToImage: maskResource is required");
   }
   const [{ buffer: imageBuffer }, { buffer: maskBuffer }] = await Promise.all([
-    resolveResourceBuffer(imageResource),
-    resolveResourceBuffer(maskResource)
+    resolveResourceBuffer$1(imageResource),
+    resolveResourceBuffer$1(maskResource)
   ]);
   if (!(imageBuffer == null ? void 0 : imageBuffer.byteLength)) {
     throw new Error("applyMaskToImage: failed to resolve image buffer");
@@ -130017,7 +131673,7 @@ async function applyMaskToImageImpl(params) {
     baseData[dataIndex + 3] = maskValue;
   }
   const outputBuffer = await baseImage.getBuffer(JimpMime.png);
-  const resourceId = createResource({
+  const resourceId = createResource$1({
     type: "image",
     data: {
       buffer: new Uint8Array(outputBuffer),
@@ -130037,7 +131693,7 @@ async function applyMaskToImageImpl(params) {
   thumbnailImage.scaleToFit({ w: 320, h: 320 });
   const thumbnailBuffer = await thumbnailImage.getBuffer(JimpMime.png);
   const thumbnailBase64 = `data:image/png;base64,${thumbnailBuffer.toString("base64")}`;
-  updateResource(resourceId, {
+  updateResource$1(resourceId, {
     thumbnailCache: {
       base64: thumbnailBase64,
       width,
@@ -130326,6 +131982,40 @@ async function selectImageSource(_params) {
     });
   }
 }
+async function selectContentSource(_params = {}) {
+  try {
+    const result = await new Promise((resolve2) => {
+      DialogManagerStore.setState({
+        genericDialog: {
+          active: true,
+          config: contentSourceDialogConfig,
+          additionalData: _params.additionalData
+        },
+        resolveGenericDialog: (value) => resolve2(value),
+        rejectGenericDialog: (error) => {
+          console.warn("[selectContentSource] dialog cancelled:", (error == null ? void 0 : error.message) ?? error);
+          resolve2({ cancelled: true });
+        }
+      });
+    });
+    return result ?? { cancelled: true };
+  } catch (e4) {
+    console.error("[selectContentSource] unexpected rejection:", e4);
+    return { cancelled: true };
+  } finally {
+    DialogManagerStore.setState({
+      genericDialog: {
+        active: false,
+        config: void 0,
+        additionalData: void 0
+      },
+      resolveGenericDialog: () => {
+      },
+      rejectGenericDialog: () => {
+      }
+    });
+  }
+}
 async function selectLayerMask(_params) {
   try {
     const result = await new Promise((resolve2, reject2) => {
@@ -130402,6 +132092,7 @@ mcpMesh.implementAction("importImage", importImageImpl);
 mcpMesh.implementAction("applyMaskToImage", applyMaskToImageImpl);
 mcpMesh.implementAction("showBoundarySelectionDialog", showBoundarySelectionDialog);
 mcpMesh.implementAction("selectImageSource", selectImageSource);
+mcpMesh.implementAction("selectContentSource", selectContentSource);
 mcpMesh.implementAction("selectCanvasImage", selectCanvasImage);
 mcpMesh.implementAction("selectLayerImage", selectLayerImage);
 mcpMesh.implementAction("selectLayerMask", selectLayerMask);
@@ -130682,7 +132373,7 @@ async function updateThumbnails() {
     const resourceId = canvasRes == null ? void 0 : canvasRes.resource;
     if (resourceId) {
       try {
-        deleteResource(resourceId);
+        deleteResource$1(resourceId);
       } catch (err) {
         console.warn("[thumbnail-store-maintain] failed to release resource", err);
       }
@@ -131568,7 +133259,7 @@ function GenericImageCard(props) {
         }
         setThumbnail(thumb || null);
         if (resourceId) {
-          deleteResource(resourceId);
+          deleteResource$1(resourceId);
         }
       } catch (error) {
         console.warn("Failed to generate thumbnail for", props.option.id, error);

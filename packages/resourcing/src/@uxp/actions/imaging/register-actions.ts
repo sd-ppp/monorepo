@@ -21,4 +21,10 @@ export function registerImagingActions(context: ImagingActionContext): void {
   registerLayerResolveAction(context);
 }
 
-export type { ImagingActionContext, MaterializedPayload, McpMeshLike } from "./context.js";
+export type {
+  ImagingActionContext,
+  MaterializedPayload,
+  MaterializedCbmPayload,
+  CreateFromCbmParams,
+  McpMeshLike
+} from "./context.js";

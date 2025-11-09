@@ -12,6 +12,7 @@ import type { WorkflowStatusDescriptor } from '@sdppp/ui-library';
 import { SimpleWorkflowControlPanel } from '../../_comfy_frontend/renderer/components/workflow-detail/components/SimpleWorkflowControlPanel';
 import '../../base/styles/workflow-controls.less';
 import { createImageMaskWidgetRegistry } from '../../base/widgetable-image-mask/widgetable-widgets';
+import { WidgetablePhotoshopProvider } from '../../base/widgetable-photoshop';
 
 const log = sdpppSDK.logger.extend('customapi')
 
@@ -126,12 +127,14 @@ function CustomAPIRendererModels() {
                 return uploadInput.resource as string;
             }}
         >
-        <WidgetableProvider widgetRegistry={createImageMaskWidgetRegistry()}>
-            {/* No help icon or model title header for Custom API */}
-            {!loading && !loadError && <CustomAPIRendererForm />}
-            {loading && <Alert message={t('google.loading')} type="info" showIcon />}
-            {loadError && <Alert message={loadError} type="error" showIcon />}
-        </WidgetableProvider>
+        <WidgetablePhotoshopProvider>
+            <WidgetableProvider widgetRegistry={createImageMaskWidgetRegistry()}>
+                {/* No help icon or model title header for Custom API */}
+                {!loading && !loadError && <CustomAPIRendererForm />}
+                {loading && <Alert message={t('google.loading')} type="info" showIcon />}
+                {loadError && <Alert message={loadError} type="error" showIcon />}
+            </WidgetableProvider>
+        </WidgetablePhotoshopProvider>
         </UploadPassProvider>
     )
 }

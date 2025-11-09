@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "baseUrl": "./",
+    "paths": {
+      "sdppp-photoshop-widgets/*": ["./src/*"],
+      "@sdppp/widget-image-mask-ui/*": ["./src/*"],
+      "@sdppp/resourcing": ["../../packages/resourcing/src"],
+      "@sdppp/resourcing/*": ["../../packages/resourcing/src/*"]
+    }
+  },
+  "include": ["./src"],
+  "exclude": ["./dist", "./node_modules"]
+}

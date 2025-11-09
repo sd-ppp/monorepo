@@ -396,6 +396,16 @@ export declare const sdpppSDK: {
 				action?: "getImage" | "pickLocalFile" | undefined;
 				cancelled?: boolean | undefined;
 			}>;
+			selectContentSource: (data: {
+				additionalData?: Record<string, any> | undefined;
+			} | undefined, signal?: AbortSignal) => Promise<{
+				fileName?: string | undefined;
+				mimeType?: string | undefined;
+				size?: number | undefined;
+				resource?: string | undefined;
+				cancelled?: boolean | undefined;
+				layerIdentify?: string | undefined;
+			}>;
 			selectCanvasImage: (data: {
 				additionalData?: Record<string, any> | undefined;
 			}, signal?: AbortSignal) => Promise<{
@@ -643,6 +653,17 @@ export declare const sdpppSDK: {
 				imageUrl?: string | undefined;
 				apiTime?: number | undefined;
 			}>;
+			"fileResource.createFromExternal": (data: {
+				url: string;
+			}, signal?: AbortSignal) => Promise<{
+				error?: string | undefined;
+				width?: number | undefined;
+				height?: number | undefined;
+				mimeType?: string | undefined;
+				thumbnail?: string | undefined;
+				resource?: string | undefined;
+				mime?: string | undefined;
+			}>;
 			"fileResource.createFromLocal": (data: {
 				types?: {
 					description?: string | undefined;
@@ -669,6 +690,11 @@ export declare const sdpppSDK: {
 				resource?: string | undefined;
 				mime?: string | undefined;
 			}>;
+			"fileResource.delete": (data: {
+				resources: string[];
+			}, signal?: AbortSignal) => Promise<{
+				error?: string | undefined;
+			}>;
 			"fileResource.thumbnail": (data: {
 				resource: string;
 				maxSize?: number | undefined;
@@ -677,6 +703,11 @@ export declare const sdpppSDK: {
 				width?: number | undefined;
 				height?: number | undefined;
 				thumbnail?: string | undefined;
+			}>;
+			"fileResource.saveAs": (data: {
+				resources: string[];
+			}, signal?: AbortSignal) => Promise<{
+				error?: string | undefined;
 			}>;
 			"boundary.normalize": (data: {
 				boundary: string;

@@ -1,17 +1,17 @@
-import React, { useCallback, useMemo } from 'react';
 import { sdpppSDK } from '@sdppp/common';
 import { useTranslation } from '@sdppp/common/i18n/react';
+import { subscribeToRealtimeChanges as resourcingRealtimeSubscriber } from '@sdppp/resourcing/src/@sideweb/realtime-thumbnail';
+import type { ContentType } from '@sdppp/resourcing/src/resource-uris';
+import React, { useCallback, useMemo } from 'react';
 import {
     WidgetImageMaskProvider,
     type WidgetImageMaskActions,
     type WidgetImageMaskLogger,
     type WidgetRealtimeSubscriber,
-} from '@sdppp/widget-image-mask-ui/context/WidgetImageMaskContext';
-import { subscribeToRealtimeChanges as resourcingRealtimeSubscriber } from '@sdppp/resourcing/@sideweb/realtime-thumbnail';
-import type { ContentType } from '@sdppp/resourcing/resource-uris';
+} from 'sdppp-photoshop-widgets/context/WidgetImageMaskContext';
+import { buildBoundaryUri } from '../realtime-thumbnail/utils';
 import { useUploadPasses } from '../upload-pass-context';
 import { resolveWorkBoundaryContext } from '../widgetable-image-mask/services/photoshop/operations';
-import { buildBoundaryUri } from '../realtime-thumbnail/utils';
 
 const fallbackLogger: WidgetImageMaskLogger = () => undefined;
 
@@ -130,6 +130,42 @@ export const WidgetablePhotoshopProvider: React.FC<WidgetablePhotoshopProviderPr
         }
     }, []);
 
+    const selectAdvancedContentSource = useCallback(async () => {
+        const fn = sdpppSDK?.plugins?.photoshop?.selectContentSource;
+        if (typeof fn !== 'function') {
+            try {
+                logger('selectAdvancedContentSource unavailable');
+            } catch {
+                // ignore logging failures
+            }
+            return null;
+        }
+        try {
+            const result = await fn({});
+            if (!result || result.cancelled) {
+                return null;
+            }
+            const resource = typeof result.resource === 'string' ? result.resource.trim() : '';
+            if (!resource) {
+                return null;
+            }
+            if (resource.startsWith('uxp://content/')) {
+                return { contentUri: resource };
+            }
+            return { fileUri: resource };
+        } catch (error) {
+            try {
+                logger(
+                    'selectAdvancedContentSource error',
+                    error instanceof Error ? error.message : String(error),
+                );
+            } catch {
+                // ignore logging failures
+            }
+            return null;
+        }
+    }, [logger]);
+
     const realtimeSubscriber = useMemo<WidgetRealtimeSubscriber>(() => {
         if (typeof resourcingRealtimeSubscriber !== 'function') {
             return fallbackRealtimeSubscriber;
@@ -147,10 +183,11 @@ export const WidgetablePhotoshopProvider: React.FC<WidgetablePhotoshopProviderPr
             resolveWorkBoundary={resolveWorkBoundary}
             subscribeToRealtimeChanges={realtimeSubscriber}
             uploadPassHandlers={uploadHandlers}
+            selectAdvancedContentSource={selectAdvancedContentSource}
         >
             {children}
         </WidgetImageMaskProvider>
     );
 };
 
-export { createImageMaskWidgetRouter, imageMaskWidgetRouter } from '@sdppp/widget-image-mask-ui/widgets/widget-router';
+export { createImageMaskWidgetRouter, imageMaskWidgetRouter } from 'sdppp-photoshop-widgets/widget-router';

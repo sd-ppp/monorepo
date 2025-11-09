@@ -13,6 +13,7 @@ import '../../base/styles/workflow-controls.less';
 import { UploadPassProvider } from '../../base/upload-pass-context';
 import { useTaskExecutor } from '../../base/useTaskExecutor';
 import { createImageMaskWidgetRegistry } from '../../base/widgetable-image-mask/widgetable-widgets';
+import { WidgetablePhotoshopProvider } from '../../base/widgetable-photoshop';
 import './runninghub.less';
 import { changeSelectedModel, createTask, runninghubStore } from './runninghub.store';
 
@@ -190,17 +191,19 @@ function RunningHubRendererModels() {
                 return await client.uploadImage('buffer', payload, format, signal);
             }}
         >
-        <WidgetableProvider widgetRegistry={createImageMaskWidgetRegistry()}>
-            <RunningHubRendererForm
-                loading={loading}
-                loadError={loadError}
-                selectOptions={selectOptions}
-                onSelectChange={handleWebappIdChange}
-                onSelectRemove={removeWebappHistory}
-                language={language}
-            />
-            {loadError && <Alert message={loadError} type="error" showIcon />}
-        </WidgetableProvider>
+        <WidgetablePhotoshopProvider>
+            <WidgetableProvider widgetRegistry={createImageMaskWidgetRegistry()}>
+                <RunningHubRendererForm
+                    loading={loading}
+                    loadError={loadError}
+                    selectOptions={selectOptions}
+                    onSelectChange={handleWebappIdChange}
+                    onSelectRemove={removeWebappHistory}
+                    language={language}
+                />
+                {loadError && <Alert message={loadError} type="error" showIcon />}
+            </WidgetableProvider>
+        </WidgetablePhotoshopProvider>
         </UploadPassProvider>
     )
 }

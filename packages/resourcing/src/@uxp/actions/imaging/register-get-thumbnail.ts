@@ -1,8 +1,8 @@
 import { Buffer } from "buffer";
 import { Jimp, JimpMime } from "jimp";
 
+import { isResourceId } from "../../../resource-types.js";
 import { resolveResource, resolveResourceBuffer, updateResource } from "../../image-holder.js";
-import { isResourceId } from "../../resource-types.js";
 import type { ImagingActionContext } from "./context.js";
 
 export function registerThumbnailAction(context: ImagingActionContext): void {

@@ -1,5 +1,5 @@
 import { sdpppSDK } from "@sdppp/common";
-import type { ContentType } from "../resource-uris.js";
+import type { ContentType } from "../resource-uris.ts";
 
 /**
  * Minimal shape of the PhotoshopStore state exposed to SideWeb code.

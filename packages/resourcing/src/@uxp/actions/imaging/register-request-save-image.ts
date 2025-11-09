@@ -1,7 +1,7 @@
 import { storage } from "uxp";
 
+import { isResourceId } from "../../../resource-types.js";
 import { ensureResourceTempFile, resolveResource } from "../../image-holder.js";
-import { isResourceId } from "../../resource-types.js";
 import type { ImagingActionContext } from "./context.js";
 
 export function registerSaveAsAction(context: ImagingActionContext): void {

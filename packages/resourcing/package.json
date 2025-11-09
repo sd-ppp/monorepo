@@ -3,24 +3,6 @@
   "version": "0.1.0",
   "description": "Shared resource management utilities for SDPPP.",
   "type": "module",
-  "exports": {
-    "./resource-types": {
-      "import": "./dist/resource-types.js",
-      "types": "./dist/resource-types.d.ts"
-    },
-    "./resource-uris": {
-      "import": "./dist/resource-uris.js",
-      "types": "./dist/resource-uris.d.ts"
-    },
-    "./@uxp/*": {
-      "import": "./dist/@uxp/*.js",
-      "types": "./dist/@uxp/*.d.ts"
-    },
-    "./@sideweb/*": {
-      "import": "./dist/@sideweb/*.js",
-      "types": "./dist/@sideweb/*.d.ts"
-    }
-  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "clean": "rimraf dist",

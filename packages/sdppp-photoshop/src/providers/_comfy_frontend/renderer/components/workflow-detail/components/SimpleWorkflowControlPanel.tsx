@@ -1,7 +1,8 @@
 import { CloseCircleOutlined, PlayCircleFilled } from '@ant-design/icons';
+import { useTranslation } from '@sdppp/common';
 import { WorkflowControlsPanel, WorkflowStatusDisplay, type WorkflowStatusDescriptor } from '@sdppp/ui-library';
-import { Button, Flex, Tooltip } from 'antd';
-import React from 'react';
+import { Button, Flex, Tooltip, Typography } from 'antd';
+import React, { useCallback, useState } from 'react';
 import { useBoundarySettings } from '../hooks/useBoundarySettings';
 import { BoundaryPreview, BoundarySettingsLink } from './BoundarySection';
 
@@ -32,6 +33,15 @@ export const SimpleWorkflowControlPanel: React.FC<SimpleWorkflowControlPanelProp
   onCancel,
   status,
 }) => {
+  const { t } = useTranslation();
+  const translate = t as unknown as (key: string, options?: Record<string, unknown>) => string;
+  const [isBoundaryPreviewVisible, setIsBoundaryPreviewVisible] = useState(false);
+  const { Link } = Typography;
+
+  const handleEnableBoundaryPreview = useCallback(() => {
+    setIsBoundaryPreviewVisible(true);
+  }, []);
+
   const boundarySettings = useBoundarySettings();
 
   const statusContent = status.type === 'empty'
@@ -52,7 +62,9 @@ export const SimpleWorkflowControlPanel: React.FC<SimpleWorkflowControlPanelProp
         right: headerRight,
       }}
       bodyRow={{
-        left: <BoundaryPreview previewQuality={boundarySettings.previewQuality} />,
+        left: isBoundaryPreviewVisible ? (
+          <BoundaryPreview previewQuality={boundarySettings.previewQuality} />
+        ) : undefined,
         center: bodyCenter ? (
           <Flex style={{ width: '100%' }}>
             {bodyCenter}
@@ -94,6 +106,19 @@ export const SimpleWorkflowControlPanel: React.FC<SimpleWorkflowControlPanelProp
         ) : undefined,
       }}
       middleBottomRow={{
+        left: !isBoundaryPreviewVisible ? (
+          <Link
+            className="workflow-boundary-limit"
+            onClick={handleEnableBoundaryPreview}
+            style={{
+              height: 32,
+            }}
+            type="secondary"
+          >
+            <span>{translate('workflow.output.destination.title', { defaultMessage: '输出至：' })}</span>
+            <span>{translate('workflow.output.destination.canvas', { defaultMessage: '全图' })}</span>
+          </Link>
+        ) : undefined,
         center: statusContent,
         right: undefined,
       }}

@@ -1,3 +1,5 @@
+import type { Jimp } from "jimp";
+
 export interface McpMeshLike {
   implementAction: (name: string, handler: (...args: any[]) => any) => void;
 }
@@ -12,16 +14,25 @@ export interface MaterializedPayload {
   meta?: Record<string, unknown>;
 }
 
+export interface MaterializedCbmPayload {
+  type: "image" | "mask";
+  image: Jimp;
+  thumbnail?: string;
+  mime?: string;
+  meta?: Record<string, unknown>;
+}
+
+export interface CreateFromCbmParams {
+  contentUri?: string;
+  boundaryUri?: string;
+  maskUri?: string;
+}
+
 export interface ImagingActionContext {
   mcpMesh: McpMeshLike;
   materializers?: {
     fromLocalFile?: (request?: Record<string, unknown>) => Promise<MaterializedPayload>;
-    fromCBM?: (request: {
-      contentUri?: string;
-      boundaryUri?: string;
-      maskUri?: string;
-      options?: Record<string, unknown>;
-    }) => Promise<MaterializedPayload>;
+    fromCBM?: (request: CreateFromCbmParams) => Promise<MaterializedCbmPayload>;
   };
   resolvers?: {
     boundaryToRect?: (boundaryUri: string) => Promise<string>;
