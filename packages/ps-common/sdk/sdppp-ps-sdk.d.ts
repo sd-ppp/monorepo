@@ -29,14 +29,14 @@ export declare const sdpppSDK: {
 			theme: string;
 			sdpppX: Record<string, any>;
 			locale: "zh-CN" | "en-US";
-			comfyWebviewConnectStatus: "connecting" | "connected" | "disconnected";
+			comfyWebviewConnectStatus: "connected" | "connecting" | "disconnected";
 			comfyWebviewLoadError: string;
 			comfyWebviewLoading: boolean;
 			comfyWebviewVersion: string;
 			comfyHTTPCode: number;
 			comfyURL: string;
 			sdkWebviewFocusing: boolean;
-			sdkWebviewConnectStatus: "connecting" | "connected" | "disconnected";
+			sdkWebviewConnectStatus: "connected" | "connecting" | "disconnected";
 			isLogin: boolean;
 			isGuest: boolean;
 			requestingLogin: boolean;
@@ -176,8 +176,8 @@ export declare const sdpppSDK: {
 			uploadComfyImageFromUXP: (data: {
 				fileName: string;
 				dataBase64: string;
-				mimeType?: string | undefined;
 				overwrite?: boolean | undefined;
+				mimeType?: string | undefined;
 			}, signal?: AbortSignal) => Promise<{
 				name: string;
 			}>;
@@ -228,6 +228,7 @@ export declare const sdpppSDK: {
 				success: boolean;
 				images?: {
 					url: string;
+					thumbnail: string;
 				}[] | undefined;
 				nodeErrors?: Record<string, string> | undefined;
 				prompt_ids?: string[] | undefined;
@@ -296,9 +297,34 @@ export declare const sdpppSDK: {
 				error?: string | undefined;
 				width?: number | undefined;
 				height?: number | undefined;
+				mimeType?: string | undefined;
+				thumbnail?: string | undefined;
 				resource?: string | undefined;
 				source?: string | undefined;
+			}>;
+			getResourceImage: (data: {
+				boundary: string;
+				content: string;
+			}, signal?: AbortSignal) => Promise<{
+				error?: string | undefined;
+				width?: number | undefined;
+				height?: number | undefined;
+				mimeType?: string | undefined;
 				thumbnail?: string | undefined;
+				resource?: string | undefined;
+				source?: string | undefined;
+			}>;
+			getResourceMask: (data: {
+				boundary: string;
+				content: string;
+			}, signal?: AbortSignal) => Promise<{
+				error?: string | undefined;
+				width?: number | undefined;
+				height?: number | undefined;
+				mimeType?: string | undefined;
+				thumbnail?: string | undefined;
+				resource?: string | undefined;
+				source?: string | undefined;
 			}>;
 			getMask: (data: {
 				reverse: boolean;
@@ -317,16 +343,17 @@ export declare const sdpppSDK: {
 				error?: string | undefined;
 				width?: number | undefined;
 				height?: number | undefined;
+				mimeType?: string | undefined;
+				thumbnail?: string | undefined;
 				resource?: string | undefined;
 				source?: string | undefined;
-				thumbnail?: string | undefined;
 			}>;
 			getCurrentLayerIdentify: (data: {}, signal?: AbortSignal) => Promise<{
 				layer_identify: string | null;
 			}>;
 			importImage: (data: {
 				type: "canvas" | "curlayer" | "newdoc" | "smartobject";
-				nativePath: string;
+				resource: string;
 				boundary?: {
 					leftDistance: number;
 					topDistance: number;
@@ -344,6 +371,17 @@ export declare const sdpppSDK: {
 				layers?: {
 					identify: string;
 				}[] | undefined;
+			}>;
+			applyMaskToImage: (data: {
+				imageResource: string;
+				maskResource: string;
+				invertMask?: boolean | undefined;
+			}, signal?: AbortSignal) => Promise<{
+				width: number;
+				height: number;
+				mimeType: string;
+				resource: string;
+				thumbnail?: string | undefined;
 			}>;
 			showBoundarySelectionDialog: (data: {
 				additionalData?: Record<string, any> | undefined;
@@ -411,7 +449,7 @@ export declare const sdpppSDK: {
 				} | undefined;
 			}>;
 			taskAdd: (data: {
-				status: "running" | "completed" | "failed" | "cancelled";
+				status: "cancelled" | "running" | "completed" | "failed";
 				taskId: string;
 				taskName: string;
 				startTime: string;
@@ -430,7 +468,7 @@ export declare const sdpppSDK: {
 			}>;
 			taskUpdate: (data: {
 				taskId: string;
-				status?: "running" | "completed" | "failed" | "cancelled" | undefined;
+				status?: "cancelled" | "running" | "completed" | "failed" | undefined;
 				error?: string | undefined;
 				result?: any;
 				taskName?: string | undefined;
@@ -544,16 +582,27 @@ export declare const sdpppSDK: {
 				mimeType?: string | undefined;
 			}>;
 			uploadComfyImage: (data: {
+				overwrite: boolean;
 				uploadInput: {
-					type: "token" | "buffer" | "resource";
+					type: "token" | "resource" | "buffer";
 					fileName: string;
 					mimeType?: string | undefined;
 					resource?: any;
 					resourceId?: string | undefined;
 				};
-				overwrite: boolean;
 			}, signal?: AbortSignal) => Promise<{
 				name: string;
+			}>;
+			pickLocalFile: (data: {
+				acceptExtensions?: string[] | undefined;
+				kind?: "image" | "file" | undefined;
+			} | undefined, signal?: AbortSignal) => Promise<{
+				error?: string | undefined;
+				fileName?: string | undefined;
+				mimeType?: string | undefined;
+				size?: number | undefined;
+				resource?: string | undefined;
+				cancelled?: boolean | undefined;
 			}>;
 			proxiedFetch: (data: {
 				url: string;
@@ -600,28 +649,16 @@ export declare const sdpppSDK: {
 				error?: string | undefined;
 				width?: number | undefined;
 				height?: number | undefined;
+				thumbnail?: string | undefined;
 				resource?: string | undefined;
 			}>;
 			getThumbnail: (data: {
 				resource: string;
-				maskResource?: string | undefined;
-				invertMask?: boolean | undefined;
 				maxSize?: number | undefined;
 			}, signal?: AbortSignal) => Promise<{
 				error?: string | undefined;
 				width?: number | undefined;
 				height?: number | undefined;
-				thumbnail?: string | undefined;
-			}>;
-			applyMaskToImage: (data: {
-				maskResource: string;
-				imageResource: string;
-				invertMask?: boolean | undefined;
-			}, signal?: AbortSignal) => Promise<{
-				error?: string | undefined;
-				width?: number | undefined;
-				height?: number | undefined;
-				resource?: string | undefined;
 				thumbnail?: string | undefined;
 			}>;
 			deleteDownloadedImage: (data: {

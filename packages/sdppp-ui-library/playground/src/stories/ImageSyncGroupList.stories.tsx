@@ -124,7 +124,7 @@ export const Default: Story = {
         onRemove={handleRemove}
         onSync={handleSync}
         onAutoSyncChange={handleAutoSyncChange}
-        buttonWidth={140}
+        buttonSize={140}
       />
     );
   },
@@ -156,7 +156,7 @@ export const ReadOnly: Story = {
         onAdd={() => {}}
         onRemove={() => {}}
         onAutoSyncChange={() => {}}
-        buttonWidth={140}
+        buttonSize={140}
       />
     );
   },
@@ -255,7 +255,7 @@ export const ShiftModifierColors: Story = {
         onRemove={handleRemove}
         onSync={handleSync}
         onAutoSyncChange={handleAutoSyncChange}
-        buttonWidth={140}
+        buttonSize={140}
       />
     );
   },

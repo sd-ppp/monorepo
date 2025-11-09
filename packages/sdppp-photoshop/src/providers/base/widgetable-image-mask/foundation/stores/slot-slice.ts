@@ -1,8 +1,8 @@
 import { StateCreator } from 'zustand';
-import { startAutoThumbnail, stopAutoThumbnail } from '../../../realtime-thumbnail/actions';
+import { sdpppSDK } from '@sdppp/common';
+import { buildBoundaryUri, buildImageContentUri, buildMaskContentUri } from '../../../realtime-thumbnail/utils';
 import type { ComponentSlice } from './component-slice';
-import type { AutoSyncConfig, SlotState, TrackType } from './types';
-import { getSlotPrimaryConfig } from './types';
+import type { AutoSyncConfig, BoundaryUri, ContentUri, MaskUri, SlotState } from './types';
 
 export interface SlotSlice {
   setSlotPrimaryConfig: (
@@ -10,12 +10,15 @@ export interface SlotSlice {
     index: number,
     config: AutoSyncConfig | null
   ) => void;
-  setSlotThumbnail: (id: string, index: number, url: string | undefined) => void;
+  setSlotPrimaryAutoEnabled: (id: string, index: number, enabled: boolean) => void;
   setSlotUploading: (id: string, index: number, uploading: boolean, uploadId?: string | null) => void;
   setSlotPrimaryResource: (id: string, index: number, resourceId: string | null | undefined) => void;
   setSlotMaskResource: (id: string, index: number, resourceId: string | null | undefined) => void;
-  setSlotCompositeThumbnail: (id: string, index: number, thumbnail: string | undefined) => void;
   markSlotCompositeDirty: (id: string, index: number, dirty?: boolean) => void;
+  setSlotContentUri: (id: string, index: number, uri: ContentUri | null | undefined) => void;
+  setSlotBoundaryUri: (id: string, index: number, uri: BoundaryUri | null | undefined) => void;
+  setSlotMaskUri: (id: string, index: number, uri: MaskUri | null | undefined) => void;
+  setSlotFileUri: (id: string, index: number, uri: string | null | undefined) => void;
   setSlotCompositeResource: (id: string, index: number, resourceId: string | null | undefined) => void;
   setSlotMaskAutoEnabled: (id: string, index: number, enabled: boolean) => void;
   clearSlot: (id: string, index: number) => void;
@@ -24,87 +27,69 @@ export interface SlotSlice {
 
 type SlotStore = ComponentSlice & SlotSlice;
 
-const ensureSlot = (slot?: SlotState): SlotState =>
+// Initialize a slot with default track type based on component nature
+const ensureSlot = (slot?: SlotState, defaultTrackType: 'image' | 'mask' = 'image'): SlotState =>
   slot ?? {
-    primaryTrackType: null,
-    primaryContent: null,
-    primaryLayerIdentify: null,
-    primaryBoundary: null,
-    primaryAlt: undefined,
+    primaryTrackType: defaultTrackType,
+    primaryDocId: null,
+    contentUri: null,
+    boundaryUri: null,
+    maskUri: null,
+    fileUri: null,
+    primaryAutoEnabled: false,
+    maskAutoEnabled: false,
   };
 
-const applyPrimaryConfigToSlot = (
-  slot: SlotState,
-  config: AutoSyncConfig | null
-): SlotState => {
-  const next: SlotState = {
-    ...slot,
-    primaryTrackType: config?.type ?? null,
-    primaryContent: config?.content ?? null,
-    primaryLayerIdentify: config?.layerIdentify ?? null,
-    primaryBoundary: config?.boundary ?? null,
-    primaryAlt: config?.alt,
-  };
-  if (!config) {
-    next.primaryAlt = undefined;
-  }
-  return next;
-};
-
-export const createSlotSlice: StateCreator<SlotStore, [], [], SlotSlice> = (set, get) => ({
-  setSlotPrimaryConfig: (id, index, config) => {
-    let previousConfig: AutoSyncConfig | null = null;
-
-    set(state => {
-      const comp = state.components[id];
-      if (!comp) return state;
-
-      const prev = ensureSlot(comp.slots[index]);
-      previousConfig = getSlotPrimaryConfig(prev);
-      const nextSlot: SlotState = applyPrimaryConfigToSlot(prev, config);
-
-      return {
-        ...state,
-        components: {
-          ...state.components,
-          [id]: {
-            ...comp,
-            slots: { ...comp.slots, [index]: nextSlot },
-          },
-        },
-      };
-    });
-
-    const comp = get().components[id];
-    const type: TrackType = config?.type || previousConfig?.type || (comp?.isMask ? 'mask' : 'image');
-
-    if (config) {
-      startAutoThumbnail(
-        type,
-        config.content,
-        !!config.alt,
-        config.layerIdentify || undefined,
-        config.boundary ?? null
-      );
-    } else if (previousConfig) {
-      stopAutoThumbnail(
-        previousConfig.type,
-        previousConfig.content,
-        previousConfig.layerIdentify || null,
-        previousConfig.boundary ?? null
-      );
+export const createSlotSlice: StateCreator<SlotStore, [], [], SlotSlice> = (set, get) => {
+  const rawLogger = sdpppSDK?.logger?.extend?.('image-mask-store');
+  const safeLog = (event: string, payload: unknown) => {
+    try {
+      rawLogger?.(event, payload as any);
+    } catch {
+      // noop
     }
-  },
-
-  setSlotThumbnail: (id, index, url) => {
+  };
+  return {
+  setSlotPrimaryConfig: (id, index, config) => {
     set(state => {
       const comp = state.components[id];
       if (!comp) return state;
 
-      const prev = ensureSlot(comp.slots[index]);
-      const nextSlot: SlotState = { ...prev, thumbnail: url };
+      const prev = ensureSlot(comp.slots[index], comp.isMask ? 'mask' : 'image');
+      let nextSlot: SlotState;
 
-      return {
+      if (!config) {
+        nextSlot = {
+          ...prev,
+          contentUri: null,
+          boundaryUri: null,
+          maskUri: null,
+          primaryDocId: null,
+          primaryAutoEnabled: false,
+        };
+      } else {
+        // Do not modify primaryTrackType after initialization
+        const fallbackDocId = prev.primaryDocId ?? 0;
+        const rawDocId = config.docId;
+        const docId =
+          Number.isFinite(rawDocId) && typeof rawDocId === 'number'
+            ? Math.max(0, Math.floor(rawDocId))
+            : fallbackDocId;
+        const contentUri = buildImageContentUri(docId, config.content, config.layerIdentify ?? null);
+        const boundaryUri = buildBoundaryUri(docId, config.boundary ?? null);
+        const maskUri = buildMaskContentUri(docId, config.content, config.layerIdentify ?? null);
+
+        nextSlot = {
+          ...prev,
+          primaryDocId: docId,
+          contentUri,
+          boundaryUri,
+          maskUri,
+          fileUri: null,
+        };
+      }
+
+      const nextState = {
         ...state,
         components: {
           ...state.components,
@@ -114,18 +99,54 @@ export const createSlotSlice: StateCreator<SlotStore, [], [], SlotSlice> = (set,
           },
         },
       };
+      safeLog('setSlotPrimaryConfig', {
+        id,
+        index,
+        hadPrev: !!comp.slots[index],
+        next: {
+          hasContentUri: !!(nextSlot as any).contentUri,
+          hasBoundaryUri: !!(nextSlot as any).boundaryUri,
+          hasMaskUri: !!(nextSlot as any).maskUri,
+          primaryDocId: (nextSlot as any).primaryDocId ?? null,
+        },
+      });
+      return nextState;
     });
   },
+  setSlotPrimaryAutoEnabled: (id, index, enabled) => {
+    set(state => {
+      const comp = state.components[id];
+      if (!comp) return state;
 
+      const prev = ensureSlot(comp.slots[index], comp.isMask ? 'mask' : 'image');
+      const nextSlot: SlotState = {
+        ...prev,
+        primaryAutoEnabled: enabled,
+      };
+
+      const nextState = {
+        ...state,
+        components: {
+          ...state.components,
+          [id]: {
+            ...comp,
+            slots: { ...comp.slots, [index]: nextSlot },
+          },
+        },
+      };
+      safeLog('setSlotPrimaryAutoEnabled', { id, index, enabled });
+      return nextState;
+    });
+  },
   setSlotUploading: (id, index, uploading, uploadId) => {
     set(state => {
       const comp = state.components[id];
       if (!comp) return state;
 
-      const prev = ensureSlot(comp.slots[index]);
+      const prev = ensureSlot(comp.slots[index], comp.isMask ? 'mask' : 'image');
       const nextSlot: SlotState = { ...prev, uploading, uploadId };
 
-      return {
+      const nextState = {
         ...state,
         components: {
           ...state.components,
@@ -135,6 +156,8 @@ export const createSlotSlice: StateCreator<SlotStore, [], [], SlotSlice> = (set,
           },
         },
       };
+      safeLog('setSlotUploading', { id, index, uploading, uploadId: uploadId ?? null });
+      return nextState;
     });
   },
 
@@ -143,7 +166,7 @@ export const createSlotSlice: StateCreator<SlotStore, [], [], SlotSlice> = (set,
       const comp = state.components[id];
       if (!comp) return state;
 
-      const prev = ensureSlot(comp.slots[index]);
+      const prev = ensureSlot(comp.slots[index], comp.isMask ? 'mask' : 'image');
       const nextSlot: SlotState = {
         ...prev,
         primaryResourceId: resourceId ?? null,
@@ -151,7 +174,7 @@ export const createSlotSlice: StateCreator<SlotStore, [], [], SlotSlice> = (set,
         compositeResourceId: resourceId !== prev.primaryResourceId ? null : prev.compositeResourceId,
       };
 
-      return {
+      const nextState = {
         ...state,
         components: {
           ...state.components,
@@ -161,6 +184,15 @@ export const createSlotSlice: StateCreator<SlotStore, [], [], SlotSlice> = (set,
           },
         },
       };
+      safeLog('setSlotPrimaryResource', {
+        id,
+        index,
+        prevPrimary: prev.primaryResourceId ?? null,
+        nextPrimary: nextSlot.primaryResourceId ?? null,
+        compositeDirty: nextSlot.compositeDirty ?? false,
+        clearedComposite: nextSlot.compositeResourceId === null && prev.compositeResourceId && prev.compositeResourceId !== nextSlot.compositeResourceId,
+      });
+      return nextState;
     });
   },
 
@@ -169,7 +201,7 @@ export const createSlotSlice: StateCreator<SlotStore, [], [], SlotSlice> = (set,
       const comp = state.components[id];
       if (!comp) return state;
 
-      const prev = ensureSlot(comp.slots[index]);
+      const prev = ensureSlot(comp.slots[index], comp.isMask ? 'mask' : 'image');
       const nextSlot: SlotState = {
         ...prev,
         maskResourceId: resourceId ?? null,
@@ -177,7 +209,7 @@ export const createSlotSlice: StateCreator<SlotStore, [], [], SlotSlice> = (set,
         compositeResourceId: resourceId !== prev.maskResourceId ? null : prev.compositeResourceId,
       };
 
-      return {
+      const nextState = {
         ...state,
         components: {
           ...state.components,
@@ -187,31 +219,15 @@ export const createSlotSlice: StateCreator<SlotStore, [], [], SlotSlice> = (set,
           },
         },
       };
-    });
-  },
-
-  setSlotCompositeThumbnail: (id, index, thumbnail) => {
-    set(state => {
-      const comp = state.components[id];
-      if (!comp) return state;
-
-      const prev = ensureSlot(comp.slots[index]);
-      const nextSlot: SlotState = {
-        ...prev,
-        compositeThumbnail: thumbnail,
-        compositeDirty: false,
-      };
-
-      return {
-        ...state,
-        components: {
-          ...state.components,
-          [id]: {
-            ...comp,
-            slots: { ...comp.slots, [index]: nextSlot },
-          },
-        },
-      };
+      safeLog('setSlotMaskResource', {
+        id,
+        index,
+        prevMask: prev.maskResourceId ?? null,
+        nextMask: nextSlot.maskResourceId ?? null,
+        compositeDirty: nextSlot.compositeDirty ?? false,
+        clearedComposite: nextSlot.compositeResourceId === null && prev.compositeResourceId && prev.compositeResourceId !== nextSlot.compositeResourceId,
+      });
+      return nextState;
     });
   },
 
@@ -220,14 +236,14 @@ export const createSlotSlice: StateCreator<SlotStore, [], [], SlotSlice> = (set,
       const comp = state.components[id];
       if (!comp) return state;
 
-      const prev = ensureSlot(comp.slots[index]);
+      const prev = ensureSlot(comp.slots[index], comp.isMask ? 'mask' : 'image');
       const nextSlot: SlotState = {
         ...prev,
         compositeDirty: dirty,
         compositeResourceId: dirty ? null : prev.compositeResourceId,
       };
 
-      return {
+      const nextState = {
         ...state,
         components: {
           ...state.components,
@@ -237,6 +253,116 @@ export const createSlotSlice: StateCreator<SlotStore, [], [], SlotSlice> = (set,
           },
         },
       };
+      safeLog('markSlotCompositeDirty', {
+        id,
+        index,
+        dirty,
+      });
+      return nextState;
+    });
+  },
+
+  setSlotContentUri: (id, index, uri) => {
+    set(state => {
+      const comp = state.components[id];
+      if (!comp) return state;
+
+      const prev = ensureSlot(comp.slots[index], comp.isMask ? 'mask' : 'image');
+      const nextSlot: SlotState = {
+        ...prev,
+        contentUri: uri ?? null,
+      };
+
+      const nextState = {
+        ...state,
+        components: {
+          ...state.components,
+          [id]: {
+            ...comp,
+            slots: { ...comp.slots, [index]: nextSlot },
+          },
+        },
+      };
+      safeLog('setSlotContentUri', { id, index, hasContentUri: !!nextSlot.contentUri });
+      return nextState;
+    });
+  },
+
+  setSlotBoundaryUri: (id, index, uri) => {
+    set(state => {
+      const comp = state.components[id];
+      if (!comp) return state;
+
+      const prev = ensureSlot(comp.slots[index], comp.isMask ? 'mask' : 'image');
+      const nextSlot: SlotState = {
+        ...prev,
+        boundaryUri: uri ?? null,
+      };
+
+      const nextState = {
+        ...state,
+        components: {
+          ...state.components,
+          [id]: {
+            ...comp,
+            slots: { ...comp.slots, [index]: nextSlot },
+          },
+        },
+      };
+      safeLog('setSlotBoundaryUri', { id, index, hasBoundaryUri: !!nextSlot.boundaryUri });
+      return nextState;
+    });
+  },
+
+  setSlotMaskUri: (id, index, uri) => {
+    set(state => {
+      const comp = state.components[id];
+      if (!comp) return state;
+
+      const prev = ensureSlot(comp.slots[index], comp.isMask ? 'mask' : 'image');
+      const nextSlot: SlotState = {
+        ...prev,
+        maskUri: uri ?? null,
+      };
+
+      const nextState = {
+        ...state,
+        components: {
+          ...state.components,
+          [id]: {
+            ...comp,
+            slots: { ...comp.slots, [index]: nextSlot },
+          },
+        },
+      };
+      safeLog('setSlotMaskUri', { id, index, hasMaskUri: !!nextSlot.maskUri });
+      return nextState;
+    });
+  },
+
+  setSlotFileUri: (id, index, uri) => {
+    set(state => {
+      const comp = state.components[id];
+      if (!comp) return state;
+
+      const prev = ensureSlot(comp.slots[index], comp.isMask ? 'mask' : 'image');
+      const nextSlot: SlotState = {
+        ...prev,
+        fileUri: uri ?? null,
+      };
+
+      const nextState = {
+        ...state,
+        components: {
+          ...state.components,
+          [id]: {
+            ...comp,
+            slots: { ...comp.slots, [index]: nextSlot },
+          },
+        },
+      };
+      safeLog('setSlotFileUri', { id, index, hasFileUri: !!nextSlot.fileUri });
+      return nextState;
     });
   },
 
@@ -245,13 +371,13 @@ export const createSlotSlice: StateCreator<SlotStore, [], [], SlotSlice> = (set,
       const comp = state.components[id];
       if (!comp) return state;
 
-      const prev = ensureSlot(comp.slots[index]);
+      const prev = ensureSlot(comp.slots[index], comp.isMask ? 'mask' : 'image');
       const nextSlot: SlotState = {
         ...prev,
         compositeResourceId: resourceId ?? null,
       };
 
-      return {
+      const nextState = {
         ...state,
         components: {
           ...state.components,
@@ -261,6 +387,12 @@ export const createSlotSlice: StateCreator<SlotStore, [], [], SlotSlice> = (set,
           },
         },
       };
+      safeLog('setSlotCompositeResource', {
+        id,
+        index,
+        hasComposite: !!nextSlot.compositeResourceId,
+      });
+      return nextState;
     });
   },
 
@@ -269,13 +401,13 @@ export const createSlotSlice: StateCreator<SlotStore, [], [], SlotSlice> = (set,
       const comp = state.components[id];
       if (!comp) return state;
 
-      const prev = ensureSlot(comp.slots[index]);
+      const prev = ensureSlot(comp.slots[index], comp.isMask ? 'mask' : 'image');
       const nextSlot: SlotState = {
         ...prev,
         maskAutoEnabled: enabled,
       };
 
-      return {
+      const nextState = {
         ...state,
         components: {
           ...state.components,
@@ -285,6 +417,8 @@ export const createSlotSlice: StateCreator<SlotStore, [], [], SlotSlice> = (set,
           },
         },
       };
+      safeLog('setSlotMaskAutoEnabled', { id, index, enabled });
+      return nextState;
     });
   },
 
@@ -296,15 +430,18 @@ export const createSlotSlice: StateCreator<SlotStore, [], [], SlotSlice> = (set,
       const slots = { ...comp.slots };
       delete slots[index];
 
-      return {
+      const nextState = {
         ...state,
         components: {
           ...state.components,
           [id]: { ...comp, slots },
         },
       };
+      safeLog('clearSlot', { id, index });
+      return nextState;
     });
   },
 
   getSlot: (id, index) => get().components[id]?.slots[index],
-});
+  };
+};

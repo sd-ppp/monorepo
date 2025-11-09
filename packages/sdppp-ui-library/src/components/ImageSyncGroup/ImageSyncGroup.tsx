@@ -7,7 +7,7 @@ import { ImagePreviewFrame } from '../ImagePreviewFrame/ImagePreviewFrame';
 
 export interface ImageSyncGroupProps extends ExclusiveSyncGroupProps {
   imageUrl: string;
-  buttonWidth?: number | string;
+  buttonSize?: number | string;
   'data-testid'?: string;
   // visual enhancements
   background?: 'checkerboard' | 'white';
@@ -18,7 +18,7 @@ export interface ImageSyncGroupProps extends ExclusiveSyncGroupProps {
 
 const ImageSyncGroupComponent: FC<ImageSyncGroupProps> = ({
   imageUrl,
-  buttonWidth,
+  buttonSize,
   buttons,
   'data-testid': dataTestId,
   background = 'checkerboard',
@@ -39,7 +39,7 @@ const ImageSyncGroupComponent: FC<ImageSyncGroupProps> = ({
         <div style={{ flex: '0 0 auto' }}>
           <ExclusiveSyncGroup
             buttons={buttons}
-            buttonWidth={buttonWidth}
+            buttonSize={buttonSize}
             {...exclusiveSyncGroupProps}
           />
         </div>
@@ -58,7 +58,7 @@ const ImageSyncGroupComponent: FC<ImageSyncGroupProps> = ({
 export const ImageSyncGroup = memo(ImageSyncGroupComponent, (prevProps, nextProps) => {
   return (
     prevProps.imageUrl === nextProps.imageUrl &&
-    prevProps.buttonWidth === nextProps.buttonWidth &&
+    prevProps.buttonSize === nextProps.buttonSize &&
     prevProps.background === nextProps.background &&
     prevProps['data-testid'] === nextProps['data-testid'] &&
     JSON.stringify(prevProps.buttons) === JSON.stringify(nextProps.buttons)

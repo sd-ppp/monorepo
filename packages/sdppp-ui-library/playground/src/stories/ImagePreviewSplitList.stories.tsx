@@ -157,7 +157,7 @@ export const Default: Story = {
                 handleAutoSyncChange(index, activeId)
               }
               activeAutoSyncId={group.activeAutoSyncId ?? null}
-              buttonWidth={140}
+              buttonSize={140}
             />
           ),
         })),
@@ -248,7 +248,7 @@ export const ReadOnly: Story = {
               onSync={(id, _event) => handleSync(index, id)}
               onAutoSyncChange={(_activeId, _event) => {}}
               activeAutoSyncId={null}
-              buttonWidth={140}
+              buttonSize={140}
             />
           ),
         })),
@@ -364,7 +364,7 @@ export const ShiftModifierColors: Story = {
               onSync={(id, event) => handleSync(index, id, event)}
               onAutoSyncChange={(activeId, event) => handleAutoSyncChange(index, activeId, event)}
               activeAutoSyncId={group.activeAutoSyncId ?? null}
-              buttonWidth={140}
+              buttonSize={140}
             />
           ),
         })),

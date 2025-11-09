@@ -1,4 +1,5 @@
 import { MutableRefObject, useCallback, useMemo } from 'react';
+import { sdpppSDK } from '@sdppp/common';
 import type { UploadPass } from '../../../../upload-pass-context';
 import { SyncEvent, SyncType } from '../image-sync-types';
 import {
@@ -8,7 +9,7 @@ import {
 } from '../../services/photoshop/operations';
 import { createSlotUploadPass } from '../../services/upload/upload-helpers';
 import { GlobalImageStore } from '../../foundation/stores/global-image-store';
-
+import { buildMaskContentUri } from '../../../realtime-thumbnail/utils';
 interface SyncHandlerDeps {
   componentId: string;
   urlsRef: MutableRefObject<string[]>;
@@ -53,10 +54,34 @@ function useMaskCropSync({
             throw new Error('Missing mask resource from Photoshop');
           }
 
+          // When user clicks selection mask, set maskUri to selection to enable realtime preview composition.
+          try {
+            const docIdRaw = sdpppSDK.stores.PhotoshopStore.getState().activeDocumentID;
+            const docId = typeof docIdRaw === 'number' && Number.isFinite(docIdRaw) ? Math.max(0, Math.floor(docIdRaw)) : 0;
+            const selectionMaskUri = buildMaskContentUri(docId, 'selection');
+            GlobalImageStore.getState().setSlotMaskUri(componentId, index, selectionMaskUri as any);
+          } catch (e) {
+            // ignore maskUri set failure; do not introduce fallbacks here
+          }
+
           const composite = await composeImageWithMask(componentId, index);
           if (!composite.resource) {
             throw new Error('Failed to compose image with mask');
           }
+
+          try {
+            const log = sdpppSDK.logger.extend('image-mask-upload');
+            const slotAfter = GlobalImageStore.getState().getSlot(componentId, index);
+            log('mask-crop-capture', {
+              componentId,
+              index,
+              primaryResourceId: slotAfter?.primaryResourceId ?? null,
+              maskResourceId: slotAfter?.maskResourceId ?? null,
+              compositeResourceId: slotAfter?.compositeResourceId ?? null,
+              returnedResource: composite.resource,
+              willUploadComposite: composite.resource === slotAfter?.compositeResourceId,
+            });
+          } catch {}
 
           return composite.resource;
         },
@@ -80,6 +105,7 @@ function usePrimarySync({
       if (!capture.resource) {
         throw new Error('Missing resource from Photoshop');
       }
+      // Do not mutate slot fileUri for primary sync; upload and let preview use uploaded URL or realtime
       uploadResource(capture.resource, index);
     },
     [componentId, setUploading, uploadResource]

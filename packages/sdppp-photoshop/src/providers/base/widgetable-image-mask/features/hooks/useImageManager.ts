@@ -1,11 +1,10 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { shiftSlotsAfterRemoval } from '../../foundation/utils/slot-management';
 import { removeUrlAtIndex } from '../../services/upload/upload-helpers';
 import type { UseImageManagerOptions, UseImageManagerReturn } from './image-manager-types';
 import { useImageAutoSync } from './useImageAutoSync';
 import { useImageComponentRegistration } from './useImageComponentRegistration';
 import { useImageSync } from './useImageSync';
-import { useSlotsViewModel } from './useSlotsViewModel';
 
 export function useImageManager({
   componentId,
@@ -21,12 +20,17 @@ export function useImageManager({
     urls,
   });
 
-  const { slots } = useSlotsViewModel({
-    componentId,
-    maxCount,
-    urls,
-    component,
-  });
+  const slots = useMemo(() => {
+    const urlCount = Array.isArray(urls) ? urls.length : 0;
+    const slotKeys = component?.slots ? Object.keys(component.slots) : [];
+    const maxSlotIndex = slotKeys.length
+      ? Math.max(...slotKeys.map(key => Number.parseInt(key, 10) || 0)) + 1
+      : 0;
+    const rawCount = maxCount === 1 ? 1 : Math.max(urlCount, maxSlotIndex, 1);
+    const limit = Math.max(1, maxCount || 0);
+    const count = Math.min(rawCount, limit);
+    return Array.from({ length: count }, (_, index) => index);
+  }, [component, urls, maxCount]);
 
   const { onSync, onAdvancedSelect, onAdvancedCancel, uploading, uploadError } = useImageSync({
     componentId,

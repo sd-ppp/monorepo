@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "baseUrl": "./",
+    "allowImportingTsExtensions": false,
+    "paths": {
+      "@sdppp/mock-photoshop": ["./src/index"],
+      "@sdppp/mock-photoshop/*": ["./src/*"]
+    }
+  },
+  "include": ["./src"],
+  "exclude": ["./dist", "./node_modules"]
+}

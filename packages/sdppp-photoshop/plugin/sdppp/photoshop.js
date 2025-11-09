@@ -79276,6 +79276,29 @@ const WidgetableStructureSchema = objectType$1({
   note: stringType$1().optional(),
   options: recordType$1(stringType$1(), anyType$1())
 });
+const ComfyStoreSchema = objectType$1({
+  widgetableStructure: WidgetableStructureSchema.default({
+    widgetableID: "",
+    widgetablePath: "",
+    nodes: {},
+    note: "",
+    options: {},
+    nodeIndexes: []
+  }),
+  widgetableValues: recordType$1(stringType$1(), arrayType$1(anyType$1())).default({}),
+  widgetableErrors: recordType$1(stringType$1(), stringType$1()).default({}),
+  queueSize: numberType$1().default(0),
+  lastError: stringType$1().default(""),
+  progress: numberType$1().default(0),
+  executingNodeTitle: stringType$1().default(""),
+  executingNodeID: stringType$1().default(""),
+  graphProgress: numberType$1().default(0),
+  comfyUserToken: stringType$1().default(""),
+  comfyOrgLoggedIn: booleanType$1().default(false),
+  comfyOrgAPIKey: stringType$1().default(""),
+  comfyWSState: enumType$1(["connected", "reconnecting"]).default("connected"),
+  lastRunTime: numberType$1().default(0)
+});
 const SDKStoreSchema = objectType$1({
   bannerData: anyType$1().optional(),
   refreshable: booleanType$1().default(false),
@@ -79326,29 +79349,149 @@ const UXPStoreSchema = objectType$1({
   canvasThumbnail: stringType$1().default(""),
   curlayerThumbnail: stringType$1().default("")
 });
-const ComfyStoreSchema = objectType$1({
-  widgetableStructure: WidgetableStructureSchema.default({
-    widgetableID: "",
-    widgetablePath: "",
-    nodes: {},
-    note: "",
-    options: {},
-    nodeIndexes: []
-  }),
-  widgetableValues: recordType$1(stringType$1(), arrayType$1(anyType$1())).default({}),
-  widgetableErrors: recordType$1(stringType$1(), stringType$1()).default({}),
-  queueSize: numberType$1().default(0),
-  lastError: stringType$1().default(""),
-  progress: numberType$1().default(0),
-  executingNodeTitle: stringType$1().default(""),
-  executingNodeID: stringType$1().default(""),
-  graphProgress: numberType$1().default(0),
-  comfyUserToken: stringType$1().default(""),
-  comfyOrgLoggedIn: booleanType$1().default(false),
-  comfyOrgAPIKey: stringType$1().default(""),
-  comfyWSState: enumType$1(["connected", "reconnecting"]).default("connected"),
-  lastRunTime: numberType$1().default(0)
+const comfyUtilActions = {
+  setNodeTitle: {
+    requestSchema: objectType$1({
+      node_id: stringType$1(),
+      title: stringType$1()
+    }),
+    responseSchema: objectType$1({
+      success: booleanType$1()
+    })
+  },
+  // System management
+  reboot: {
+    requestSchema: objectType$1({}),
+    responseSchema: objectType$1({
+      success: booleanType$1(),
+      error: stringType$1().optional()
+    })
+  },
+  setComfyOrgAPIKey: {
+    requestSchema: objectType$1({
+      api_key: stringType$1()
+    }),
+    responseSchema: objectType$1({
+      success: booleanType$1()
+    })
+  },
+  logout: {
+    requestSchema: objectType$1({}),
+    responseSchema: objectType$1({
+      success: booleanType$1()
+    })
+  },
+  uploadComfyImageFromUXP: {
+    requestSchema: objectType$1({
+      fileName: stringType$1(),
+      overwrite: booleanType$1().optional(),
+      mimeType: stringType$1().optional(),
+      dataBase64: stringType$1()
+    }),
+    responseSchema: objectType$1({
+      name: stringType$1()
+    })
+  },
+  sdpppHandshake: {
+    requestSchema: objectType$1({
+      hostVersion: stringType$1().optional()
+    }),
+    responseSchema: objectType$1({
+      comfyVersion: stringType$1(),
+      hostVersion: stringType$1().optional()
+    })
+  }
+};
+const WorkflowListSchema = objectType$1({
+  workflows: arrayType$1(stringType$1()),
+  error: stringType$1().optional()
 });
+const RunResultSchema = objectType$1({
+  success: booleanType$1(),
+  nodeErrors: recordType$1(stringType$1()).optional(),
+  prompt_ids: arrayType$1(stringType$1()).optional(),
+  images: arrayType$1(objectType$1({
+    url: stringType$1(),
+    thumbnail: stringType$1()
+  })).optional()
+});
+const comfyWorkflowActions = {
+  // Node manipulation
+  setWidgetValue: {
+    requestSchema: objectType$1({
+      values: arrayType$1(objectType$1({
+        nodeID: stringType$1(),
+        widgetIndex: numberType$1(),
+        value: recordType$1(stringType$1(), anyType$1()).or(stringType$1()).or(numberType$1()).or(booleanType$1()).or(arrayType$1(anyType$1()))
+      }))
+    }),
+    responseSchema: objectType$1({
+      success: booleanType$1()
+    })
+  },
+  // Workflow management
+  openWorkflow: {
+    requestSchema: objectType$1({
+      workflow_path: stringType$1(),
+      reset: booleanType$1().default(false)
+    }),
+    responseSchema: objectType$1({
+      success: booleanType$1()
+    })
+  },
+  openWorkflowJSON: {
+    requestSchema: objectType$1({
+      workflow_content: recordType$1(anyType$1()),
+      workflow_path: stringType$1()
+    }),
+    responseSchema: objectType$1({
+      success: booleanType$1()
+    })
+  },
+  listWorkflows: {
+    requestSchema: objectType$1({
+      listMode: stringType$1().optional(),
+      sdpppID: stringType$1().optional(),
+      sdpppToken: stringType$1().optional()
+    }),
+    responseSchema: WorkflowListSchema
+  },
+  saveWorkflow: {
+    requestSchema: objectType$1({
+      workflow_path: stringType$1(),
+      from_sid: stringType$1().optional()
+    }),
+    responseSchema: objectType$1({
+      success: booleanType$1()
+    })
+  },
+  // Workflow execution
+  run: {
+    requestSchema: objectType$1({
+      size: numberType$1()
+    }),
+    responseSchema: RunResultSchema,
+    stream: true
+  },
+  stopAll: {
+    requestSchema: objectType$1({}),
+    responseSchema: objectType$1({
+      success: booleanType$1()
+    })
+  }
+  // interrupt: {
+  //     requestSchema: z.object({}),
+  //     responseSchema: z.object({
+  //         success: z.boolean(),
+  //     })
+  // },
+  // clearQueue: {
+  //     requestSchema: z.object({}),
+  //     responseSchema: z.object({
+  //         success: z.boolean(),
+  //     })
+  // }
+};
 const sdkActions = {
   backward: {
     requestSchema: voidType$1(),
@@ -79367,6 +79510,393 @@ const sdkActions = {
     responseSchema: objectType$1({
       success: booleanType$1()
     })
+  }
+};
+const UXPAuthRegisterRequestSchema = objectType$1({
+  passwordPayload: objectType$1({
+    username: stringType$1(),
+    password: stringType$1()
+  }).or(objectType$1({
+    email: stringType$1(),
+    password: stringType$1()
+  })).or(objectType$1({
+    phone: stringType$1(),
+    password: stringType$1()
+  })).or(objectType$1({
+    identifier: stringType$1(),
+    password: stringType$1()
+  }))
+}).or(objectType$1({
+  passcodePayload: objectType$1({
+    phone: stringType$1(),
+    code: stringType$1()
+  }).or(objectType$1({
+    email: stringType$1(),
+    code: stringType$1()
+  }))
+}));
+const UXPAuthLoginRequestSchema = objectType$1({
+  passwordPayload: objectType$1({
+    username: stringType$1(),
+    password: stringType$1()
+  }).or(objectType$1({
+    email: stringType$1(),
+    password: stringType$1()
+  })).or(objectType$1({
+    phone: stringType$1(),
+    password: stringType$1()
+  })).or(objectType$1({
+    identifier: stringType$1(),
+    password: stringType$1()
+  }))
+}).or(objectType$1({
+  passcodePayload: objectType$1({
+    phone: stringType$1(),
+    code: stringType$1()
+  }).or(objectType$1({
+    email: stringType$1(),
+    code: stringType$1()
+  }))
+}));
+const uxpAuthActions = {
+  // SDPPP authentication actions
+  register: {
+    requestSchema: UXPAuthRegisterRequestSchema,
+    responseSchema: objectType$1({})
+  },
+  login: {
+    requestSchema: UXPAuthLoginRequestSchema,
+    responseSchema: objectType$1({})
+  },
+  sendPassCode: {
+    requestSchema: objectType$1({
+      phone: stringType$1().optional(),
+      email: stringType$1().optional()
+    }),
+    responseSchema: objectType$1({})
+  },
+  logout: {
+    requestSchema: objectType$1({}),
+    responseSchema: objectType$1({})
+  },
+  guestLogin: {
+    requestSchema: objectType$1({}),
+    responseSchema: objectType$1({})
+  }
+};
+objectType$1({
+  resource: stringType$1().optional(),
+  thumbnail: stringType$1().optional(),
+  width: numberType$1().optional(),
+  height: numberType$1().optional(),
+  mimeType: stringType$1().optional(),
+  source: stringType$1().optional(),
+  error: stringType$1().optional()
+});
+const doGetImageParamsSchema = objectType$1({
+  boundary: enumType$1(["canvas", "curlayer", "selection"]),
+  content: enumType$1(["canvas", "curlayer", "selection"]).or(stringType$1()),
+  imageSize: numberType$1(),
+  imageQuality: numberType$1(),
+  cropBySelection: enumType$1(["no", "positive", "negative"]),
+  layer_identify: stringType$1().nullable().optional()
+});
+const doGetMaskParamsSchema = objectType$1({
+  content: enumType$1(["canvas", "curlayer", "selection"]),
+  reverse: booleanType$1(),
+  imageSize: numberType$1(),
+  layer_identify: stringType$1().nullable().optional()
+});
+objectType$1({
+  selection: enumType$1(["newdoc_canvas", "newlayer_canvas", "newlayer_curlayer", "newlayer_selection", "curlayer_canvas", "curlayer_curlayer", "curlayer_selection", "newdoc_canvas"]),
+  url: stringType$1(),
+  source: stringType$1(),
+  cropBySelection: enumType$1(["no", "positive", "negative"])
+});
+const uxpImagingActions = {
+  // Removed legacy content-webview operations (doGetImage/doGetMask/doSendImage)
+  // Removed legacy request* actions (requestImageGet/requestMaskGet/requestImageSend)
+  downloadImage: {
+    requestSchema: objectType$1({
+      url: stringType$1()
+    }),
+    responseSchema: objectType$1({
+      thumbnail: stringType$1().optional(),
+      resource: stringType$1().optional(),
+      width: numberType$1().optional(),
+      height: numberType$1().optional(),
+      error: stringType$1().optional()
+    })
+  },
+  getThumbnail: {
+    requestSchema: objectType$1({
+      resource: stringType$1(),
+      maxSize: numberType$1().optional()
+    }),
+    responseSchema: objectType$1({
+      thumbnail: stringType$1().optional(),
+      width: numberType$1().optional(),
+      height: numberType$1().optional(),
+      error: stringType$1().optional()
+    })
+  },
+  deleteDownloadedImage: {
+    requestSchema: objectType$1({
+      resources: arrayType$1(stringType$1())
+    }),
+    responseSchema: objectType$1({
+      error: stringType$1().optional()
+    })
+  },
+  requestAndDoSaveImage: {
+    requestSchema: objectType$1({
+      resources: arrayType$1(stringType$1())
+    }),
+    responseSchema: objectType$1({
+      error: stringType$1().optional()
+    })
+  }
+};
+const uxpPhotoshopActions = {
+  manageGuides: {
+    requestSchema: objectType$1({
+      action: enumType$1(["create", "clear"]),
+      rect: BoundaryRectSchema.optional()
+    }),
+    responseSchema: objectType$1({
+      success: booleanType$1()
+    })
+  },
+  openImagesFromFile: {
+    requestSchema: objectType$1({
+      nativePath: stringType$1(),
+      boundary: BoundaryRectSchema.optional()
+    }),
+    responseSchema: objectType$1({
+      success: booleanType$1(),
+      documentId: numberType$1(),
+      documentName: stringType$1(),
+      width: numberType$1(),
+      height: numberType$1()
+    })
+  },
+  getBoundary: {
+    requestSchema: objectType$1({
+      type: enumType$1(["curlayer", "selection"])
+    }),
+    responseSchema: BoundaryRectSchema
+  },
+  getImage: {
+    requestSchema: objectType$1({
+      boundary: unionType$1([
+        enumType$1(["canvas", "curlayer", "selection"]),
+        BoundaryRectSchema
+      ]),
+      content: unionType$1([enumType$1(["canvas", "curlayer"]), stringType$1()]),
+      imageSize: numberType$1(),
+      imageQuality: numberType$1(),
+      cropBySelection: enumType$1(["no", "positive", "negative"]),
+      SkipNonNormalLayer: booleanType$1(),
+      layer_identify: stringType$1().nullable().optional()
+    }),
+    responseSchema: objectType$1({
+      resource: stringType$1().optional(),
+      thumbnail: stringType$1().optional(),
+      width: numberType$1().optional(),
+      height: numberType$1().optional(),
+      mimeType: stringType$1().optional(),
+      source: stringType$1().optional(),
+      error: stringType$1().optional()
+    })
+  },
+  getResourceImage: {
+    requestSchema: objectType$1({
+      boundary: stringType$1(),
+      content: stringType$1()
+    }),
+    responseSchema: objectType$1({
+      resource: stringType$1().optional(),
+      thumbnail: stringType$1().optional(),
+      width: numberType$1().optional(),
+      height: numberType$1().optional(),
+      mimeType: stringType$1().optional(),
+      source: stringType$1().optional(),
+      error: stringType$1().optional()
+    })
+  },
+  getResourceMask: {
+    requestSchema: objectType$1({
+      boundary: stringType$1(),
+      content: stringType$1()
+    }),
+    responseSchema: objectType$1({
+      resource: stringType$1().optional(),
+      thumbnail: stringType$1().optional(),
+      width: numberType$1().optional(),
+      height: numberType$1().optional(),
+      mimeType: stringType$1().optional(),
+      source: stringType$1().optional(),
+      error: stringType$1().optional()
+    })
+  },
+  getMask: {
+    requestSchema: objectType$1({
+      boundary: unionType$1([
+        enumType$1(["canvas", "curlayer", "selection"]),
+        BoundaryRectSchema
+      ]),
+      content: enumType$1(["canvas", "curlayer", "selection"]),
+      reverse: booleanType$1(),
+      imageSize: numberType$1(),
+      layer_identify: stringType$1().nullable().optional()
+    }),
+    responseSchema: objectType$1({
+      resource: stringType$1().optional(),
+      thumbnail: stringType$1().optional(),
+      width: numberType$1().optional(),
+      height: numberType$1().optional(),
+      mimeType: stringType$1().optional(),
+      source: stringType$1().optional(),
+      error: stringType$1().optional()
+    })
+  },
+  getCurrentLayerIdentify: {
+    requestSchema: objectType$1({}),
+    responseSchema: objectType$1({
+      layer_identify: stringType$1().nullable()
+    })
+  },
+  importImage: {
+    requestSchema: objectType$1({
+      resource: stringType$1(),
+      boundary: unionType$1([
+        enumType$1(["canvas", "curlayer", "selection"]),
+        BoundaryRectSchema
+      ]).optional(),
+      type: enumType$1(["canvas", "curlayer", "newdoc", "smartobject"]),
+      // Optional source image size to avoid opening files in UXP
+      sourceWidth: numberType$1().optional(),
+      sourceHeight: numberType$1().optional()
+    }),
+    responseSchema: objectType$1({
+      success: booleanType$1(),
+      layers: arrayType$1(objectType$1({
+        identify: stringType$1()
+      })).optional(),
+      message: stringType$1().optional(),
+      error: stringType$1().optional()
+    })
+  },
+  applyMaskToImage: {
+    requestSchema: objectType$1({
+      imageResource: stringType$1(),
+      maskResource: stringType$1(),
+      invertMask: booleanType$1().optional()
+    }),
+    responseSchema: objectType$1({
+      resource: stringType$1(),
+      thumbnail: stringType$1().optional(),
+      width: numberType$1(),
+      height: numberType$1(),
+      mimeType: stringType$1()
+    })
+  },
+  showBoundarySelectionDialog: {
+    requestSchema: objectType$1({
+      additionalData: recordType$1(anyType$1()).optional()
+    }),
+    responseSchema: objectType$1({
+      boundary: enumType$1(["canvas", "curlayer", "selection"]).optional(),
+      cancelled: booleanType$1().optional()
+    })
+  },
+  selectImageSource: {
+    requestSchema: objectType$1({
+      additionalData: recordType$1(anyType$1()).optional()
+    }),
+    responseSchema: objectType$1({
+      action: enumType$1(["getImage", "pickLocalFile"]).optional(),
+      params: anyType$1().optional(),
+      cancelled: booleanType$1().optional()
+    })
+  },
+  // Split image selection dialogs
+  selectCanvasImage: {
+    requestSchema: objectType$1({
+      additionalData: recordType$1(anyType$1()).optional()
+    }),
+    responseSchema: objectType$1({
+      getImageParams: doGetImageParamsSchema.optional(),
+      source: stringType$1().optional(),
+      cancelled: booleanType$1().optional()
+    })
+  },
+  selectLayerImage: {
+    requestSchema: objectType$1({
+      additionalData: recordType$1(anyType$1()).optional()
+    }),
+    responseSchema: objectType$1({
+      getImageParams: doGetImageParamsSchema.optional(),
+      source: stringType$1().optional(),
+      cancelled: booleanType$1().optional()
+    })
+  },
+  // Split mask selection dialogs
+  selectLayerMask: {
+    requestSchema: objectType$1({
+      additionalData: recordType$1(anyType$1()).optional()
+    }),
+    responseSchema: objectType$1({
+      getMaskParams: doGetMaskParamsSchema.optional(),
+      source: stringType$1().optional(),
+      cancelled: booleanType$1().optional()
+    })
+  },
+  selectSelectionMask: {
+    requestSchema: objectType$1({
+      additionalData: recordType$1(anyType$1()).optional()
+    }),
+    responseSchema: objectType$1({
+      getMaskParams: doGetMaskParamsSchema.optional(),
+      source: stringType$1().optional(),
+      cancelled: booleanType$1().optional()
+    })
+  }
+};
+const BaseTaskSchema = objectType$1({
+  taskId: stringType$1(),
+  taskName: stringType$1(),
+  status: enumType$1(["running", "completed", "failed", "cancelled"]),
+  currentStep: numberType$1().optional(),
+  totalSteps: numberType$1().optional(),
+  stepDescription: stringType$1().optional(),
+  progressPercentage: numberType$1().min(0).max(100).optional(),
+  startTime: stringType$1(),
+  endTime: stringType$1().optional(),
+  error: stringType$1().optional(),
+  errorCode: stringType$1().optional(),
+  result: anyType$1().optional(),
+  metadata: recordType$1(anyType$1()).optional()
+});
+const TaskResponseSchema = objectType$1({
+  success: booleanType$1(),
+  error: stringType$1().optional()
+});
+const uxpTaskManagementActions = {
+  // Add a new task
+  taskAdd: {
+    requestSchema: BaseTaskSchema,
+    responseSchema: TaskResponseSchema
+  },
+  // Update a task (id required, other fields optional)
+  taskUpdate: {
+    requestSchema: BaseTaskSchema.partial().required({ taskId: true }),
+    responseSchema: TaskResponseSchema
+  },
+  // Remove a task
+  taskRemove: {
+    requestSchema: BaseTaskSchema.pick({ taskId: true }),
+    responseSchema: TaskResponseSchema
   }
 };
 const uxpUtilActions = {
@@ -79453,6 +79983,20 @@ const uxpUtilActions = {
       name: stringType$1()
     })
   },
+  pickLocalFile: {
+    requestSchema: objectType$1({
+      acceptExtensions: arrayType$1(stringType$1()).optional(),
+      kind: enumType$1(["image", "file"]).optional()
+    }).optional(),
+    responseSchema: objectType$1({
+      cancelled: booleanType$1().optional(),
+      resource: stringType$1().optional(),
+      fileName: stringType$1().optional(),
+      mimeType: stringType$1().optional(),
+      size: numberType$1().optional(),
+      error: stringType$1().optional()
+    })
+  },
   // Proxied fetch action
   proxiedFetch: {
     requestSchema: objectType$1({
@@ -79506,476 +80050,6 @@ const uxpUtilActions = {
     })
   }
 };
-objectType$1({
-  resource: stringType$1(),
-  source: stringType$1().optional(),
-  width: numberType$1().optional(),
-  height: numberType$1().optional(),
-  error: stringType$1().optional()
-});
-const doGetImageParamsSchema = objectType$1({
-  boundary: enumType$1(["canvas", "curlayer", "selection"]),
-  content: enumType$1(["canvas", "curlayer", "selection"]).or(stringType$1()),
-  imageSize: numberType$1(),
-  imageQuality: numberType$1(),
-  cropBySelection: enumType$1(["no", "positive", "negative"]),
-  layer_identify: stringType$1().nullable().optional()
-});
-const doGetMaskParamsSchema = objectType$1({
-  content: enumType$1(["canvas", "curlayer", "selection"]),
-  reverse: booleanType$1(),
-  imageSize: numberType$1(),
-  layer_identify: stringType$1().nullable().optional()
-});
-objectType$1({
-  selection: enumType$1(["newdoc_canvas", "newlayer_canvas", "newlayer_curlayer", "newlayer_selection", "curlayer_canvas", "curlayer_curlayer", "curlayer_selection", "newdoc_canvas"]),
-  url: stringType$1(),
-  source: stringType$1(),
-  cropBySelection: enumType$1(["no", "positive", "negative"])
-});
-const uxpImagingActions = {
-  // Removed legacy content-webview operations (doGetImage/doGetMask/doSendImage)
-  // Removed legacy request* actions (requestImageGet/requestMaskGet/requestImageSend)
-  downloadImage: {
-    requestSchema: objectType$1({
-      url: stringType$1()
-    }),
-    responseSchema: objectType$1({
-      resource: stringType$1().optional(),
-      width: numberType$1().optional(),
-      height: numberType$1().optional(),
-      error: stringType$1().optional()
-    })
-  },
-  getThumbnail: {
-    requestSchema: objectType$1({
-      resource: stringType$1(),
-      maxSize: numberType$1().optional()
-    }),
-    responseSchema: objectType$1({
-      thumbnail: stringType$1().optional(),
-      width: numberType$1().optional(),
-      height: numberType$1().optional(),
-      error: stringType$1().optional()
-    })
-  },
-  deleteDownloadedImage: {
-    requestSchema: objectType$1({
-      resources: arrayType$1(stringType$1())
-    }),
-    responseSchema: objectType$1({
-      error: stringType$1().optional()
-    })
-  },
-  requestAndDoSaveImage: {
-    requestSchema: objectType$1({
-      resources: arrayType$1(stringType$1())
-    }),
-    responseSchema: objectType$1({
-      error: stringType$1().optional()
-    })
-  }
-};
-const UXPAuthRegisterRequestSchema = objectType$1({
-  passwordPayload: objectType$1({
-    username: stringType$1(),
-    password: stringType$1()
-  }).or(objectType$1({
-    email: stringType$1(),
-    password: stringType$1()
-  })).or(objectType$1({
-    phone: stringType$1(),
-    password: stringType$1()
-  })).or(objectType$1({
-    identifier: stringType$1(),
-    password: stringType$1()
-  }))
-}).or(objectType$1({
-  passcodePayload: objectType$1({
-    phone: stringType$1(),
-    code: stringType$1()
-  }).or(objectType$1({
-    email: stringType$1(),
-    code: stringType$1()
-  }))
-}));
-const UXPAuthLoginRequestSchema = objectType$1({
-  passwordPayload: objectType$1({
-    username: stringType$1(),
-    password: stringType$1()
-  }).or(objectType$1({
-    email: stringType$1(),
-    password: stringType$1()
-  })).or(objectType$1({
-    phone: stringType$1(),
-    password: stringType$1()
-  })).or(objectType$1({
-    identifier: stringType$1(),
-    password: stringType$1()
-  }))
-}).or(objectType$1({
-  passcodePayload: objectType$1({
-    phone: stringType$1(),
-    code: stringType$1()
-  }).or(objectType$1({
-    email: stringType$1(),
-    code: stringType$1()
-  }))
-}));
-const uxpAuthActions = {
-  // SDPPP authentication actions
-  register: {
-    requestSchema: UXPAuthRegisterRequestSchema,
-    responseSchema: objectType$1({})
-  },
-  login: {
-    requestSchema: UXPAuthLoginRequestSchema,
-    responseSchema: objectType$1({})
-  },
-  sendPassCode: {
-    requestSchema: objectType$1({
-      phone: stringType$1().optional(),
-      email: stringType$1().optional()
-    }),
-    responseSchema: objectType$1({})
-  },
-  logout: {
-    requestSchema: objectType$1({}),
-    responseSchema: objectType$1({})
-  },
-  guestLogin: {
-    requestSchema: objectType$1({}),
-    responseSchema: objectType$1({})
-  }
-};
-const BaseTaskSchema = objectType$1({
-  taskId: stringType$1(),
-  taskName: stringType$1(),
-  status: enumType$1(["running", "completed", "failed", "cancelled"]),
-  currentStep: numberType$1().optional(),
-  totalSteps: numberType$1().optional(),
-  stepDescription: stringType$1().optional(),
-  progressPercentage: numberType$1().min(0).max(100).optional(),
-  startTime: stringType$1(),
-  endTime: stringType$1().optional(),
-  error: stringType$1().optional(),
-  errorCode: stringType$1().optional(),
-  result: anyType$1().optional(),
-  metadata: recordType$1(anyType$1()).optional()
-});
-const TaskResponseSchema = objectType$1({
-  success: booleanType$1(),
-  error: stringType$1().optional()
-});
-const uxpTaskManagementActions = {
-  // Add a new task
-  taskAdd: {
-    requestSchema: BaseTaskSchema,
-    responseSchema: TaskResponseSchema
-  },
-  // Update a task (id required, other fields optional)
-  taskUpdate: {
-    requestSchema: BaseTaskSchema.partial().required({ taskId: true }),
-    responseSchema: TaskResponseSchema
-  },
-  // Remove a task
-  taskRemove: {
-    requestSchema: BaseTaskSchema.pick({ taskId: true }),
-    responseSchema: TaskResponseSchema
-  }
-};
-const uxpPhotoshopActions = {
-  manageGuides: {
-    requestSchema: objectType$1({
-      action: enumType$1(["create", "clear"]),
-      rect: BoundaryRectSchema.optional()
-    }),
-    responseSchema: objectType$1({
-      success: booleanType$1()
-    })
-  },
-  openImagesFromFile: {
-    requestSchema: objectType$1({
-      nativePath: stringType$1(),
-      boundary: BoundaryRectSchema.optional()
-    }),
-    responseSchema: objectType$1({
-      success: booleanType$1(),
-      documentId: numberType$1(),
-      documentName: stringType$1(),
-      width: numberType$1(),
-      height: numberType$1()
-    })
-  },
-  getBoundary: {
-    requestSchema: objectType$1({
-      type: enumType$1(["curlayer", "selection"])
-    }),
-    responseSchema: BoundaryRectSchema
-  },
-  getImage: {
-    requestSchema: objectType$1({
-      boundary: unionType$1([
-        enumType$1(["canvas", "curlayer", "selection"]),
-        BoundaryRectSchema
-      ]),
-      content: unionType$1([enumType$1(["canvas", "curlayer"]), stringType$1()]),
-      imageSize: numberType$1(),
-      imageQuality: numberType$1(),
-      cropBySelection: enumType$1(["no", "positive", "negative"]),
-      SkipNonNormalLayer: booleanType$1(),
-      layer_identify: stringType$1().nullable().optional()
-    }),
-    responseSchema: objectType$1({
-      resource: stringType$1().optional(),
-      source: stringType$1().optional(),
-      width: numberType$1().optional(),
-      height: numberType$1().optional(),
-      thumbnail: stringType$1().optional(),
-      error: stringType$1().optional()
-    })
-  },
-  getMask: {
-    requestSchema: objectType$1({
-      boundary: unionType$1([
-        enumType$1(["canvas", "curlayer", "selection"]),
-        BoundaryRectSchema
-      ]),
-      content: enumType$1(["canvas", "curlayer", "selection"]),
-      reverse: booleanType$1(),
-      imageSize: numberType$1(),
-      layer_identify: stringType$1().nullable().optional()
-    }),
-    responseSchema: objectType$1({
-      resource: stringType$1().optional(),
-      source: stringType$1().optional(),
-      width: numberType$1().optional(),
-      height: numberType$1().optional(),
-      thumbnail: stringType$1().optional(),
-      error: stringType$1().optional()
-    })
-  },
-  getCurrentLayerIdentify: {
-    requestSchema: objectType$1({}),
-    responseSchema: objectType$1({
-      layer_identify: stringType$1().nullable()
-    })
-  },
-  importImage: {
-    requestSchema: objectType$1({
-      nativePath: stringType$1(),
-      boundary: unionType$1([
-        enumType$1(["canvas", "curlayer", "selection"]),
-        BoundaryRectSchema
-      ]).optional(),
-      type: enumType$1(["canvas", "curlayer", "newdoc", "smartobject"]),
-      // Optional source image size to avoid opening files in UXP
-      sourceWidth: numberType$1().optional(),
-      sourceHeight: numberType$1().optional()
-    }),
-    responseSchema: objectType$1({
-      success: booleanType$1(),
-      layers: arrayType$1(objectType$1({
-        identify: stringType$1()
-      })).optional(),
-      message: stringType$1().optional(),
-      error: stringType$1().optional()
-    })
-  },
-  showBoundarySelectionDialog: {
-    requestSchema: objectType$1({
-      additionalData: recordType$1(anyType$1()).optional()
-    }),
-    responseSchema: objectType$1({
-      boundary: enumType$1(["canvas", "curlayer", "selection"]).optional(),
-      cancelled: booleanType$1().optional()
-    })
-  },
-  // Split image selection dialogs
-  selectCanvasImage: {
-    requestSchema: objectType$1({
-      additionalData: recordType$1(anyType$1()).optional()
-    }),
-    responseSchema: objectType$1({
-      getImageParams: doGetImageParamsSchema.optional(),
-      source: stringType$1().optional(),
-      cancelled: booleanType$1().optional()
-    })
-  },
-  selectLayerImage: {
-    requestSchema: objectType$1({
-      additionalData: recordType$1(anyType$1()).optional()
-    }),
-    responseSchema: objectType$1({
-      getImageParams: doGetImageParamsSchema.optional(),
-      source: stringType$1().optional(),
-      cancelled: booleanType$1().optional()
-    })
-  },
-  // Split mask selection dialogs
-  selectLayerMask: {
-    requestSchema: objectType$1({
-      additionalData: recordType$1(anyType$1()).optional()
-    }),
-    responseSchema: objectType$1({
-      getMaskParams: doGetMaskParamsSchema.optional(),
-      source: stringType$1().optional(),
-      cancelled: booleanType$1().optional()
-    })
-  },
-  selectSelectionMask: {
-    requestSchema: objectType$1({
-      additionalData: recordType$1(anyType$1()).optional()
-    }),
-    responseSchema: objectType$1({
-      getMaskParams: doGetMaskParamsSchema.optional(),
-      source: stringType$1().optional(),
-      cancelled: booleanType$1().optional()
-    })
-  }
-};
-const WorkflowListSchema = objectType$1({
-  workflows: arrayType$1(stringType$1()),
-  error: stringType$1().optional()
-});
-const RunResultSchema = objectType$1({
-  success: booleanType$1(),
-  nodeErrors: recordType$1(stringType$1()).optional(),
-  prompt_ids: arrayType$1(stringType$1()).optional(),
-  images: arrayType$1(objectType$1({
-    url: stringType$1()
-  })).optional()
-});
-const comfyWorkflowActions = {
-  // Node manipulation
-  setWidgetValue: {
-    requestSchema: objectType$1({
-      values: arrayType$1(objectType$1({
-        nodeID: stringType$1(),
-        widgetIndex: numberType$1(),
-        value: recordType$1(stringType$1(), anyType$1()).or(stringType$1()).or(numberType$1()).or(booleanType$1()).or(arrayType$1(anyType$1()))
-      }))
-    }),
-    responseSchema: objectType$1({
-      success: booleanType$1()
-    })
-  },
-  // Workflow management
-  openWorkflow: {
-    requestSchema: objectType$1({
-      workflow_path: stringType$1(),
-      reset: booleanType$1().default(false)
-    }),
-    responseSchema: objectType$1({
-      success: booleanType$1()
-    })
-  },
-  openWorkflowJSON: {
-    requestSchema: objectType$1({
-      workflow_content: recordType$1(anyType$1()),
-      workflow_path: stringType$1()
-    }),
-    responseSchema: objectType$1({
-      success: booleanType$1()
-    })
-  },
-  listWorkflows: {
-    requestSchema: objectType$1({
-      listMode: stringType$1().optional(),
-      sdpppID: stringType$1().optional(),
-      sdpppToken: stringType$1().optional()
-    }),
-    responseSchema: WorkflowListSchema
-  },
-  saveWorkflow: {
-    requestSchema: objectType$1({
-      workflow_path: stringType$1(),
-      from_sid: stringType$1().optional()
-    }),
-    responseSchema: objectType$1({
-      success: booleanType$1()
-    })
-  },
-  // Workflow execution
-  run: {
-    requestSchema: objectType$1({
-      size: numberType$1()
-    }),
-    responseSchema: RunResultSchema,
-    stream: true
-  },
-  stopAll: {
-    requestSchema: objectType$1({}),
-    responseSchema: objectType$1({
-      success: booleanType$1()
-    })
-  }
-  // interrupt: {
-  //     requestSchema: z.object({}),
-  //     responseSchema: z.object({
-  //         success: z.boolean(),
-  //     })
-  // },
-  // clearQueue: {
-  //     requestSchema: z.object({}),
-  //     responseSchema: z.object({
-  //         success: z.boolean(),
-  //     })
-  // }
-};
-const comfyUtilActions = {
-  setNodeTitle: {
-    requestSchema: objectType$1({
-      node_id: stringType$1(),
-      title: stringType$1()
-    }),
-    responseSchema: objectType$1({
-      success: booleanType$1()
-    })
-  },
-  // System management
-  reboot: {
-    requestSchema: objectType$1({}),
-    responseSchema: objectType$1({
-      success: booleanType$1(),
-      error: stringType$1().optional()
-    })
-  },
-  setComfyOrgAPIKey: {
-    requestSchema: objectType$1({
-      api_key: stringType$1()
-    }),
-    responseSchema: objectType$1({
-      success: booleanType$1()
-    })
-  },
-  logout: {
-    requestSchema: objectType$1({}),
-    responseSchema: objectType$1({
-      success: booleanType$1()
-    })
-  },
-  uploadComfyImageFromUXP: {
-    requestSchema: objectType$1({
-      fileName: stringType$1(),
-      overwrite: booleanType$1().optional(),
-      mimeType: stringType$1().optional(),
-      dataBase64: stringType$1()
-    }),
-    responseSchema: objectType$1({
-      name: stringType$1()
-    })
-  },
-  sdpppHandshake: {
-    requestSchema: objectType$1({
-      hostVersion: stringType$1().optional()
-    }),
-    responseSchema: objectType$1({
-      comfyVersion: stringType$1(),
-      hostVersion: stringType$1().optional()
-    })
-  }
-};
 const BoundaryRectUtils = {
   /**
    * Calculate width from a BoundaryRect
@@ -80019,26 +80093,22 @@ const BoundaryRectUtils = {
   /**
    * Convert BoundaryRect to legacy format for compatibility
    */
-  toLegacyRect: (rect) => {
-    return {
-      left: rect.leftDistance,
-      top: rect.topDistance,
-      right: rect.rightDistance,
-      bottom: rect.bottomDistance
-    };
+  toLegacyRect: (rect, docWidth, docHeight) => {
+    const left = rect.leftDistance;
+    const top = rect.topDistance;
+    const right = Math.max(left, docWidth - rect.rightDistance);
+    const bottom = Math.max(top, docHeight - rect.bottomDistance);
+    return { left, top, right, bottom };
   },
   /**
    * Convert BoundaryRect to SDPPPBounds format
    */
-  toSDPPPBounds: (rect) => {
-    return {
-      left: rect.leftDistance,
-      top: rect.topDistance,
-      right: rect.rightDistance,
-      bottom: rect.bottomDistance,
-      width: rect.width,
-      height: rect.height
-    };
+  toSDPPPBounds: (rect, docWidth, docHeight) => {
+    const left = rect.leftDistance;
+    const top = rect.topDistance;
+    const right = Math.max(left, docWidth - rect.rightDistance);
+    const bottom = Math.max(top, docHeight - rect.bottomDistance);
+    return { left, top, right, bottom, width: rect.width, height: rect.height };
   },
   /**
    * Validate that a BoundaryRect has valid dimensions
@@ -88812,8 +88882,9 @@ objectType$1({
       "curlayer_selection",
       "newdoc_canvas"
     ]),
-    source: stringType$1().optional(),
-    cropBySelection: enumType$1(["no", "positive", "negative"]).optional(),
+    url: stringType$1(),
+    source: stringType$1(),
+    cropBySelection: enumType$1(["no", "positive", "negative"]),
     resource: stringType$1().optional(),
     thumbnail: stringType$1().optional()
   }).optional(),
@@ -88877,7 +88948,7 @@ function v4(options2, buf, offset) {
 const RESOURCE_PREFIX = "uxp://";
 const resourceMap = /* @__PURE__ */ new Map();
 const legacyPromiseMap = /* @__PURE__ */ new Map();
-function toUint8Array$1(data2) {
+function toUint8Array(data2) {
   if (data2 instanceof Uint8Array) {
     return data2;
   }
@@ -88892,7 +88963,7 @@ function toUint8Array$1(data2) {
     return Uint8Array.from(data2);
   }
   if (typeof data2 === "string") {
-    return new Uint8Array(Buffer.from(data2, "base64"));
+    return new Uint8Array(bufferExports.Buffer.from(data2, "base64"));
   }
   throw new Error("Unsupported buffer data");
 }
@@ -88928,11 +88999,11 @@ function deleteResource(resourceId) {
   resourceMap.delete(resourceId);
   legacyPromiseMap.delete(resourceId);
 }
-async function getImageHolder(resourceId) {
-  if (legacyPromiseMap.has(resourceId)) {
-    return legacyPromiseMap.get(resourceId);
+async function getImageHolder(file_token) {
+  if (legacyPromiseMap.has(file_token)) {
+    return legacyPromiseMap.get(file_token);
   }
-  const entry = resolveResource(resourceId);
+  const entry = resolveResource(file_token);
   if (!entry) return void 0;
   if (entry.data.buffer && entry.data.mime) {
     return {
@@ -88967,7 +89038,7 @@ async function resolveResourceBuffer(resourceOrToken) {
       throw new Error("Resource not found");
     }
     return {
-      buffer: toUint8Array$1(legacy2.file_buffer),
+      buffer: toUint8Array(legacy2.file_buffer),
       mime: legacy2.file_mimetype
     };
   };
@@ -88979,7 +89050,7 @@ async function resolveResourceBuffer(resourceOrToken) {
     return loadLegacy();
   }
   if (entry.data.buffer) {
-    const buffer2 = toUint8Array$1(entry.data.buffer);
+    const buffer2 = toUint8Array(entry.data.buffer);
     updateResource(resourceOrToken, {
       data: {
         ...entry.data,
@@ -88992,7 +89063,7 @@ async function resolveResourceBuffer(resourceOrToken) {
     };
   }
   if (entry.data.path) {
-    const buffer2 = await readNativePath(entry.data.path);
+    const buffer2 = await readNativePath(String(entry.data.path));
     if (buffer2) {
       updateResource(resourceOrToken, {
         data: {
@@ -89009,7 +89080,6 @@ async function resolveResourceBuffer(resourceOrToken) {
   return loadLegacy();
 }
 async function ensureResourceTempFile(resourceOrToken, options2) {
-  var _a3;
   if (!isResourceId(resourceOrToken)) {
     throw new Error("ensureResourceTempFile expects a resource id");
   }
@@ -89018,35 +89088,50 @@ async function ensureResourceTempFile(resourceOrToken, options2) {
     throw new Error("Resource not found");
   }
   if (entry.data.path) {
-    return {
-      nativePath: entry.data.path,
-      mime: entry.data.mime
-    };
+    return entry.data.path;
   }
   const { buffer: buffer2, mime: mime2 } = await resolveResourceBuffer(resourceOrToken);
-  const extension = (options2 == null ? void 0 : options2.extension) || ((_a3 = entry.originalMeta) == null ? void 0 : _a3.extension) || (mime2 ? `.${mime2.split("/").pop()}` : ".bin");
-  const baseName = (options2 == null ? void 0 : options2.fileName) || `resource_${resourceOrToken.split("/").pop() || v4()}`;
   const localFileSystem = uxp.storage.localFileSystem;
   const tempFolder = await localFileSystem.getTemporaryFolder();
-  const safeExt = extension.startsWith(".") ? extension : `.${extension}`;
-  const fileName = `${baseName}${safeExt}`;
+  const ext = (() => {
+    var _a3;
+    if ((_a3 = entry.originalMeta) == null ? void 0 : _a3.fileName) {
+      const name = String(entry.originalMeta.fileName);
+      const idx = name.lastIndexOf(".");
+      if (idx >= 0) {
+        return name.substring(idx);
+      }
+    }
+    if (options2 == null ? void 0 : options2.extensionHint) {
+      return options2.extensionHint.startsWith(".") ? options2.extensionHint : `.${options2.extensionHint}`;
+    }
+    if (mime2) {
+      const map = {
+        "image/png": ".png",
+        "image/jpeg": ".jpg",
+        "image/jpg": ".jpg",
+        "image/webp": ".webp",
+        "image/gif": ".gif",
+        "image/bmp": ".bmp",
+        "image/tiff": ".tif",
+        "image/heic": ".heic"
+      };
+      if (map[mime2]) {
+        return map[mime2];
+      }
+    }
+    return ".bin";
+  })();
+  const fileName = `resource_${Date.now()}_${Math.random().toString(36).slice(2, 8)}${ext}`;
   const tempFile = await tempFolder.createFile(fileName, { overwrite: true });
-  await tempFile.write(buffer2, { format: uxp.storage.formats.binary });
+  await tempFile.write(new Uint8Array(buffer2), { format: uxp.storage.formats.binary });
   updateResource(resourceOrToken, {
     data: {
       ...entry.data,
-      buffer: buffer2,
       path: tempFile.nativePath
-    },
-    originalMeta: {
-      ...entry.originalMeta,
-      extension: safeExt
     }
   });
-  return {
-    nativePath: tempFile.nativePath,
-    mime: mime2
-  };
+  return tempFile.nativePath;
 }
 /**
  * @license
@@ -106674,31 +106759,21 @@ globalThis.fetch = async (input, init2) => {
   }
   return globalFetch(input, init2);
 };
-function toUint8Array(data2) {
-  if (data2 instanceof Uint8Array) {
-    return data2;
-  }
-  if (ArrayBuffer.isView(data2)) {
-    const view = data2;
-    return new Uint8Array(view.buffer.slice(view.byteOffset, view.byteOffset + view.byteLength));
-  }
-  if (data2 instanceof ArrayBuffer) {
-    return new Uint8Array(data2);
-  }
-  if (Array.isArray(data2)) {
-    return Uint8Array.from(data2);
-  }
-  if (typeof data2 === "string") {
-    return new Uint8Array(Buffer.from(data2, "base64"));
-  }
-  throw new Error("Unsupported buffer data");
-}
 mcpMesh.implementAction("getImageBase64", async (params) => {
   try {
-    const { buffer: buffer2, mime: mime2 } = await resolveResourceBuffer(params.token);
-    const mimeType = mime2 || "application/octet-stream";
-    const base64 = "data:" + mimeType + ";base64," + Buffer.from(buffer2).toString("base64");
-    return { base64, mimeType };
+    try {
+      const { buffer: buffer2, mime: mime2 } = await resolveResourceBuffer(params.token);
+      const data64 = "data:" + (mime2 || "application/octet-stream") + ";base64," + Buffer.from(buffer2).toString("base64");
+      return { base64: data64, mimeType: mime2 || "application/octet-stream" };
+    } catch {
+    }
+    const imageHolderResult = await getImageHolder(params.token);
+    if (!imageHolderResult) {
+      return { error: "Invalid image token" };
+    }
+    const { file_buffer, file_mimetype } = imageHolderResult;
+    const base64 = "data:" + file_mimetype + ";base64," + Buffer.from(file_buffer).toString("base64");
+    return { base64, mimeType: file_mimetype };
   } catch (error) {
     return { error: error.message };
   }
@@ -106715,56 +106790,47 @@ mcpMesh.implementAction("proxiedFetch", async (params) => {
     if (body && method !== "GET" && method !== "HEAD") {
       if (bodyType === "formData") {
         const formData = new FormData();
-        const appendFileFromBuffer = (key2, buffer2, mimeType, fileName) => {
-          const payload = buffer2 instanceof Uint8Array ? buffer2 : new Uint8Array(buffer2);
-          const blob = new Blob([payload], { type: mimeType || "application/octet-stream" });
-          if (fileName) {
-            formData.append(key2, blob, fileName);
-          } else {
-            formData.append(key2, blob);
-          }
-        };
-        const appendFileValue = async (key2, value) => {
-          const preferredMime = value == null ? void 0 : value.mimeType;
-          const preferredName = value == null ? void 0 : value.name;
-          if (value == null ? void 0 : value.resource) {
-            const { buffer: buffer2, mime: mime2 } = await resolveResourceBuffer(value.resource);
-            appendFileFromBuffer(key2, buffer2, preferredMime || mime2, preferredName);
-            return;
-          }
-          if ((value == null ? void 0 : value.mimeType) === "image/uxp" && (value == null ? void 0 : value.data)) {
-            const decoded = Buffer.from(value.data, "base64").toString();
-            const { buffer: buffer2, mime: mime2 } = await resolveResourceBuffer(decoded);
-            appendFileFromBuffer(key2, buffer2, preferredMime || mime2, preferredName);
-            return;
-          }
-          if (value == null ? void 0 : value.token) {
-            const { buffer: buffer2, mime: mime2 } = await resolveResourceBuffer(value.token);
-            appendFileFromBuffer(key2, buffer2, preferredMime || mime2, preferredName);
-            return;
-          }
-          if (value == null ? void 0 : value.data) {
-            appendFileFromBuffer(key2, toUint8Array(value.data), preferredMime, preferredName);
-            return;
-          }
-          throw new Error("Unsupported file payload");
-        };
         if (Array.isArray(body)) {
           for (const [key2, value] of body) {
             if (value && typeof value === "object" && "type" in value && value.type === "file") {
-              await appendFileValue(key2, value);
+              const fileData = value;
+              if (fileData.data) {
+                if (value.mimeType == "image/uxp") {
+                  const fileToken = Buffer.from(fileData.data, "base64").toString();
+                  const imageHolderResult = await getImageHolder(fileToken);
+                  if (!imageHolderResult) {
+                    throw new Error("Invalid file token");
+                  }
+                  const { file_buffer, file_mimetype } = imageHolderResult;
+                  const file = new Blob([file_buffer], {
+                    type: file_mimetype || "application/octet-stream"
+                  });
+                  formData.append(key2, file);
+                } else {
+                  const file = new Blob([Buffer.from(fileData.data, "base64")], {
+                    type: fileData.mimeType || "application/octet-stream"
+                  });
+                  formData.append(key2, file);
+                }
+              }
             } else {
               formData.append(key2, String(value));
             }
           }
         } else if (typeof body === "object" && body !== null) {
-          for (const [key2, value] of Object.entries(body)) {
+          Object.entries(body).forEach(([key2, value]) => {
             if (value && typeof value === "object" && "type" in value && value.type === "file") {
-              await appendFileValue(key2, value);
+              const fileData = value;
+              if (fileData.data) {
+                const file = new Blob([Buffer.from(fileData.data, "base64")], {
+                  type: fileData.type || "application/octet-stream"
+                });
+                formData.append(key2, file);
+              }
             } else {
               formData.append(key2, String(value));
             }
-          }
+          });
         }
         fetchOptions.body = formData;
       } else if (bodyType === "text") {
@@ -106805,38 +106871,158 @@ mcpMesh.implementAction("proxiedFetch", async (params) => {
     };
   }
 });
+mcpMesh.implementAction("pickLocalFile", async (params) => {
+  var _a3;
+  try {
+    const { acceptExtensions = [], kind } = params || {};
+    const localFileSystem = uxp.storage.localFileSystem;
+    try {
+      console.log("[pickLocalFile] inbound", { acceptExtensions, kind, hasGetFileForOpening: !!localFileSystem.getFileForOpening });
+    } catch {
+    }
+    const types = acceptExtensions.length ? [{
+      description: "Allowed files",
+      extension: acceptExtensions.map((ext) => ext.replace(/^\./, "").toLowerCase())
+    }] : void 0;
+    let fileEntry;
+    try {
+      fileEntry = await ((_a3 = localFileSystem.getFileForOpening) == null ? void 0 : _a3.call(localFileSystem, {
+        allowMultiple: false,
+        types
+      }));
+    } catch (error) {
+      const message = ((error == null ? void 0 : error.message) || "").toLowerCase();
+      try {
+        console.warn("[pickLocalFile] getFileForOpening error", { message: (error == null ? void 0 : error.message) || String(error), params: { acceptExtensions, kind, types } });
+      } catch {
+      }
+      if (message.includes("cancel")) {
+        return { cancelled: true };
+      }
+      return { error: (error == null ? void 0 : error.message) || String(error) };
+    }
+    if (!fileEntry) {
+      try {
+        console.warn("[pickLocalFile] no fileEntry returned");
+      } catch {
+      }
+      return { cancelled: true };
+    }
+    let arrayBuffer;
+    try {
+      arrayBuffer = await fileEntry.read({ format: uxp.storage.formats.binary });
+    } catch (readError) {
+      try {
+        console.warn("[pickLocalFile] read error", { message: (readError == null ? void 0 : readError.message) || String(readError) });
+      } catch {
+      }
+      return { error: (readError == null ? void 0 : readError.message) || String(readError) };
+    }
+    const buffer2 = new Uint8Array(arrayBuffer);
+    const fileName = typeof fileEntry.name === "string" && fileEntry.name ? fileEntry.name : `local-file-${Date.now()}`;
+    const extension = (() => {
+      const idx = fileName.lastIndexOf(".");
+      return idx >= 0 ? fileName.substring(idx + 1).toLowerCase() : "";
+    })();
+    const mimeMap = {
+      png: "image/png",
+      jpg: "image/jpeg",
+      jpeg: "image/jpeg",
+      webp: "image/webp",
+      gif: "image/gif",
+      bmp: "image/bmp",
+      tiff: "image/tiff",
+      tif: "image/tiff",
+      svg: "image/svg+xml",
+      heic: "image/heic"
+    };
+    let mimeType = mimeMap[extension];
+    if (!mimeType && kind === "image") {
+      mimeType = "image/png";
+    }
+    if (!mimeType) {
+      mimeType = "application/octet-stream";
+    }
+    const resourceType = mimeType.startsWith("image/") ? "image" : "file";
+    const resourceId = createResource({
+      type: resourceType,
+      data: {
+        buffer: buffer2,
+        mime: mimeType,
+        path: fileEntry.nativePath
+      },
+      originalMeta: {
+        fileName,
+        nativePath: fileEntry.nativePath,
+        size: buffer2.byteLength
+      }
+    });
+    try {
+      console.log("[pickLocalFile] success", { resourceId, fileName, mimeType, size: buffer2.byteLength });
+    } catch {
+    }
+    return {
+      cancelled: false,
+      resource: resourceId,
+      fileName,
+      mimeType,
+      size: buffer2.byteLength
+    };
+  } catch (error) {
+    try {
+      console.warn("[pickLocalFile] unexpected error", { message: (error == null ? void 0 : error.message) || String(error), stack: error == null ? void 0 : error.stack });
+    } catch {
+    }
+    return { error: (error == null ? void 0 : error.message) || String(error) };
+  }
+});
 mcpMesh.implementAction("uploadComfyImage", async (request, extra, signal) => {
   var _a3;
   const { uploadInput, overwrite } = request;
   let uint8Array;
   let mimeType = uploadInput.mimeType || "image/png";
-  const logPrefix = "[uploadComfyImage]";
   if (uploadInput.type === "buffer") {
     const source = uploadInput.resource || {};
     let data2 = (source == null ? void 0 : source.data) ?? source;
-    const resolveFromToken = async () => {
-      const fallbackToken = typeof uploadInput.resource === "string" ? uploadInput.resource : uploadInput.resourceId ?? uploadInput.resource;
-      if (!fallbackToken || typeof fallbackToken !== "string") {
-        return void 0;
-      }
-      const resolved = await resolveResourceBuffer(fallbackToken);
-      return {
-        buffer: resolved.buffer,
-        mime: resolved.mime
-      };
-    };
     const isEmptyObject = (value) => value && typeof value === "object" && !Array.isArray(value) && Object.keys(value).length === 0;
     if (data2 == null || isEmptyObject(data2)) {
-      const resolved = await resolveFromToken();
-      if (!resolved) {
+      const token = typeof uploadInput.resource === "string" ? uploadInput.resource : uploadInput.resourceId ?? uploadInput.resource;
+      if (token && typeof token === "string") {
+        const resolved = await resolveResourceBuffer(token).catch(async () => {
+          const legacy2 = await getImageHolder(token);
+          if (!legacy2) {
+            return void 0;
+          }
+          return {
+            buffer: legacy2.file_buffer,
+            mime: legacy2.file_mimetype
+          };
+        });
+        if (!resolved) {
+          throw new Error("Upload buffer data missing");
+        }
+        uint8Array = new Uint8Array(resolved.buffer);
+        if (resolved.mime) {
+          mimeType = uploadInput.mimeType || resolved.mime;
+        }
+      } else {
         throw new Error("Upload buffer data missing");
       }
-      uint8Array = toUint8Array(resolved.buffer);
-      if (resolved.mime) {
-        mimeType = uploadInput.mimeType || resolved.mime;
-      }
     } else {
-      uint8Array = toUint8Array(data2);
+      if (typeof data2 === "string") {
+        if (/^[A-Za-z0-9+/=]+$/.test(data2)) {
+          uint8Array = new Uint8Array(Buffer.from(data2, "base64"));
+        } else {
+          uint8Array = new TextEncoder().encode(data2);
+        }
+      } else if (data2 instanceof ArrayBuffer) {
+        uint8Array = new Uint8Array(data2);
+      } else if (ArrayBuffer.isView(data2)) {
+        const view = data2;
+        uint8Array = new Uint8Array(view.buffer.slice(view.byteOffset, view.byteOffset + view.byteLength));
+      } else {
+        uint8Array = new Uint8Array(data2);
+      }
     }
     const sourceMime = (source == null ? void 0 : source.mimeType) ?? uploadInput.mimeType;
     if (sourceMime) {
@@ -106847,19 +107033,23 @@ mcpMesh.implementAction("uploadComfyImage", async (request, extra, signal) => {
     if (!token || typeof token !== "string") {
       throw new Error("Upload resource token missing");
     }
-    const resolved = await resolveResourceBuffer(token);
-    uint8Array = toUint8Array(resolved.buffer);
-    if (resolved.mime) {
-      mimeType = uploadInput.mimeType || resolved.mime;
+    try {
+      const resolved = await resolveResourceBuffer(token);
+      uint8Array = new Uint8Array(resolved.buffer);
+      if (resolved.mime) {
+        mimeType = uploadInput.mimeType || resolved.mime;
+      }
+    } catch {
+      const legacy2 = await getImageHolder(token);
+      if (!legacy2) {
+        throw new Error("Image not found: " + token);
+      }
+      uint8Array = new Uint8Array(legacy2.file_buffer);
+      if (legacy2.file_mimetype) {
+        mimeType = uploadInput.mimeType || legacy2.file_mimetype;
+      }
     }
   }
-  console.info(logPrefix, "payload prepared", {
-    type: uploadInput.type,
-    byteLength: (uint8Array == null ? void 0 : uint8Array.byteLength) ?? 0,
-    mimeType,
-    fileName: uploadInput.fileName,
-    overwrite: !!overwrite
-  });
   const comfyActions = (_a3 = mcpMesh.getNode("comfy")) == null ? void 0 : _a3.actions;
   if (!(comfyActions == null ? void 0 : comfyActions.uploadComfyImageFromUXP)) {
     throw new Error("Comfy uploader is not available");
@@ -106871,12 +107061,7 @@ mcpMesh.implementAction("uploadComfyImage", async (request, extra, signal) => {
     mimeType: mimeType || "image/png",
     dataBase64: base64Data
   };
-  const response = await comfyActions.uploadComfyImageFromUXP(payload, extra, signal);
-  console.info(logPrefix, "upload completed", {
-    fileName: uploadInput.fileName,
-    overwrite: !!overwrite
-  });
-  return response;
+  return await comfyActions.uploadComfyImageFromUXP(payload, extra, signal);
 });
 mcpMesh.implementAction("openaiImageEdit", async (params, _extra, signal) => {
   var _a3;
@@ -106885,12 +107070,20 @@ mcpMesh.implementAction("openaiImageEdit", async (params, _extra, signal) => {
     if (signal == null ? void 0 : signal.aborted) {
       throw new DOMException("Request aborted", "AbortError");
     }
-    const { buffer: buffer2, mime: mime2 } = await resolveResourceBuffer(params.imageToken);
-    const imageBuffer = Buffer.from(buffer2);
+    const imageHolderResult = await getImageHolder(params.imageToken);
+    if (!imageHolderResult) {
+      return {
+        success: false,
+        apiTime: Date.now() - apiStartTime,
+        error: "Invalid image token"
+      };
+    }
+    const { file_buffer, file_mimetype } = imageHolderResult;
+    const imageBuffer = Buffer.from(file_buffer);
     const base2 = params.baseURL.replace(/\/$/, "");
     const url = `${base2}/images/edits`;
     const form = new FormData();
-    const blob = new Blob([imageBuffer], { type: mime2 || "image/png" });
+    const blob = new Blob([imageBuffer], { type: "image/png" });
     form.append("image", blob, "image.png");
     form.append("prompt", params.prompt);
     form.append("model", params.model || "gpt-image-1");
@@ -106952,8 +107145,15 @@ mcpMesh.implementAction("geminiImageGenerate", async (params, _extra, signal) =>
     for (const input of inputsArray) {
       let imageBuffer;
       if (params.imageInputType === "token") {
-        const { buffer: buffer2 } = await resolveResourceBuffer(input);
-        imageBuffer = Buffer.from(buffer2);
+        const imageHolderResult = await getImageHolder(input);
+        if (!imageHolderResult) {
+          return {
+            success: false,
+            apiTime: Date.now() - apiStartTime,
+            error: "Invalid image token"
+          };
+        }
+        imageBuffer = Buffer.from(imageHolderResult.file_buffer);
       } else {
         if (input.startsWith("data:")) {
           const base64Data = input.split(",")[1];
@@ -124302,8 +124502,8 @@ mcpMesh.implementAction("downloadImage", async (params) => {
     const localFileSystem = uxp.storage.localFileSystem;
     const tempFolder = await localFileSystem.getTemporaryFolder();
     let buffer2;
-    let extension = ".bin";
-    let mimeFromSource;
+    let extension = ".png";
+    let mimeType = "application/octet-stream";
     let isImageMime = false;
     if (url.startsWith("data:")) {
       const match = url.match(/^data:([^;]+)(;base64)?,(.*)$/);
@@ -124323,15 +124523,15 @@ mcpMesh.implementAction("downloadImage", async (params) => {
         "image/tiff": ".tif",
         "image/svg+xml": ".svg"
       };
-      extension = mimeToExt[mime2] || ".bin";
-      mimeFromSource = mime2;
+      extension = mimeToExt[mime2] || ".png";
       isImageMime = mime2.startsWith("image/");
-      buffer2 = isBase64 ? Buffer.from(dataPart, "base64") : Buffer.from(decodeURIComponent(dataPart), "utf8");
+      mimeType = mime2;
+      buffer2 = isBase64 ? bufferExports.Buffer.from(dataPart, "base64") : bufferExports.Buffer.from(decodeURIComponent(dataPart), "utf8");
     } else {
       const urlObj = new URL(url);
       const pathname = urlObj.pathname;
       const lastDotIndex = pathname.lastIndexOf(".");
-      extension = lastDotIndex > -1 ? pathname.substring(lastDotIndex).toLowerCase() : ".bin";
+      extension = lastDotIndex > -1 ? pathname.substring(lastDotIndex).toLowerCase() : ".png";
       const filename = urlObj.searchParams.get("filename");
       if (filename) {
         const filenameDotIndex = filename.lastIndexOf(".");
@@ -124344,137 +124544,127 @@ mcpMesh.implementAction("downloadImage", async (params) => {
         throw new Error(`Failed to download file: ${response.status} ${response.statusText}`);
       }
       const arrayBuffer = await response.arrayBuffer();
-      buffer2 = Buffer.from(arrayBuffer);
+      buffer2 = bufferExports.Buffer.from(arrayBuffer);
       const imageExtensions2 = [".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp"];
       isImageMime = imageExtensions2.includes(extension);
+      if (isImageMime) {
+        const extToMime = {
+          ".jpg": "image/jpeg",
+          ".jpeg": "image/jpeg",
+          ".png": "image/png",
+          ".gif": "image/gif",
+          ".bmp": "image/bmp",
+          ".webp": "image/webp"
+        };
+        mimeType = extToMime[extension] || "image/png";
+      } else {
+        mimeType = response.headers.get("content-type") || "application/octet-stream";
+      }
     }
     const timestamp = Date.now();
     const randomSuffix = Math.random().toString(36).substring(2, 8);
     const finalFilename = `downloaded_file_${timestamp}_${randomSuffix}${extension}`;
     const tempFile = await tempFolder.createFile(finalFilename, { overwrite: true });
     await tempFile.write(new Uint8Array(buffer2), { format: uxp.storage.formats.binary });
+    const imageExtensions = [".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp"];
+    const videoExtensions = [".mp4", ".avi", ".mov", ".mkv", ".webm", ".flv", ".wmv"];
+    let thumbnailBase64;
     let imgWidth;
     let imgHeight;
-    let thumbnailBase64;
-    const imageExtensions = [".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp"];
-    if (isImageMime || imageExtensions.includes(extension)) {
+    if (imageExtensions.includes(extension) || isImageMime) {
       try {
         const image = await Jimp.read(buffer2);
         imgWidth = image.width;
         imgHeight = image.height;
-        const thumb = image.clone();
-        thumb.scaleToFit({ w: 320, h: 320 });
-        const thumbnailBuffer = await thumb.getBuffer(JimpMime.png);
+        image.scaleToFit({ w: 320, h: 320 });
+        const thumbnailBuffer = await image.getBuffer(JimpMime.png);
         thumbnailBase64 = "data:image/png;base64," + thumbnailBuffer.toString("base64");
-      } catch (error) {
-        console.warn("Failed to generate thumbnail for downloaded image", error);
+      } catch (imageError) {
+        thumbnailBase64 = "data:image/svg+xml;base64," + btoa(`
+                    <svg width="320" height="320" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="320" height="320" fill="#f0f0f0"/>
+                        <text x="160" y="160" text-anchor="middle" font-family="Arial" font-size="16" fill="#666">Image</text>
+                    </svg>
+                `);
       }
+    } else if (videoExtensions.includes(extension)) {
+      thumbnailBase64 = "data:image/svg+xml;base64," + btoa(`
+                <svg width="320" height="320" xmlns="http://www.w3.org/2000/svg">
+                    <rect width="320" height="320" fill="#000" opacity="0.8"/>
+                    <circle cx="160" cy="160" r="50" fill="white" opacity="0.9"/>
+                    <polygon points="140,130 140,190 190,160" fill="black"/>
+                    <text x="160" y="220" text-anchor="middle" font-family="Arial" font-size="14" fill="white">Video</text>
+                </svg>
+            `);
+    } else {
+      thumbnailBase64 = "data:image/svg+xml;base64," + btoa(`
+                <svg width="320" height="320" xmlns="http://www.w3.org/2000/svg">
+                    <rect width="320" height="320" fill="#e0e0e0"/>
+                    <rect x="80" y="80" width="160" height="160" fill="white" stroke="#ccc" stroke-width="2"/>
+                    <text x="160" y="160" text-anchor="middle" font-family="Arial" font-size="16" fill="#666">File</text>
+                    <text x="160" y="180" text-anchor="middle" font-family="Arial" font-size="12" fill="#999">${extension}</text>
+                </svg>
+            `);
     }
-    const resource = createResource({
-      type: isImageMime || imageExtensions.includes(extension) ? "image" : "file",
+    const resourceType = "file";
+    const resourceId = createResource({
+      type: resourceType,
       data: {
         buffer: new Uint8Array(buffer2),
-        mime: mimeFromSource ?? (isImageMime ? "image/png" : "application/octet-stream"),
+        mime: mimeType,
         path: tempFile.nativePath
       },
       originalMeta: {
         url,
-        extension,
+        fileName: finalFilename,
         width: imgWidth,
         height: imgHeight,
-        fileName: finalFilename
-      },
-      thumbnailCache: thumbnailBase64 ? {
-        base64: thumbnailBase64,
-        width: imgWidth,
-        height: imgHeight,
-        mime: "image/png",
-        generatedAt: Date.now()
-      } : void 0
+        extension
+      }
     });
-    return {
-      resource,
-      width: imgWidth,
-      height: imgHeight,
-      thumbnail: thumbnailBase64
-    };
-  } catch (error) {
-    return { error: error.stack || error.message || error };
-  }
-});
-mcpMesh.implementAction("getThumbnail", async (params) => {
-  try {
-    const { resource, maxSize } = params;
-    const entry = resolveResource(resource);
-    if (entry == null ? void 0 : entry.thumbnailCache) {
-      return {
-        thumbnail: entry.thumbnailCache.base64,
-        width: entry.thumbnailCache.width,
-        height: entry.thumbnailCache.height
-      };
-    }
-    const { buffer: buffer2 } = await resolveResourceBuffer(resource);
-    const image = await Jimp.read(Buffer.from(buffer2));
-    const size = maxSize && maxSize > 0 ? maxSize : 320;
-    const thumb = image.clone();
-    thumb.scaleToFit({ w: size, h: size });
-    const thumbnailBuffer = await thumb.getBuffer(JimpMime.png);
-    const base64 = "data:image/png;base64," + thumbnailBuffer.toString("base64");
-    if (entry) {
-      updateResource(resource, {
+    if (thumbnailBase64) {
+      updateResource(resourceId, {
         thumbnailCache: {
-          base64,
-          width: thumb.bitmap.width,
-          height: thumb.bitmap.height,
+          base64: thumbnailBase64,
+          width: imgWidth,
+          height: imgHeight,
           mime: "image/png",
           generatedAt: Date.now()
         }
       });
     }
     return {
-      thumbnail: base64,
-      width: thumb.bitmap.width,
-      height: thumb.bitmap.height
+      resource: resourceId,
+      thumbnail: thumbnailBase64,
+      width: imgWidth,
+      height: imgHeight,
+      mimeType
     };
   } catch (error) {
-    return {
-      error: error.stack || error.message || error
-    };
+    return { error: error.stack || error.message || error };
   }
 });
 mcpMesh.implementAction("deleteDownloadedImage", async (params) => {
-  var _a3, _b2;
   try {
-    const resources = params.resources ?? [];
-    const legacyPaths = params.nativePaths ?? [];
+    const { resources } = params;
     const localFileSystem = uxp.storage.localFileSystem;
     const tempFolder = await localFileSystem.getTemporaryFolder();
-    const deleteCandidates = /* @__PURE__ */ new Set();
-    for (const path of legacyPaths) {
-      if (typeof path === "string" && path.includes(tempFolder.nativePath)) {
-        deleteCandidates.add(path);
-      }
-    }
     for (const resourceId of resources) {
-      try {
-        const entry = resolveResource(resourceId);
-        const nativePath = (_a3 = entry == null ? void 0 : entry.data) == null ? void 0 : _a3.path;
-        if (nativePath && nativePath.includes(tempFolder.nativePath)) {
-          deleteCandidates.add(nativePath);
+      if (typeof resourceId !== "string") continue;
+      const entry = resolveResource(resourceId);
+      if (entry == null ? void 0 : entry.data.path) {
+        try {
+          const nativePath = String(entry.data.path);
+          if (nativePath.includes(tempFolder.nativePath)) {
+            const relativePath = nativePath.replace(tempFolder.nativePath, "").replace(/^[\\/\\]/, "");
+            const file = await tempFolder.getEntry(relativePath);
+            await (file == null ? void 0 : file.delete());
+          }
+        } catch (error) {
+          console.warn("[deleteDownloadedImage] failed to delete temp file for resource", resourceId, error);
         }
-        deleteResource(resourceId);
-      } catch (error) {
-        console.warn(`Failed to delete resource: ${resourceId}`, error);
       }
-    }
-    for (const candidate of deleteCandidates) {
-      try {
-        const relativePath = candidate.replace(tempFolder.nativePath, "").replace(/^[\/\\]/, "");
-        const file = await tempFolder.getEntry(relativePath);
-        await ((_b2 = file == null ? void 0 : file.delete) == null ? void 0 : _b2.call(file));
-      } catch (error) {
-        console.warn(`Failed to delete temp file: ${candidate}`, error);
-      }
+      deleteResource(resourceId);
     }
     return {};
   } catch (error) {
@@ -124483,70 +124673,100 @@ mcpMesh.implementAction("deleteDownloadedImage", async (params) => {
     };
   }
 });
-mcpMesh.implementAction("requestAndDoSaveImage", async (params) => {
-  var _a3, _b2, _c;
+mcpMesh.implementAction("getThumbnail", async (params) => {
   try {
-    const resourceIds = params.resources ?? [];
-    const legacyPaths = params.nativePaths ?? [];
+    const { resource, maxSize = 192 } = params;
+    if (typeof resource !== "string" || !resource.length) {
+      throw new Error("getThumbnail: resource is required");
+    }
+    const entry = resolveResource(resource);
+    if (!entry) {
+      throw new Error("getThumbnail: resource not found");
+    }
+    const cached = entry.thumbnailCache;
+    if (cached == null ? void 0 : cached.base64) {
+      return {
+        thumbnail: cached.base64,
+        width: cached.width,
+        height: cached.height
+      };
+    }
+    const { buffer: buffer2 } = await resolveResourceBuffer(resource);
+    const image = await Jimp.read(bufferExports.Buffer.from(buffer2));
+    const origW = image.width;
+    const origH = image.height;
+    image.scaleToFit({ w: maxSize, h: maxSize });
+    const thumbnailBuffer = await image.getBuffer(JimpMime.png);
+    const base64 = "data:image/png;base64," + thumbnailBuffer.toString("base64");
+    updateResource(resource, {
+      thumbnailCache: {
+        base64,
+        width: image.width,
+        height: image.height,
+        mime: "image/png",
+        generatedAt: Date.now()
+      }
+    });
+    return {
+      thumbnail: base64,
+      width: origW,
+      height: origH
+    };
+  } catch (error) {
+    return { error: (error == null ? void 0 : error.message) || String(error) };
+  }
+});
+mcpMesh.implementAction("requestAndDoSaveImage", async (params) => {
+  var _a3;
+  try {
+    const { resources = [] } = params;
     const localFileSystem = uxp.storage.localFileSystem;
     const tempFolder = await localFileSystem.getTemporaryFolder();
-    const saveFolder = await localFileSystem.getFolder();
-    const writeFile2 = async (fileName, buffer2) => {
-      const safeName = fileName && fileName.trim().length ? fileName : `resource_${Date.now()}.bin`;
-      const saveFile = await saveFolder.createFile(safeName, { overwrite: true });
-      await saveFile.write(buffer2, { format: uxp.storage.formats.binary });
-    };
-    for (const resourceId of resourceIds) {
-      try {
-        const entry = resolveResource(resourceId);
-        if (!entry) {
-          console.warn(`Resource not found: ${resourceId}`);
-          continue;
-        }
-        const { buffer: buffer2, mime: mime2 } = await resolveResourceBuffer(resourceId);
-        const nameFromMeta = ((_a3 = entry.originalMeta) == null ? void 0 : _a3.fileName) || (((_b2 = entry.originalMeta) == null ? void 0 : _b2.url) ? (() => {
-          var _a4;
-          try {
-            const url = new URL(String((_a4 = entry.originalMeta) == null ? void 0 : _a4.url));
-            const parts = url.pathname.split("/");
-            const last = parts.pop() || "";
-            return last || void 0;
-          } catch {
-            return void 0;
-          }
-        })() : void 0);
-        const fallbackBase = `resource_${resourceId.split("/").pop() || Date.now()}`;
-        let fileName = nameFromMeta || fallbackBase;
-        const extFromMeta = (_c = entry.originalMeta) == null ? void 0 : _c.extension;
-        const extFromMime = mime2 ? `.${mime2.split("/").pop()}` : void 0;
-        const ext = extFromMeta || extFromMime || ".bin";
-        const safeExt = ext.startsWith(".") ? ext : `.${ext}`;
-        if (!fileName.includes(".")) {
-          fileName += safeExt;
-        }
-        await writeFile2(fileName, buffer2);
-      } catch (error) {
-        console.warn(`Failed to save resource: ${resourceId}`, error);
+    let saveFolder;
+    try {
+      saveFolder = await localFileSystem.getFolder();
+    } catch (error) {
+      const message = ((error == null ? void 0 : error.message) || "").toLowerCase();
+      if (message.includes("cancel")) {
+        return { error: "cancelled" };
       }
+      throw error;
     }
-    for (const nativePath of legacyPaths) {
-      if (!nativePath) continue;
+    for (const resourceId of resources) {
+      if (typeof resourceId !== "string") continue;
       try {
-        let fileEntry;
-        if (nativePath.includes(tempFolder.nativePath)) {
-          const relativePath = nativePath.replace(tempFolder.nativePath, "").replace(/^[\/\\]/, "");
-          fileEntry = await tempFolder.getEntry(relativePath);
-        } else {
-          const url = nativePath.startsWith("file://") ? nativePath : `file://${nativePath}`;
-          fileEntry = await localFileSystem.getEntryWithUrl(url);
-        }
-        if (!fileEntry) {
+        const ensuredPath = await ensureResourceTempFile(resourceId).catch(() => void 0);
+        if (!ensuredPath) {
+          console.warn("[requestAndDoSaveImage] failed to ensure path for resource", resourceId);
           continue;
         }
+        const nativePath = String(ensuredPath);
+        if (nativePath.includes(tempFolder.nativePath)) {
+          const relativePath = nativePath.replace(tempFolder.nativePath, "").replace(/^[\\/\\]/, "");
+          const tempFile = await tempFolder.getEntry(relativePath);
+          if (!tempFile) {
+            console.warn(`File not found: ${nativePath}`);
+            continue;
+          }
+          const fileName = tempFile.name;
+          const arrayBuffer2 = await tempFile.read({ format: uxp.storage.formats.binary });
+          const saveFile2 = await saveFolder.createFile(fileName, { overwrite: true });
+          await saveFile2.write(arrayBuffer2, { format: uxp.storage.formats.binary });
+          continue;
+        }
+        const entryUrl = nativePath.startsWith("file://") ? nativePath : `file://${nativePath}`;
+        const fileEntry = await localFileSystem.getEntryWithUrl(entryUrl);
+        if (!fileEntry) {
+          console.warn(`[requestAndDoSaveImage] file entry not found for resource`, resourceId, nativePath);
+          continue;
+        }
+        const resourceEntry = resolveResource(resourceId);
+        const fallbackName = typeof ((_a3 = resourceEntry == null ? void 0 : resourceEntry.originalMeta) == null ? void 0 : _a3.fileName) === "string" ? String(resourceEntry.originalMeta.fileName) : fileEntry.name || `resource-${Date.now()}`;
         const arrayBuffer = await fileEntry.read({ format: uxp.storage.formats.binary });
-        await writeFile2(fileEntry.name ?? `export_${Date.now()}`, new Uint8Array(arrayBuffer));
+        const saveFile = await saveFolder.createFile(fallbackName, { overwrite: true });
+        await saveFile.write(arrayBuffer, { format: uxp.storage.formats.binary });
       } catch (error) {
-        console.warn(`Failed to save legacy path: ${nativePath}`, error);
+        console.warn("[requestAndDoSaveImage] Failed to save resource", resourceId, error);
       }
     }
     return {};
@@ -124908,6 +125128,24 @@ const zhCN = {
   "image.upload.autosync.fetching": "自动获取中…",
   "image.auto_send_enabled": "自动填入画布开启",
   "image.auto_send_disabled": "自动填入画布关闭",
+  "image.upload.primary.auto": "自动取图中…",
+  "image.upload.primary.manual": "获取图片",
+  "image.upload.primary.hint.line1": "本节点默认继承:",
+  "image.upload.primary.hint.line2": "主图",
+  "image.upload.primary.advanced": "高级选图",
+  "image.upload.primary.advanced.modify": "修改",
+  "image.upload.primary.advanced.reset": "重置",
+  "image.upload.primary.advanced.local_file": "从磁盘获取",
+  "image.upload.primary.advanced.content.canvas": "画布",
+  "image.upload.primary.advanced.content.curlayer": "当前图层",
+  "image.upload.primary.advanced.content.selection": "选区",
+  "image.upload.primary.advanced.boundary.canvas": "画布边界",
+  "image.upload.primary.advanced.boundary.curlayer": "当前图层边界",
+  "image.upload.primary.advanced.boundary.selection": "选区边界",
+  "image.upload.primary.advanced.boundary.primary": "主图边界",
+  "image.upload.mask.button": "选区遮罩",
+  "image.upload.remove_slot": "移除槽位",
+  "image.upload.add_slot": "新增槽位",
   // 来源渲染组件相关翻译
   "source.source": "来源",
   "source.content": "内容",
@@ -124963,17 +125201,36 @@ const zhCN = {
   "image.boundary": "边界",
   "image.import_tip": "按住 Shift 键以新文档方式导入",
   // === 自动补充缺失的键 ===
-  "auth.guest_login_success": "",
+  "auth.guest_login_success": "访客登录成功",
   "boundary.canvas": "画布",
   "boundary.select_boundary": "选择边界",
   "boundary.selection": "选区",
-  "convert widget {0} failed:": "",
-  "document {0} not found": "",
-  "image.document.new": "",
-  "image.layer.smart_object": "",
-  "layer not found {0}": "",
-  "photoshop.invalid_boundary_type": "",
-  "photoshop.no_active_layer": ""
+  "boundary.max_size": "尺寸限制 (px)",
+  "boundary.max_size_error": "请输入大于 0 的像素值",
+  "boundary.max_size_hint": "留空表示不限",
+  "boundary.max_size_placeholder": "留空表示不限",
+  "boundary.image_quality": "图像质量 (%)",
+  "boundary.image_quality_required": "请输入质量百分比",
+  "boundary.image_quality_range": "范围 1-100",
+  "boundary.preview_main_image": "主图",
+  "boundary.preview_select": "设为选区",
+  "boundary.settings": "调整输入设置",
+  "convert widget {0} failed:": "控件 {0} 转换失败：",
+  "document {0} not found": "未找到文档 {0}",
+  "image.document.new": "新建文档",
+  "image.layer.smart_object": "智能对象图层",
+  "layer not found {0}": "未找到图层 {0}",
+  "photoshop.invalid_boundary_type": "无效的边界类型: {{type}}",
+  "photoshop.no_active_layer": "当前没有活动图层",
+  // 图像来源对话框
+  "dialog.image_source.title": "选择图像来源",
+  "dialog.image_source.primary_canvas": "以主图边界获取画布",
+  "dialog.image_source.primary_curlayer": "以主图边界获取当前图层",
+  "dialog.image_source.canvas_canvas": "以画布边界获取画布",
+  "dialog.image_source.canvas_curlayer": "以画布边界获取当前图层",
+  "dialog.image_source.curlayer_canvas": "以当前图层边界获取画布",
+  "dialog.image_source.curlayer_curlayer": "以当前图层边界获取当前图层",
+  "dialog.image_source.local_file": "从磁盘获取"
 };
 const enUS = {
   // Existing translations (from locales/en-US.ts)
@@ -125123,7 +125380,7 @@ const enUS = {
   "merge group failed": "Merge group failed",
   "get content of layer {{0}}": "Get content of layer {{0}}",
   "get layer info": "Get layer info",
-  "get_layer_info: layer_identify required": "get_layer_info: layer_identify required",
+  "get_layer_info: layer_identify required": "get_layer_info requires layer_identify",
   "get pixel of {{0}} failed": "Get pixel of {{0}} failed",
   "get selection failed": "Get selection failed",
   "invalid name: {{0}}": "Invalid name: {{0}}",
@@ -125132,12 +125389,12 @@ const enUS = {
   'only layer kind "TEXT" is supported, invalid layer: {{0}}': 'Only layer kind "TEXT" is supported, invalid layer: {{0}}',
   "select layer": "Select layer",
   "run Photoshop Action": "Run Photoshop Action",
-  "Action {{0}} not found": "Action {{0}} not found",
-  "Action set {{0}} not found": "Action set {{0}} not found",
+  "Action {{0}} not found": "Action {{0}} was not found",
+  "Action set {{0}} not found": "Action set {{0}} was not found",
   "set text to layer": "Set text to layer",
   // ComfyUI management related translations
-  "ComfyManager not found, cannot reboot": "ComfyManager not found, cannot reboot",
-  "Failed to reboot ComfyUI": "Failed to reboot ComfyUI",
+  "ComfyManager not found, cannot reboot": "Cannot reboot because ComfyManager is missing",
+  "Failed to reboot ComfyUI": "Unable to reboot ComfyUI",
   // Image upload component related translations
   "image.upload.from_canvas": "Canvas",
   "image.upload.from_curlayer": "Current Layer",
@@ -125156,9 +125413,29 @@ const enUS = {
   "image.upload.tooltip.mask.selection": "Get mask from Selection",
   "image.upload.tooltip.autosync.on": "Auto Sync: on",
   "image.upload.tooltip.autosync.off": "Auto Sync: off",
+  "image.upload.tooltip.more_options_hint": "Hold Shift for more options; Ctrl for single fetch",
   "image.upload.autosync.fetching": "Auto fetching…",
   "image.auto_send_enabled": "Auto send enabled",
   "image.auto_send_disabled": "Auto send disabled",
+  "image.upload.primary.auto": "Auto fetching…",
+  "image.upload.primary.manual": "Get Image",
+  "image.upload.primary.hint": "This node defaults to current layer + mask",
+  "image.upload.primary.hint.line1": "Defaults using",
+  "image.upload.primary.hint.line2": "Main Image",
+  "image.upload.primary.advanced": "Advanced selection",
+  "image.upload.primary.advanced.modify": "Modify",
+  "image.upload.primary.advanced.reset": "Reset",
+  "image.upload.primary.advanced.local_file": "Local file",
+  "image.upload.primary.advanced.content.canvas": "Canvas",
+  "image.upload.primary.advanced.content.curlayer": "Current layer",
+  "image.upload.primary.advanced.content.selection": "Selection",
+  "image.upload.primary.advanced.boundary.canvas": "Canvas boundary",
+  "image.upload.primary.advanced.boundary.curlayer": "Current layer boundary",
+  "image.upload.primary.advanced.boundary.selection": "Selection boundary",
+  "image.upload.primary.advanced.boundary.primary": "Primary boundary",
+  "image.upload.mask.button": "Selection mask",
+  "image.upload.remove_slot": "Remove slot",
+  "image.upload.add_slot": "Add slot",
   // Source render component related translations
   "source.source": "Source",
   "source.content": "Content",
@@ -125214,17 +125491,36 @@ const enUS = {
   "image.boundary": "Boundary",
   "image.import_tip": "Hold Shift key to import as new document",
   // === Auto-added missing keys ===
-  "auth.guest_login_success": "auth.guest_login_success",
+  "auth.guest_login_success": "Guest login successful",
   "boundary.canvas": "Canvas",
   "boundary.select_boundary": "Select boundary",
   "boundary.selection": "Selection",
-  "convert widget {0} failed:": "convert widget {0} failed:",
-  "document {0} not found": "document {0} not found",
-  "image.document.new": "image.document.new",
-  "image.layer.smart_object": "image.layer.smart_object",
-  "layer not found {0}": "layer not found {0}",
-  "photoshop.invalid_boundary_type": "photoshop.invalid_boundary_type",
-  "photoshop.no_active_layer": "photoshop.no_active_layer"
+  "boundary.max_size": "Max size (px)",
+  "boundary.max_size_error": "Enter a pixel value greater than 0",
+  "boundary.max_size_hint": "Leave empty for no limit",
+  "boundary.max_size_placeholder": "Leave empty for no limit",
+  "boundary.image_quality": "Image quality (%)",
+  "boundary.image_quality_required": "Enter a quality percentage",
+  "boundary.image_quality_range": "Range 1-100",
+  "boundary.preview_main_image": "Main Img",
+  "boundary.preview_select": "Get selection",
+  "boundary.settings": "Adjust input settings",
+  "convert widget {0} failed:": "Failed to convert widget {0}:",
+  "document {0} not found": "Document {0} not found",
+  "image.document.new": "New Document",
+  "image.layer.smart_object": "Smart Object Layer",
+  "layer not found {0}": "Layer {0} not found",
+  "photoshop.invalid_boundary_type": "Invalid boundary type: {{type}}",
+  "photoshop.no_active_layer": "No active layer",
+  // Image source dialog
+  "dialog.image_source.title": "Select Image Source",
+  "dialog.image_source.primary_canvas": "Fetch canvas with primary boundary",
+  "dialog.image_source.primary_curlayer": "Fetch current layer with primary boundary",
+  "dialog.image_source.canvas_canvas": "Fetch canvas with canvas boundary",
+  "dialog.image_source.canvas_curlayer": "Fetch current layer with canvas boundary",
+  "dialog.image_source.curlayer_canvas": "Fetch canvas with current-layer boundary",
+  "dialog.image_source.curlayer_curlayer": "Fetch current layer with current-layer boundary",
+  "dialog.image_source.local_file": "Import from disk"
 };
 const isString = (obj) => typeof obj === "string";
 const defer = () => {
@@ -127607,6 +127903,68 @@ async function runNextModalState(fn, options2) {
   if (error) throw error;
   return res;
 }
+const BOUNDARY_SCHEME = "uxp://boundary";
+const CONTENT_SCHEME = "uxp://content";
+const normalizeDocId = (docId) => {
+  const numeric = Number(docId);
+  if (!Number.isFinite(numeric)) {
+    return 0;
+  }
+  const normalized = Math.floor(numeric);
+  return normalized < 0 ? 0 : normalized;
+};
+const getActiveDocumentId = () => {
+  var _a3, _b2, _c;
+  try {
+    const storeId = (_b2 = (_a3 = sdpppSDK == null ? void 0 : sdpppSDK.stores) == null ? void 0 : _a3.PhotoshopStore) == null ? void 0 : _b2.getState().activeDocumentID;
+    if (typeof storeId === "number" && Number.isFinite(storeId)) {
+      return normalizeDocId(storeId);
+    }
+  } catch {
+  }
+  const doc = (_c = photoshop.app) == null ? void 0 : _c.activeDocument;
+  if (doc && doc.id !== void 0) {
+    const parsed = normalizeDocId(doc.id);
+    if (parsed >= 0) {
+      return parsed;
+    }
+  }
+  return 0;
+};
+const appendQuery = (base2, params) => {
+  const searchParams = new URLSearchParams();
+  Object.entries(params).forEach(([key2, value]) => {
+    if (value === void 0 || value === null || value === "") {
+      return;
+    }
+    searchParams.set(key2, String(value));
+  });
+  const query = searchParams.toString();
+  return query ? `${base2}?${query}` : base2;
+};
+const buildBoundaryUri = (docId, boundary) => {
+  const docSegment = normalizeDocId(docId);
+  if (typeof boundary === "string") {
+    const boundaryKey = boundary;
+    return `${BOUNDARY_SCHEME}/${docSegment}/${boundaryKey}`;
+  }
+  const rect = boundary;
+  return appendQuery(`${BOUNDARY_SCHEME}/${docSegment}/rect`, {
+    leftDistance: rect.leftDistance,
+    topDistance: rect.topDistance,
+    rightDistance: rect.rightDistance,
+    bottomDistance: rect.bottomDistance,
+    width: rect.width,
+    height: rect.height
+  });
+};
+const buildContentUri = (docId, content, layerIdentify) => {
+  const docSegment = normalizeDocId(docId);
+  if (content === "curlayer") {
+    return `${CONTENT_SCHEME}/${docSegment}/curlayer`;
+  }
+  return `${CONTENT_SCHEME}/${docSegment}/${content}`;
+};
 ({
   title: t("image.send.select_position"),
   optionRows: [
@@ -127847,6 +128205,123 @@ const boundaryDialogConfig = {
       }
     }
   ]
+};
+const imageSourceDialogConfig = {
+  dialogType: "image_source",
+  title: t("dialog.image_source.title", { defaultValue: "选择图像来源" }),
+  className: "w-[42rem] h-[38rem]",
+  optionRows: [
+    [
+      {
+        id: "primary_canvas",
+        text: t("dialog.image_source.primary_canvas", { defaultValue: "以主图边界获取画布" }),
+        keyboardShortcut: "Q",
+        thumbnailConfig: { content: "canvas", boundary: "canvas" },
+        usesPrimaryBoundary: true
+      },
+      {
+        id: "canvas_canvas",
+        text: t("dialog.image_source.canvas_canvas", { defaultValue: "以画布边界获取画布" }),
+        keyboardShortcut: "W",
+        thumbnailConfig: { content: "canvas", boundary: "canvas" }
+      },
+      {
+        id: "curlayer_canvas",
+        text: t("dialog.image_source.curlayer_canvas", { defaultValue: "以当前图层边界获取画布" }),
+        keyboardShortcut: "E",
+        visibility: { requiresActiveLayers: true },
+        thumbnailConfig: { content: "canvas", boundary: "curlayer" }
+      }
+    ],
+    [
+      {
+        id: "primary_curlayer",
+        text: t("dialog.image_source.primary_curlayer", { defaultValue: "以主图边界获取当前图层" }),
+        keyboardShortcut: "A",
+        thumbnailConfig: { content: "curlayer", boundary: "canvas" },
+        usesPrimaryBoundary: true
+      },
+      {
+        id: "canvas_curlayer",
+        text: t("dialog.image_source.canvas_curlayer", { defaultValue: "以画布边界获取当前图层" }),
+        keyboardShortcut: "S",
+        thumbnailConfig: { content: "curlayer", boundary: "canvas" }
+      },
+      {
+        id: "curlayer_curlayer",
+        text: t("dialog.image_source.curlayer_curlayer", { defaultValue: "以当前图层边界获取当前图层" }),
+        keyboardShortcut: "D",
+        visibility: { requiresActiveLayers: true },
+        thumbnailConfig: { content: "curlayer", boundary: "curlayer" }
+      }
+    ],
+    [
+      {
+        id: "local_file",
+        text: t("dialog.image_source.local_file", { defaultValue: "从磁盘获取" }),
+        keyboardShortcut: "F",
+        variant: "wide"
+      }
+    ]
+  ],
+  keyboardMapping: {
+    "KeyQ": "primary_canvas",
+    "KeyW": "canvas_canvas",
+    "KeyE": "curlayer_canvas",
+    "KeyA": "primary_curlayer",
+    "KeyS": "canvas_curlayer",
+    "KeyD": "curlayer_curlayer",
+    "KeyF": "local_file"
+  },
+  storeConfig: {
+    activeSelector: (state) => state.genericDialog.active,
+    resolveSelector: (state) => state.resolveGenericDialog,
+    rejectSelector: (state) => state.rejectGenericDialog,
+    additionalSelectors: {}
+  },
+  onSelect: async (selection, additionalData) => {
+    const optionMap = {
+      primary_canvas: { mode: "image", boundary: "primary", content: "canvas" },
+      canvas_canvas: { mode: "image", boundary: "canvas", content: "canvas" },
+      curlayer_canvas: { mode: "image", boundary: "curlayer", content: "canvas" },
+      primary_curlayer: { mode: "image", boundary: "primary", content: "curlayer" },
+      canvas_curlayer: { mode: "image", boundary: "canvas", content: "curlayer" },
+      curlayer_curlayer: { mode: "image", boundary: "curlayer", content: "curlayer" },
+      local_file: { mode: "file" }
+    };
+    const option = optionMap[selection];
+    if (!option) {
+      throw new Error(`Unknown image source selection: ${selection}`);
+    }
+    if (option.mode === "file") {
+      return {
+        mode: "file"
+      };
+    }
+    const inboundBoundaryResource = additionalData == null ? void 0 : additionalData.boundaryResource;
+    if (option.boundary === "primary") {
+      if (!inboundBoundaryResource || typeof inboundBoundaryResource !== "string") {
+        throw new Error("boundaryResource is required for image source dialog");
+      }
+    }
+    const activeDocumentId = getActiveDocumentId();
+    let boundaryResource;
+    if (option.boundary === "primary") {
+      boundaryResource = inboundBoundaryResource;
+    } else {
+      boundaryResource = buildBoundaryUri(activeDocumentId, option.boundary);
+    }
+    const contentResource = buildContentUri(activeDocumentId, option.content);
+    try {
+      console.log("[ImageSelectionDialog] return image resources", { contentResource, boundaryResource });
+    } catch {
+    }
+    return {
+      mode: "image",
+      boundaryResource,
+      contentResource
+    };
+  }
 };
 const GetLayerMaskDialog = {
   dialogType: "mask_layer",
@@ -128707,6 +129182,356 @@ async function getSelection(params) {
     height: bounds.scaledDesire.height
   };
 }
+const BOUNDARY_HOST = "boundary";
+const CONTENT_HOST = "content";
+const MASK_HOST = "mask";
+function ensureFiniteNumber(value, label) {
+  if (!Number.isFinite(value)) {
+    throw new Error(`${label} must be a finite number`);
+  }
+}
+function parseNumberQuery(url, key2) {
+  const raw = url.searchParams.get(key2);
+  if (raw == null || raw === "") {
+    return void 0;
+  }
+  const num = Number(raw);
+  ensureFiniteNumber(num, key2);
+  return num;
+}
+function parseBoundaryResource(resource) {
+  if (typeof resource !== "string" || resource.trim() === "") {
+    throw new Error("boundary must be a non-empty string");
+  }
+  let url;
+  try {
+    url = new URL(resource);
+  } catch {
+    throw new Error(`Invalid boundary uri: ${resource}`);
+  }
+  if (url.protocol !== "uxp:") {
+    throw new Error("boundary uri must use uxp:// scheme");
+  }
+  if (url.hostname !== BOUNDARY_HOST) {
+    throw new Error(`boundary uri host must be "${BOUNDARY_HOST}"`);
+  }
+  const segments = url.pathname.split("/").filter(Boolean);
+  if (segments.length < 2) {
+    throw new Error("boundary uri is missing required segments");
+  }
+  const docIdRaw = segments[0];
+  const docId = Number(docIdRaw);
+  ensureFiniteNumber(docId, "docId");
+  if (!Number.isInteger(docId) || docId < 0) {
+    throw new Error("docId must be a non-negative integer");
+  }
+  const boundaryType = segments[1];
+  if (boundaryType === "rect") {
+    const rectKeys = [
+      "leftDistance",
+      "topDistance",
+      "rightDistance",
+      "bottomDistance",
+      "width",
+      "height"
+    ];
+    const rect = {};
+    for (const key2 of rectKeys) {
+      const value = parseNumberQuery(url, key2);
+      if (value === void 0) {
+        throw new Error(`boundary rect missing query parameter "${key2}"`);
+      }
+      rect[key2] = value;
+    }
+    return {
+      docId,
+      boundary: rect,
+      imageSize: parseNumberQuery(url, "imageSize"),
+      imageQuality: parseNumberQuery(url, "imageQuality")
+    };
+  }
+  if (boundaryType !== "canvas" && boundaryType !== "curlayer" && boundaryType !== "selection") {
+    throw new Error(`Unsupported boundary type "${boundaryType}"`);
+  }
+  return {
+    docId,
+    boundary: boundaryType,
+    imageSize: parseNumberQuery(url, "imageSize"),
+    imageQuality: parseNumberQuery(url, "imageQuality")
+  };
+}
+function parseContentResource(resource) {
+  if (typeof resource !== "string" || resource.trim() === "") {
+    throw new Error("content must be a non-empty string");
+  }
+  let url;
+  try {
+    url = new URL(resource);
+  } catch {
+    throw new Error(`Invalid content uri: ${resource}`);
+  }
+  if (url.protocol !== "uxp:") {
+    throw new Error("content uri must use uxp:// scheme");
+  }
+  if (url.hostname !== CONTENT_HOST) {
+    throw new Error(`content uri host must be "${CONTENT_HOST}"`);
+  }
+  const segments = url.pathname.split("/").filter(Boolean);
+  if (segments.length < 2) {
+    throw new Error("content uri is missing required segments");
+  }
+  const docIdRaw = segments[0];
+  const docId = Number(docIdRaw);
+  ensureFiniteNumber(docId, "docId");
+  if (!Number.isInteger(docId) || docId < 0) {
+    throw new Error("docId must be a non-negative integer");
+  }
+  const contentType = segments[1];
+  const layerIdParam = url.searchParams.get("layerId");
+  switch (contentType) {
+    case "canvas":
+      return { docId, content: "canvas" };
+    case "curlayer":
+      return {
+        docId,
+        content: "curlayer",
+        layerIdentify: layerIdParam ?? void 0
+      };
+    case "selection":
+      return { docId, content: "selection" };
+    case "layer": {
+      const layerId = layerIdParam;
+      if (!layerId) {
+        throw new Error("content uri with /layer requires layerId query parameter");
+      }
+      return {
+        docId,
+        content: "curlayer",
+        layerIdentify: layerId
+      };
+    }
+    default:
+      throw new Error(`Unsupported content type "${contentType}"`);
+  }
+}
+function parseMaskContentResource(resource) {
+  var _a3;
+  if (typeof resource !== "string" || resource.trim() === "") {
+    throw new Error("mask content must be a non-empty string");
+  }
+  let url;
+  try {
+    url = new URL(resource);
+  } catch {
+    throw new Error(`Invalid mask content uri: ${resource}`);
+  }
+  if (url.protocol !== "uxp:") {
+    throw new Error("mask content uri must use uxp:// scheme");
+  }
+  if (url.hostname !== MASK_HOST) {
+    throw new Error(`mask content uri host must be "${MASK_HOST}"`);
+  }
+  const segments = url.pathname.split("/").filter(Boolean);
+  if (segments.length < 2) {
+    throw new Error("mask content uri is missing required segments");
+  }
+  const docIdRaw = segments[0];
+  const docId = Number(docIdRaw);
+  ensureFiniteNumber(docId, "docId");
+  if (!Number.isInteger(docId) || docId < 0) {
+    throw new Error("docId must be a non-negative integer");
+  }
+  const contentType = segments[1];
+  const layerIdParam = url.searchParams.get("layerId");
+  const reverseParam = url.searchParams.get("reverse");
+  const reverse = reverseParam === "1" || ((_a3 = reverseParam == null ? void 0 : reverseParam.toLowerCase) == null ? void 0 : _a3.call(reverseParam)) === "true";
+  switch (contentType) {
+    case "canvas":
+      return { docId, content: "canvas", reverse };
+    case "curlayer":
+      return {
+        docId,
+        content: "curlayer",
+        reverse,
+        layerIdentify: layerIdParam ?? void 0
+      };
+    case "selection":
+      return { docId, content: "selection", reverse };
+    case "layer": {
+      const layerId = layerIdParam;
+      if (!layerId) {
+        throw new Error("mask content uri with /layer requires layerId query parameter");
+      }
+      return {
+        docId,
+        content: "curlayer",
+        layerIdentify: layerId,
+        reverse
+      };
+    }
+    default:
+      throw new Error(`Unsupported mask content type "${contentType}"`);
+  }
+}
+function buildGetImageParamsFromResources(boundaryResource, contentResource) {
+  const boundary = parseBoundaryResource(boundaryResource);
+  const content = parseContentResource(contentResource);
+  if (boundary.docId !== content.docId) {
+    throw new Error("boundary and content must target the same document");
+  }
+  return {
+    boundary: boundary.boundary,
+    content: content.content,
+    imageSize: boundary.imageSize ?? 0,
+    imageQuality: boundary.imageQuality ?? 1,
+    layer_identify: content.layerIdentify ?? null
+  };
+}
+function buildGetMaskParamsFromResources(boundaryResource, maskContentResource) {
+  const boundary = parseBoundaryResource(boundaryResource);
+  const content = parseMaskContentResource(maskContentResource);
+  if (boundary.docId !== content.docId) {
+    throw new Error("boundary and mask content must target the same document");
+  }
+  return {
+    boundary: boundary.boundary,
+    content: content.content,
+    imageSize: boundary.imageSize ?? 0,
+    reverse: content.reverse ?? false,
+    layer_identify: content.layerIdentify ?? null
+  };
+}
+async function getMaskImpl(params) {
+  try {
+    const { boundary, content, reverse, imageSize, layer_identify } = params;
+    const activeDocumentID = mcpMesh.getNode("uxp").store.getState().activeDocumentID;
+    const webviewState = mcpMesh.store.getState();
+    const workBoundaryMaxSizes = webviewState.workBoundaryMaxSizes || {};
+    const defaultSize = sdpppX["settings.imaging.defaultImagesSizeLimit"];
+    const effectiveImageSize = imageSize && imageSize > 0 ? imageSize : workBoundaryMaxSizes[activeDocumentID] || defaultSize;
+    const isBoundaryRect = (obj) => {
+      return obj && typeof obj === "object" && "leftDistance" in obj && "topDistance" in obj && "rightDistance" in obj && "bottomDistance" in obj && "width" in obj && "height" in obj;
+    };
+    if (!photoshop.app.activeDocument) {
+      throw new Error(t("photoshop.no_active_document"));
+    }
+    let boundaryParam;
+    if (boundary == null || boundary === "canvas") {
+      const documentInfo = await getDocumentInfo({
+        document_identify: SpeicialIDManager.get_SPECIAL_DOCUMENT_CURRENT()
+      });
+      boundaryParam = documentInfo.document_boundary;
+    } else if (typeof boundary === "string") {
+      if (boundary === "curlayer") {
+        const layerInfo = await getLayerInfo({
+          document_identify: SpeicialIDManager.get_SPECIAL_DOCUMENT_CURRENT(),
+          layer_identify: layer_identify || SpeicialIDManager.get_SPECIAL_LAYER_SELECTED_LAYER()
+        });
+        boundaryParam = layerInfo.boundary;
+      } else if (boundary === "selection") {
+        const documentInfo = await getDocumentInfo({
+          document_identify: SpeicialIDManager.get_SPECIAL_DOCUMENT_CURRENT()
+        });
+        boundaryParam = documentInfo.selection_boundary;
+      } else {
+        throw new Error(`Invalid boundary value: ${boundary}`);
+      }
+    } else if (isBoundaryRect(boundary)) {
+      const doc = photoshop.app.activeDocument;
+      const docWidth = Number(doc.width);
+      const docHeight = Number(doc.height);
+      boundaryParam = BoundaryRectUtils.toSDPPPBounds(boundary, docWidth, docHeight);
+    } else {
+      throw new Error("Invalid boundary type");
+    }
+    let layerIdentify;
+    if (layer_identify) {
+      layerIdentify = layer_identify;
+    } else if (content === "canvas") {
+      layerIdentify = SpeicialIDManager.get_SPECIAL_LAYER_USE_CANVAS();
+    } else if (content === "curlayer") {
+      layerIdentify = SpeicialIDManager.get_SPECIAL_LAYER_SELECTED_LAYER();
+    } else {
+      layerIdentify = SpeicialIDManager.get_SPECIAL_LAYER_USE_CANVAS();
+    }
+    const jimpImage = await getImage.getJimpImage({
+      document_identify: SpeicialIDManager.get_SPECIAL_DOCUMENT_CURRENT(),
+      layer_identify: layerIdentify,
+      boundary: boundaryParam,
+      max_wh: effectiveImageSize
+    });
+    if (content === "selection") {
+      try {
+        const selection = await getSelection({
+          document_identify: SpeicialIDManager.get_SPECIAL_DOCUMENT_CURRENT(),
+          boundary: boundaryParam,
+          max_wh: effectiveImageSize
+        });
+        const { blob: buffer2, width, height } = selection;
+        if (buffer2 && buffer2.length === width * height) {
+          for (let i2 = 0; i2 < width * height; i2++) {
+            const idx = i2 * 4;
+            const alpha = buffer2[i2];
+            if (idx + 3 < jimpImage.bitmap.data.length) {
+              jimpImage.bitmap.data[idx + 3] = alpha;
+            }
+          }
+        }
+      } catch (e4) {
+        console.warn("[getMaskImpl] Selection masking failed; proceeding without mask", e4);
+      }
+    }
+    jimpImage.scan(0, 0, jimpImage.bitmap.width, jimpImage.bitmap.height, (x2, y2, idx) => {
+      const alpha = jimpImage.bitmap.data[idx + 3];
+      const grayValue = reverse ? alpha : 255 - alpha;
+      jimpImage.bitmap.data[idx + 0] = grayValue;
+      jimpImage.bitmap.data[idx + 1] = grayValue;
+      jimpImage.bitmap.data[idx + 2] = grayValue;
+      jimpImage.bitmap.data[idx + 3] = grayValue;
+    });
+    const thumbnailImage = jimpImage.clone();
+    thumbnailImage.scaleToFit({ w: 192, h: 192 });
+    thumbnailImage.scan(0, 0, thumbnailImage.bitmap.width, thumbnailImage.bitmap.height, (x2, y2, idx) => {
+      thumbnailImage.bitmap.data[idx + 3] = 255;
+    });
+    const thumbnailBuffer = await thumbnailImage.getBuffer(JimpMime.png);
+    const thumbnail = "data:image/png;base64," + thumbnailBuffer.toString("base64");
+    const imageBuffer = await jimpImage.getBuffer(JimpMime.png);
+    const resourceId = createResource({
+      type: "mask",
+      data: {
+        buffer: new Uint8Array(imageBuffer),
+        mime: "image/png"
+      },
+      originalMeta: {
+        width: jimpImage.bitmap.width,
+        height: jimpImage.bitmap.height,
+        params: JSON.stringify(params)
+      }
+    });
+    updateResource(resourceId, {
+      thumbnailCache: {
+        base64: thumbnail,
+        width: thumbnailImage.bitmap.width,
+        height: thumbnailImage.bitmap.height,
+        mime: "image/png",
+        generatedAt: Date.now()
+      }
+    });
+    return {
+      resource: resourceId,
+      thumbnail,
+      width: jimpImage.bitmap.width,
+      height: jimpImage.bitmap.height,
+      mimeType: "image/png",
+      source: JSON.stringify(params)
+    };
+  } catch (error) {
+    return {
+      error: (error == null ? void 0 : error.stack) || (error == null ? void 0 : error.message) || String(error)
+    };
+  }
+}
 async function getImageImpl(params) {
   var _a3;
   try {
@@ -128729,7 +129554,7 @@ async function getImageImpl(params) {
         const kind = activeLayer == null ? void 0 : activeLayer.kind;
         if (kind === photoshop.constants.LayerKind.GROUP || kind === photoshop.constants.LayerKind.GRADIENTFILL) {
           return {
-            error: "Skipped non-normal layer content",
+            thumbnail: "",
             source: JSON.stringify(params)
           };
         }
@@ -128754,7 +129579,10 @@ async function getImageImpl(params) {
         throw new Error(`Invalid boundary value: ${boundary}`);
       }
     } else if (isBoundaryRect(boundary)) {
-      boundaryParam = BoundaryRectUtils.toSDPPPBounds(boundary);
+      const doc = photoshop.app.activeDocument;
+      const docWidth = Number(doc.width);
+      const docHeight = Number(doc.height);
+      boundaryParam = BoundaryRectUtils.toSDPPPBounds(boundary, docWidth, docHeight);
       console.log("[getImageImpl] Using BoundaryRect:", boundaryParam);
     } else {
       throw new Error("Invalid boundary type");
@@ -128809,22 +129637,23 @@ async function getImageImpl(params) {
       h: 192
     });
     const thumbnailBuffer = await thumbnailImage.getBuffer(JimpMime.png);
-    const thumbnailBase64 = "data:image/png;base64," + thumbnailBuffer.toString("base64");
-    const imageBuffer = new Uint8Array(await jimpImage.getBuffer(JimpMime.png));
-    const resource = createResource({
+    const thumbnail = "data:image/png;base64," + thumbnailBuffer.toString("base64");
+    const imageBuffer = await jimpImage.getBuffer(JimpMime.png);
+    const resourceId = createResource({
       type: "image",
       data: {
-        buffer: imageBuffer,
+        buffer: new Uint8Array(imageBuffer),
         mime: "image/png"
       },
       originalMeta: {
-        params: { ...params, boundary: void 0 },
-        boundary: boundaryParam,
         width: jimpImage.bitmap.width,
-        height: jimpImage.bitmap.height
-      },
+        height: jimpImage.bitmap.height,
+        params: JSON.stringify(params)
+      }
+    });
+    updateResource(resourceId, {
       thumbnailCache: {
-        base64: thumbnailBase64,
+        base64: thumbnail,
         width: thumbnailImage.bitmap.width,
         height: thumbnailImage.bitmap.height,
         mime: "image/png",
@@ -128832,53 +129661,71 @@ async function getImageImpl(params) {
       }
     });
     return {
-      source: JSON.stringify(params),
-      resource,
+      resource: resourceId,
+      thumbnail,
       width: jimpImage.bitmap.width,
       height: jimpImage.bitmap.height,
-      thumbnail: thumbnailBase64
+      mimeType: "image/png",
+      source: JSON.stringify(params)
     };
   } catch (error) {
     return {
-      error: error.stack || error.message || error,
-      source: ""
+      error: error.stack || error.message || error
+    };
+  }
+}
+async function getResourceImageImpl(params) {
+  try {
+    if (!params) {
+      throw new Error("params is required");
+    }
+    const built = buildGetImageParamsFromResources(params.boundary, params.content);
+    return await getImageImpl({
+      boundary: built.boundary,
+      content: built.content,
+      imageSize: built.imageSize,
+      imageQuality: built.imageQuality,
+      cropBySelection: "no",
+      SkipNonNormalLayer: false,
+      layer_identify: built.layer_identify
+    });
+  } catch (error) {
+    return {
+      error: (error == null ? void 0 : error.stack) || (error == null ? void 0 : error.message) || String(error)
+    };
+  }
+}
+async function getResourceMaskImpl(params) {
+  try {
+    if (!params) {
+      throw new Error("params is required");
+    }
+    const built = buildGetMaskParamsFromResources(params.boundary, params.content);
+    return await getMaskImpl({
+      boundary: built.boundary,
+      content: built.content,
+      imageSize: built.imageSize,
+      reverse: built.reverse,
+      layer_identify: built.layer_identify ?? void 0
+    });
+  } catch (error) {
+    return {
+      error: (error == null ? void 0 : error.stack) || (error == null ? void 0 : error.message) || String(error)
     };
   }
 }
 async function importImageImpl(params) {
-  var _a3, _b2, _c, _d, _e;
+  var _a3, _b2;
   try {
     const { resource, type: type2, boundary } = params;
-    let nativePath = params.nativePath;
-    let sourceWidth = params.sourceWidth;
-    let sourceHeight = params.sourceHeight;
-    if (!nativePath && resource) {
-      const entry = resolveResource(resource);
-      const preferredName = ((_a3 = entry == null ? void 0 : entry.originalMeta) == null ? void 0 : _a3.fileName) || void 0;
-      const baseName = preferredName ? preferredName.replace(/\.[^/.]+$/, "") : void 0;
-      const extension = (_b2 = entry == null ? void 0 : entry.originalMeta) == null ? void 0 : _b2.extension;
-      const ensured = await ensureResourceTempFile(resource, {
-        fileName: baseName,
-        extension,
-        reuseExisting: true
-      });
-      nativePath = ensured.nativePath;
-      if (!sourceWidth && ((_c = entry == null ? void 0 : entry.originalMeta) == null ? void 0 : _c.width) !== void 0) {
-        const parsed = Number(entry.originalMeta.width);
-        if (!Number.isNaN(parsed)) {
-          sourceWidth = parsed;
-        }
-      }
-      if (!sourceHeight && ((_d = entry == null ? void 0 : entry.originalMeta) == null ? void 0 : _d.height) !== void 0) {
-        const parsed = Number(entry.originalMeta.height);
-        if (!Number.isNaN(parsed)) {
-          sourceHeight = parsed;
-        }
-      }
-    }
+    const resourceEntry = resolveResource(resource);
+    let nativePath;
+    const extensionHint = typeof ((_a3 = resourceEntry == null ? void 0 : resourceEntry.originalMeta) == null ? void 0 : _a3.extension) === "string" ? String(resourceEntry.originalMeta.extension) : void 0;
+    nativePath = await ensureResourceTempFile(resource, { extensionHint }).catch(() => void 0);
     if (!nativePath) {
-      throw new Error("File resource is required");
+      throw new Error("Failed to materialize resource");
     }
+    nativePath = String(nativePath);
     const isBoundaryRect = (obj) => {
       return obj && typeof obj === "object" && "leftDistance" in obj && "topDistance" in obj && "rightDistance" in obj && "bottomDistance" in obj && "width" in obj && "height" in obj;
     };
@@ -128932,7 +129779,8 @@ async function importImageImpl(params) {
       }
       token = localFileSystem.createSessionToken(fileEntry);
     }
-    const fileName = ((_e = nativePath.split(/[\/\\]/).pop()) == null ? void 0 : _e.replace(/\.[^/.]+$/, "")) || "Imported Image";
+    const metaFileName = typeof ((_b2 = resourceEntry == null ? void 0 : resourceEntry.originalMeta) == null ? void 0 : _b2.fileName) === "string" ? String(resourceEntry.originalMeta.fileName) : nativePath.split(/[\/\\]/).pop() || "Imported Image";
+    const fileName = metaFileName.replace(/\.[^/.]+$/, "");
     if (type2 === "newdoc") {
       await runNextModalState(async (restorer) => {
         await photoshop.action.batchPlay([
@@ -128960,6 +129808,7 @@ async function importImageImpl(params) {
       }
       const document2 = photoshop.app.activeDocument;
       await runNextModalState(async (restorer) => {
+        var _a4, _b3;
         const docWidth = Number(document2.width);
         const docHeight = Number(document2.height);
         let placeEventParams = {
@@ -128977,8 +129826,8 @@ async function importImageImpl(params) {
           const bottom = Math.max(top, Math.min(docHeight - resolvedBoundary.bottomDistance, docHeight));
           const width = right - left;
           const height = bottom - top;
-          const srcW = Number(sourceWidth);
-          const srcH = Number(sourceHeight);
+          const srcW = Number(params.sourceWidth ?? ((_a4 = resourceEntry == null ? void 0 : resourceEntry.originalMeta) == null ? void 0 : _a4.width) ?? NaN);
+          const srcH = Number(params.sourceHeight ?? ((_b3 = resourceEntry == null ? void 0 : resourceEntry.originalMeta) == null ? void 0 : _b3.height) ?? NaN);
           let widthPercent;
           let heightPercent;
           if (srcW > 0 && srcH > 0) {
@@ -129117,134 +129966,6 @@ async function generateBoundaryThumbnail(document2, boundaryRect) {
     return "";
   }
 }
-async function getMaskImpl(params) {
-  try {
-    const { boundary, content, reverse, imageSize, layer_identify } = params;
-    const activeDocumentID = mcpMesh.getNode("uxp").store.getState().activeDocumentID;
-    const webviewState = mcpMesh.store.getState();
-    const workBoundaryMaxSizes = webviewState.workBoundaryMaxSizes || {};
-    const defaultSize = sdpppX["settings.imaging.defaultImagesSizeLimit"];
-    const effectiveImageSize = imageSize && imageSize > 0 ? imageSize : workBoundaryMaxSizes[activeDocumentID] || defaultSize;
-    const isBoundaryRect = (obj) => {
-      return obj && typeof obj === "object" && "leftDistance" in obj && "topDistance" in obj && "rightDistance" in obj && "bottomDistance" in obj && "width" in obj && "height" in obj;
-    };
-    if (!photoshop.app.activeDocument) {
-      throw new Error(t("photoshop.no_active_document"));
-    }
-    let boundaryParam;
-    if (boundary == null || boundary === "canvas") {
-      const documentInfo = await getDocumentInfo({
-        document_identify: SpeicialIDManager.get_SPECIAL_DOCUMENT_CURRENT()
-      });
-      boundaryParam = documentInfo.document_boundary;
-    } else if (typeof boundary === "string") {
-      if (boundary === "curlayer") {
-        const layerInfo = await getLayerInfo({
-          document_identify: SpeicialIDManager.get_SPECIAL_DOCUMENT_CURRENT(),
-          layer_identify: layer_identify || SpeicialIDManager.get_SPECIAL_LAYER_SELECTED_LAYER()
-        });
-        boundaryParam = layerInfo.boundary;
-      } else if (boundary === "selection") {
-        const documentInfo = await getDocumentInfo({
-          document_identify: SpeicialIDManager.get_SPECIAL_DOCUMENT_CURRENT()
-        });
-        boundaryParam = documentInfo.selection_boundary;
-      } else {
-        throw new Error(`Invalid boundary value: ${boundary}`);
-      }
-    } else if (isBoundaryRect(boundary)) {
-      boundaryParam = BoundaryRectUtils.toSDPPPBounds(boundary);
-    } else {
-      throw new Error("Invalid boundary type");
-    }
-    let layerIdentify;
-    if (layer_identify) {
-      layerIdentify = layer_identify;
-    } else if (content === "canvas") {
-      layerIdentify = SpeicialIDManager.get_SPECIAL_LAYER_USE_CANVAS();
-    } else if (content === "curlayer") {
-      layerIdentify = SpeicialIDManager.get_SPECIAL_LAYER_SELECTED_LAYER();
-    } else {
-      layerIdentify = SpeicialIDManager.get_SPECIAL_LAYER_USE_CANVAS();
-    }
-    const jimpImage = await getImage.getJimpImage({
-      document_identify: SpeicialIDManager.get_SPECIAL_DOCUMENT_CURRENT(),
-      layer_identify: layerIdentify,
-      boundary: boundaryParam,
-      max_wh: effectiveImageSize
-    });
-    if (content === "selection") {
-      try {
-        const selection = await getSelection({
-          document_identify: SpeicialIDManager.get_SPECIAL_DOCUMENT_CURRENT(),
-          boundary: boundaryParam,
-          max_wh: effectiveImageSize
-        });
-        const { blob: buffer2, width, height } = selection;
-        if (buffer2 && buffer2.length === width * height) {
-          for (let i2 = 0; i2 < width * height; i2++) {
-            const idx = i2 * 4;
-            const alpha = buffer2[i2];
-            if (idx + 3 < jimpImage.bitmap.data.length) {
-              jimpImage.bitmap.data[idx + 3] = alpha;
-            }
-          }
-        }
-      } catch (e4) {
-        console.warn("[getMaskImpl] Selection masking failed; proceeding without mask", e4);
-      }
-    }
-    jimpImage.scan(0, 0, jimpImage.bitmap.width, jimpImage.bitmap.height, (x2, y2, idx) => {
-      const alpha = jimpImage.bitmap.data[idx + 3];
-      const grayValue = reverse ? alpha : 255 - alpha;
-      jimpImage.bitmap.data[idx + 0] = grayValue;
-      jimpImage.bitmap.data[idx + 1] = grayValue;
-      jimpImage.bitmap.data[idx + 2] = grayValue;
-      jimpImage.bitmap.data[idx + 3] = grayValue;
-    });
-    const thumbnailImage = jimpImage.clone();
-    thumbnailImage.scaleToFit({ w: 192, h: 192 });
-    thumbnailImage.scan(0, 0, thumbnailImage.bitmap.width, thumbnailImage.bitmap.height, (x2, y2, idx) => {
-      thumbnailImage.bitmap.data[idx + 3] = 255;
-    });
-    const thumbnailBuffer = await thumbnailImage.getBuffer(JimpMime.png);
-    const thumbnailBase64 = "data:image/png;base64," + thumbnailBuffer.toString("base64");
-    const imageBuffer = new Uint8Array(await jimpImage.getBuffer(JimpMime.png));
-    const resource = createResource({
-      type: "mask",
-      data: {
-        buffer: imageBuffer,
-        mime: "image/png"
-      },
-      originalMeta: {
-        params: { ...params, boundary: void 0 },
-        boundary: boundaryParam,
-        width: jimpImage.bitmap.width,
-        height: jimpImage.bitmap.height,
-        reverse
-      },
-      thumbnailCache: {
-        base64: thumbnailBase64,
-        width: thumbnailImage.bitmap.width,
-        height: thumbnailImage.bitmap.height,
-        mime: "image/png",
-        generatedAt: Date.now()
-      }
-    });
-    return {
-      source: JSON.stringify(params),
-      resource,
-      width: jimpImage.bitmap.width,
-      height: jimpImage.bitmap.height,
-      thumbnail: thumbnailBase64
-    };
-  } catch (error) {
-    return {
-      error: (error == null ? void 0 : error.stack) || (error == null ? void 0 : error.message) || String(error),
-      source: ""
-    };
-  }
-}
 async function getCurrentLayerIdentify() {
   if (!photoshop.app.activeDocument) {
     throw new Error(t("photoshop.no_active_document"));
@@ -129255,6 +129976,83 @@ async function getCurrentLayerIdentify() {
   }
   const identify = makeLayerIdentify(activeLayer.id, activeLayer.name);
   return { layer_identify: identify };
+}
+async function applyMaskToImageImpl(params) {
+  const { imageResource, maskResource, invertMask = false } = params;
+  if (!imageResource) {
+    throw new Error("applyMaskToImage: imageResource is required");
+  }
+  if (!maskResource) {
+    throw new Error("applyMaskToImage: maskResource is required");
+  }
+  const [{ buffer: imageBuffer }, { buffer: maskBuffer }] = await Promise.all([
+    resolveResourceBuffer(imageResource),
+    resolveResourceBuffer(maskResource)
+  ]);
+  if (!(imageBuffer == null ? void 0 : imageBuffer.byteLength)) {
+    throw new Error("applyMaskToImage: failed to resolve image buffer");
+  }
+  if (!(maskBuffer == null ? void 0 : maskBuffer.byteLength)) {
+    throw new Error("applyMaskToImage: failed to resolve mask buffer");
+  }
+  const baseImage = await Jimp.read(bufferExports.Buffer.from(imageBuffer));
+  const maskImage = await Jimp.read(bufferExports.Buffer.from(maskBuffer));
+  const width = baseImage.width;
+  const height = baseImage.height;
+  if (!width || !height) {
+    throw new Error("applyMaskToImage: base image has invalid dimensions");
+  }
+  if (maskImage.width !== width || maskImage.height !== height) {
+    maskImage.resize({ w: width, h: height });
+  }
+  const baseData = baseImage.bitmap.data;
+  const maskData = maskImage.bitmap.data;
+  const totalPixels = width * height;
+  for (let idx = 0; idx < totalPixels; idx += 1) {
+    const dataIndex = idx * 4;
+    let maskValue = maskData[dataIndex];
+    if (invertMask) {
+      maskValue = 255 - maskValue;
+    }
+    baseData[dataIndex + 3] = maskValue;
+  }
+  const outputBuffer = await baseImage.getBuffer(JimpMime.png);
+  const resourceId = createResource({
+    type: "image",
+    data: {
+      buffer: new Uint8Array(outputBuffer),
+      mime: JimpMime.png
+    },
+    originalMeta: {
+      width,
+      height,
+      source: "applyMaskToImage",
+      imageResource,
+      maskResource,
+      invertMask,
+      createdAt: Date.now()
+    }
+  });
+  const thumbnailImage = baseImage.clone();
+  thumbnailImage.scaleToFit({ w: 320, h: 320 });
+  const thumbnailBuffer = await thumbnailImage.getBuffer(JimpMime.png);
+  const thumbnailBase64 = `data:image/png;base64,${thumbnailBuffer.toString("base64")}`;
+  updateResource(resourceId, {
+    thumbnailCache: {
+      base64: thumbnailBase64,
+      width,
+      height,
+      mime: "image/png",
+      generatedAt: Date.now()
+    }
+  });
+  return {
+    resource: resourceId,
+    thumbnail: thumbnailBase64,
+    width,
+    height,
+    mimeType: JimpMime.png
+  };
 }
 let managedGuides = [];
 let currentDocumentId = null;
@@ -129361,7 +130159,7 @@ async function openImagesFromFile(params) {
         const docWidth = newDocument.width;
         const docHeight = newDocument.height;
         const clampedBoundary = BoundaryRectUtils.clampToDocument(boundary, docWidth, docHeight);
-        const cropBounds = BoundaryRectUtils.toLegacyRect(clampedBoundary);
+        const cropBounds = BoundaryRectUtils.toLegacyRect(clampedBoundary, docWidth, docHeight);
         await newDocument.crop(cropBounds);
       }
     } catch (error) {
@@ -129485,6 +130283,49 @@ async function showBoundarySelectionDialog(_params) {
     });
   }
 }
+async function selectImageSource(_params) {
+  var _a3;
+  try {
+    const boundaryResource = (_a3 = _params.additionalData) == null ? void 0 : _a3.boundaryResource;
+    if (!boundaryResource || typeof boundaryResource !== "string") {
+      throw new Error("boundaryResource is required for image source dialog");
+    }
+    const mergedAdditionalData = {
+      ..._params.additionalData || {},
+      boundaryResource
+    };
+    const result = await new Promise((resolve2) => {
+      DialogManagerStore.setState({
+        genericDialog: {
+          active: true,
+          config: imageSourceDialogConfig,
+          additionalData: mergedAdditionalData
+        },
+        resolveGenericDialog: (value) => resolve2(value),
+        rejectGenericDialog: (error) => {
+          console.warn("[selectImageSource] dialog cancelled:", (error == null ? void 0 : error.message) ?? error);
+          resolve2({ cancelled: true });
+        }
+      });
+    });
+    return result;
+  } catch (e4) {
+    console.error("[selectImageSource] unexpected rejection:", e4);
+    return { cancelled: true };
+  } finally {
+    DialogManagerStore.setState({
+      genericDialog: {
+        active: false,
+        config: void 0,
+        additionalData: void 0
+      },
+      resolveGenericDialog: () => {
+      },
+      rejectGenericDialog: () => {
+      }
+    });
+  }
+}
 async function selectLayerMask(_params) {
   try {
     const result = await new Promise((resolve2, reject2) => {
@@ -129553,10 +130394,14 @@ mcpMesh.implementAction("manageGuides", manageGuides);
 mcpMesh.implementAction("openImagesFromFile", openImagesFromFile);
 mcpMesh.implementAction("getBoundary", getBoundary);
 mcpMesh.implementAction("getImage", getImageImpl);
+mcpMesh.implementAction("getResourceImage", getResourceImageImpl);
+mcpMesh.implementAction("getResourceMask", getResourceMaskImpl);
 mcpMesh.implementAction("getMask", getMaskImpl);
 mcpMesh.implementAction("getCurrentLayerIdentify", getCurrentLayerIdentify);
 mcpMesh.implementAction("importImage", importImageImpl);
+mcpMesh.implementAction("applyMaskToImage", applyMaskToImageImpl);
 mcpMesh.implementAction("showBoundarySelectionDialog", showBoundarySelectionDialog);
+mcpMesh.implementAction("selectImageSource", selectImageSource);
 mcpMesh.implementAction("selectCanvasImage", selectCanvasImage);
 mcpMesh.implementAction("selectLayerImage", selectLayerImage);
 mcpMesh.implementAction("selectLayerMask", selectLayerMask);
@@ -129826,47 +130671,25 @@ async function updateThumbnails() {
     if (!boundaryRect) {
       return;
     }
-    const [canvasRes, layerRes] = await Promise.all([
-      mcpMesh.actions.getImage({
-        boundary: boundaryRect,
-        content: "canvas",
-        imageSize: 192,
-        imageQuality: 80,
-        cropBySelection: "no"
-      }),
-      mcpMesh.actions.getImage({
-        boundary: boundaryRect,
-        content: "curlayer",
-        imageSize: 192,
-        imageQuality: 80,
-        cropBySelection: "no"
-      })
-    ]);
-    const fetchThumbnail = async (result) => {
-      const resourceId = result == null ? void 0 : result.resource;
-      if (!resourceId) {
-        return "";
-      }
+    const canvasRes = await mcpMesh.actions.getImage({
+      boundary: boundaryRect,
+      content: "canvas",
+      imageSize: 192,
+      imageQuality: 80,
+      cropBySelection: "no"
+    });
+    const canvasThumbnail = (canvasRes == null ? void 0 : canvasRes.thumbnail) || "";
+    const resourceId = canvasRes == null ? void 0 : canvasRes.resource;
+    if (resourceId) {
       try {
-        const thumbRes = await mcpMesh.actions.getThumbnail({
-          resource: resourceId,
-          maxSize: 192
-        });
-        return (thumbRes == null ? void 0 : thumbRes.thumbnail) || "";
-      } catch (error) {
-        console.warn("[thumbnail-store-maintain] getThumbnail failed", error);
-        return "";
-      } finally {
         deleteResource(resourceId);
+      } catch (err) {
+        console.warn("[thumbnail-store-maintain] failed to release resource", err);
       }
-    };
-    const [canvasThumbnail, curlayerThumbnail] = await Promise.all([
-      fetchThumbnail(canvasRes),
-      fetchThumbnail(layerRes)
-    ]);
+    }
     mcpMesh.store.setState({
       canvasThumbnail,
-      curlayerThumbnail
+      curlayerThumbnail: ""
     });
   } catch (e4) {
     console.warn("[thumbnail-store-maintain] updateThumbnails error", e4);
@@ -130709,46 +131532,51 @@ function CropBySelectionControl({
   }, this);
 }
 sdpppLogger.extend("GenericImageSelectionDialog");
+let thumbnailChain = Promise.resolve();
 function GenericImageCard(props) {
   var _a3, _b2, _c, _d;
   const [thumbnail, setThumbnail] = reactExports.useState(null);
   const [loading, setLoading] = reactExports.useState(false);
   const prevActiveRef = reactExports.useRef(false);
   const generateThumbnail = reactExports.useCallback(async () => {
-    if (!props.option.thumbnailConfig) return;
+    const config = props.option.thumbnailConfig;
+    if (!config) return;
     setLoading(true);
     setThumbnail(null);
-    try {
-      const config = props.option.thumbnailConfig;
-      if (config.reverse) {
-      }
-      const cropBySelection = config.boundary === "selection" ? config.reverse ? "negative" : "positive" : "no";
-      const result = await getImageImpl({
-        content: config.content,
-        boundary: config.boundary,
-        imageSize: 192,
-        imageQuality: 1,
-        cropBySelection
-      });
-      const resourceId = result == null ? void 0 : result.resource;
-      let thumb = result == null ? void 0 : result.thumbnail;
-      if (!thumb && (result == null ? void 0 : result.resource)) {
-        try {
-          const thumbRes = await mcpMesh.actions.getThumbnail({ resource: resourceId, maxSize: 192 });
-          thumb = (thumbRes == null ? void 0 : thumbRes.thumbnail) ?? thumb;
-        } catch (error) {
-          console.warn("getThumbnail fallback failed", error);
+    thumbnailChain = thumbnailChain.catch(() => {
+    }).then(async () => {
+      try {
+        if (config.reverse) {
         }
+        const cropBySelection = config.boundary === "selection" ? config.reverse ? "negative" : "positive" : "no";
+        const result = await getImageImpl({
+          content: config.content,
+          boundary: config.boundary,
+          imageSize: 192,
+          imageQuality: 1,
+          cropBySelection
+        });
+        const resourceId = result == null ? void 0 : result.resource;
+        let thumb = (result == null ? void 0 : result.thumbnail) || null;
+        if (!thumb && resourceId) {
+          try {
+            const thumbRes = await mcpMesh.actions.getThumbnail({ resource: resourceId, maxSize: 192 });
+            thumb = (thumbRes == null ? void 0 : thumbRes.thumbnail) ?? thumb;
+          } catch (error) {
+            console.warn("getThumbnail fallback failed", error);
+          }
+        }
+        setThumbnail(thumb || null);
+        if (resourceId) {
+          deleteResource(resourceId);
+        }
+      } catch (error) {
+        console.warn("Failed to generate thumbnail for", props.option.id, error);
+      } finally {
+        setLoading(false);
       }
-      setThumbnail(thumb || null);
-      if (typeof resourceId === "string") {
-        deleteResource(resourceId);
-      }
-    } catch (error) {
-      console.warn("Failed to generate thumbnail for", props.option.id, error);
-    } finally {
-      setLoading(false);
-    }
+    });
+    await thumbnailChain;
   }, [props.option]);
   const [hasInitialized, setHasInitialized] = reactExports.useState(false);
   reactExports.useEffect(() => {
@@ -130768,6 +131596,39 @@ function GenericImageCard(props) {
   const hasActiveLayers = ((_d = (_c = photoshop.app.activeDocument) == null ? void 0 : _c.activeLayers) == null ? void 0 : _d.length) > 0;
   const hidden = props.option.visibility && (props.option.visibility.requiresSelection && !hasSelection || props.option.visibility.requiresActiveLayers && !hasActiveLayers);
   const displayText = props.option.text + (props.option.keyboardShortcut && props.contentWebviewFocusing ? `(${props.option.keyboardShortcut})` : "");
+  if (props.option.variant === "wide") {
+    if (hidden) {
+      return null;
+    }
+    return /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV(
+      "div",
+      {
+        onClick: () => props.onClick(props.option.id),
+        className: "w-[36rem] max-w-full border rounded-lg p-5 flex flex-col items-center justify-center cursor-pointer hover:bg-[rgba(127,127,127,0.2)] transition-colors",
+        style: { color: "var(--uxp-host-text-color)" },
+        children: [
+          /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV("div", { className: "text-lg font-medium text-center", children: displayText }, void 0, false, {
+            fileName: "/apdcephfs/woafs/_GITHUB_/sdppp-official/internals/ps-uxp/src/tsx/components/Dialogs/GenericImageSelectionDialog.tsx",
+            lineNumber: 178,
+            columnNumber: 17
+          }, this),
+          props.option.subtext && /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV("div", { className: "text-sm mt-1 text-center", style: { color: "var(--uxp-host-text-color-secondary)" }, children: props.option.subtext }, void 0, false, {
+            fileName: "/apdcephfs/woafs/_GITHUB_/sdppp-official/internals/ps-uxp/src/tsx/components/Dialogs/GenericImageSelectionDialog.tsx",
+            lineNumber: 180,
+            columnNumber: 21
+          }, this)
+        ]
+      },
+      void 0,
+      true,
+      {
+        fileName: "/apdcephfs/woafs/_GITHUB_/sdppp-official/internals/ps-uxp/src/tsx/components/Dialogs/GenericImageSelectionDialog.tsx",
+        lineNumber: 173,
+        columnNumber: 13
+      },
+      this
+    );
+  }
   return /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV(
     ImageCard,
     {
@@ -130783,7 +131644,7 @@ function GenericImageCard(props) {
     false,
     {
       fileName: "/apdcephfs/woafs/_GITHUB_/sdppp-official/internals/ps-uxp/src/tsx/components/Dialogs/GenericImageSelectionDialog.tsx",
-      lineNumber: 158,
+      lineNumber: 189,
       columnNumber: 9
     },
     this
@@ -130859,7 +131720,7 @@ function GenericImageSelectionDialog({ config }) {
         /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV("div", { className: "p-4 rounded-lg shadow-lg w-full mx-auto", children: /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV("div", { className: "flex flex-col items-center space-y-6", children: [
           /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV("h2", { className: "text-xl font-semibold text-center", style: { color: "var(--uxp-host-text-color)" }, children: config.title }, void 0, false, {
             fileName: "/apdcephfs/woafs/_GITHUB_/sdppp-official/internals/ps-uxp/src/tsx/components/Dialogs/GenericImageSelectionDialog.tsx",
-            lineNumber: 259,
+            lineNumber: 290,
             columnNumber: 21
           }, this),
           config.optionRows.map((row, rowIndex) => /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV("div", { className: "flex justify-center space-x-4", children: row.map((option) => /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV(
@@ -130875,19 +131736,19 @@ function GenericImageSelectionDialog({ config }) {
             false,
             {
               fileName: "/apdcephfs/woafs/_GITHUB_/sdppp-official/internals/ps-uxp/src/tsx/components/Dialogs/GenericImageSelectionDialog.tsx",
-              lineNumber: 267,
+              lineNumber: 298,
               columnNumber: 33
             },
             this
           )) }, rowIndex, false, {
             fileName: "/apdcephfs/woafs/_GITHUB_/sdppp-official/internals/ps-uxp/src/tsx/components/Dialogs/GenericImageSelectionDialog.tsx",
-            lineNumber: 265,
+            lineNumber: 296,
             columnNumber: 25
           }, this)),
           config.controls && config.controls.length > 0 && /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV(jsxDevRuntimeExports.Fragment, { children: [
             /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV("div", { className: "flex justify-center space-x-4", style: { color: "var(--uxp-host-text-color-secondary)" }, children: t("common.options_separator") }, void 0, false, {
               fileName: "/apdcephfs/woafs/_GITHUB_/sdppp-official/internals/ps-uxp/src/tsx/components/Dialogs/GenericImageSelectionDialog.tsx",
-              lineNumber: 282,
+              lineNumber: 313,
               columnNumber: 29
             }, this),
             config.controls.map((control, index2) => {
@@ -130923,7 +131784,7 @@ function GenericImageSelectionDialog({ config }) {
                   false,
                   {
                     fileName: "/apdcephfs/woafs/_GITHUB_/sdppp-official/internals/ps-uxp/src/tsx/components/Dialogs/GenericImageSelectionDialog.tsx",
-                    lineNumber: 292,
+                    lineNumber: 323,
                     columnNumber: 41
                   },
                   this
@@ -130960,7 +131821,7 @@ function GenericImageSelectionDialog({ config }) {
                   false,
                   {
                     fileName: "/apdcephfs/woafs/_GITHUB_/sdppp-official/internals/ps-uxp/src/tsx/components/Dialogs/GenericImageSelectionDialog.tsx",
-                    lineNumber: 324,
+                    lineNumber: 355,
                     columnNumber: 41
                   },
                   this
@@ -130970,21 +131831,21 @@ function GenericImageSelectionDialog({ config }) {
             })
           ] }, void 0, true, {
             fileName: "/apdcephfs/woafs/_GITHUB_/sdppp-official/internals/ps-uxp/src/tsx/components/Dialogs/GenericImageSelectionDialog.tsx",
-            lineNumber: 281,
+            lineNumber: 312,
             columnNumber: 25
           }, this)
         ] }, void 0, true, {
           fileName: "/apdcephfs/woafs/_GITHUB_/sdppp-official/internals/ps-uxp/src/tsx/components/Dialogs/GenericImageSelectionDialog.tsx",
-          lineNumber: 258,
+          lineNumber: 289,
           columnNumber: 17
         }, this) }, void 0, false, {
           fileName: "/apdcephfs/woafs/_GITHUB_/sdppp-official/internals/ps-uxp/src/tsx/components/Dialogs/GenericImageSelectionDialog.tsx",
-          lineNumber: 257,
+          lineNumber: 288,
           columnNumber: 13
         }, this),
         !contentWebviewFocusing && /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV("div", { className: "flex justify-center", style: { color: "var(--uxp-host-text-color-secondary)" }, children: t("image.shortcut_focus_required") }, void 0, false, {
           fileName: "/apdcephfs/woafs/_GITHUB_/sdppp-official/internals/ps-uxp/src/tsx/components/Dialogs/GenericImageSelectionDialog.tsx",
-          lineNumber: 356,
+          lineNumber: 387,
           columnNumber: 17
         }, this)
       ]
@@ -130993,7 +131854,7 @@ function GenericImageSelectionDialog({ config }) {
     true,
     {
       fileName: "/apdcephfs/woafs/_GITHUB_/sdppp-official/internals/ps-uxp/src/tsx/components/Dialogs/GenericImageSelectionDialog.tsx",
-      lineNumber: 252,
+      lineNumber: 283,
       columnNumber: 9
     },
     this

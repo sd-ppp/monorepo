@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { SyncButton } from '@sdppp/ui-library';
+import { PlusOutlined } from '@ant-design/icons';
 
 const meta: Meta<typeof SyncButton> = {
   title: 'Components/SyncButton',
@@ -10,10 +11,14 @@ const meta: Meta<typeof SyncButton> = {
     disabled: { control: 'boolean' },
     isAutoSync: { control: 'boolean' },
     autoSyncEnabled: { control: 'boolean' },
-    children: { control: 'text' },
+    children: { control: false },
     descText: { control: 'text' },
     syncButtonTooltip: { control: 'text' },
     autoSyncButtonTooltips: { control: 'object' },
+    direction: {
+      control: { type: 'inline-radio' },
+      options: ['horizontal', 'vertical'],
+    },
     onSync: { action: 'onSync' },
     onAutoSyncToggle: { action: 'onAutoSyncToggle' },
   },
@@ -27,7 +32,7 @@ export const Default: Story = {
     disabled: false,
     isAutoSync: false,
     autoSyncEnabled: true,
-    children: 'Sync Now',
+    children: <PlusOutlined />,
     syncButtonTooltip: 'Click to sync',
     autoSyncButtonTooltips: {
       enabled: 'Auto-sync is ON',
@@ -62,6 +67,20 @@ export const WithDescription: Story = {
   args: {
     ...Default.args,
     descText: '导入为智能对象，不改变图层',
-    buttonWidth: 120,
+    buttonSize: 120,
+    buttonSizeSub: 36,
+  },
+};
+
+export const VerticalStacked: Story = {
+  args: {
+    ...Default.args,
+    direction: 'vertical',
+    buttonSize: 96,
+    buttonSizeSub: 40,
+    autoSyncButtonTooltips: {
+      enabled: '自动取图开启',
+      disabled: '自动取图关闭',
+    },
   },
 };

@@ -327,7 +327,7 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
           isAutoSync={isAutoSync}
           onSync={({ shiftKey }) => handleSendToPS({ shiftKey })}
           onAutoSyncToggle={handleAutoSyncToggle}
-          buttonWidth={88}
+          buttonSize={88}
           mainButtonType="primary"
           autoSyncButtonTooltips={{
             enabled: t('image.auto_send_enabled'),

@@ -7,7 +7,6 @@ import { SyncOutlined } from '@ant-design/icons';
 
 const mockOnSync = vi.fn();
 const mockOnAutoSyncToggle = vi.fn();
-const mockOnCancel = vi.fn();
 
 const defaultProps = {
   disabled: false,
@@ -57,26 +56,6 @@ describe('SyncButton', () => {
     expect(mockOnSync).toHaveBeenLastCalledWith({ altKey: true, shiftKey: false });
 
     expect(mockOnSync).toHaveBeenCalledTimes(3);
-  });
-
-  describe('cancel button', () => {
-    it('does not render cancel button by default', () => {
-      renderComponent();
-      expect(screen.queryByTestId('sync-button-cancel')).not.toBeInTheDocument();
-    });
-
-    it('renders cancel button when enabled and calls onCancel with modifiers', () => {
-      renderComponent({ cancelEnabled: true, onCancel: mockOnCancel });
-      const cancelButton = screen.getByTestId('sync-button-cancel');
-      fireEvent.click(cancelButton, { altKey: true, shiftKey: false });
-      expect(mockOnCancel).toHaveBeenCalledWith({ altKey: true, shiftKey: false });
-    });
-
-    it('respects disabled state', () => {
-      renderComponent({ cancelEnabled: true, disabled: true, onCancel: mockOnCancel });
-      const cancelButton = screen.getByTestId('sync-button-cancel');
-      expect(cancelButton).toBeDisabled();
-    });
   });
 
   describe('auto-sync functionality', () => {
@@ -210,6 +189,72 @@ describe('SyncButton', () => {
       expect(autoButton).toHaveStyle({ height: '28px' });
       const root = screen.getByTestId('sync-button-root');
       expect(root).toHaveStyle({ lineHeight: '1' });
+    });
+  });
+
+  describe('layout variations', () => {
+    it('renders vertical layout with auto button above main button', () => {
+      renderComponent({ direction: 'vertical', buttonSize: 72, buttonSizeSub: 32, 'data-testid': 'sync-button-root' });
+      const root = screen.getByTestId('sync-button-root');
+      const buttons = root.querySelectorAll('button');
+      expect(buttons[0]).toHaveAttribute('data-testid', 'sync-button-auto-sync');
+      expect(buttons[1]).toHaveAttribute('data-testid', 'sync-button-main');
+    });
+
+    it('renders only the main button when auto sync is disabled in vertical layout', () => {
+      renderComponent({ direction: 'vertical', autoSyncEnabled: false });
+      expect(screen.queryByTestId('sync-button-auto-sync')).not.toBeInTheDocument();
+      expect(screen.getByTestId('sync-button-main')).toBeInTheDocument();
+    });
+
+    it('applies width when buttonSize is provided in horizontal layout', () => {
+      renderComponent({ buttonSize: 180, buttonSizeSub: 36, 'data-testid': 'sync-button-root' });
+      const root = screen.getByTestId('sync-button-root');
+      const compact = root.querySelector('.ant-space-compact');
+      expect(compact).not.toBeNull();
+      expect(compact).toHaveStyle({ width: '180px' });
+      expect(compact).toHaveStyle({ height: '36px' });
+    });
+
+    it('applies height when buttonSize is provided in vertical layout', () => {
+      renderComponent({ direction: 'vertical', buttonSize: 72, buttonSizeSub: 32, 'data-testid': 'sync-button-root' });
+      const mainButton = screen.getByTestId('sync-button-main');
+      expect(mainButton).toHaveStyle({ height: '44px' });
+      const autoButton = screen.getByTestId('sync-button-auto-sync');
+      expect(autoButton).toHaveStyle({ height: '28px' });
+      expect(autoButton).toHaveStyle({ width: '32px' });
+      const compact = screen.getByTestId('sync-button-root').querySelector('.ant-space-compact');
+      expect(compact).not.toBeNull();
+      expect(compact).toHaveStyle({ width: '32px' });
+      expect(compact).toHaveStyle({ height: '72px' });
+    });
+
+    it('collapses to auto button when collapseToAutoWhenEnabled is true and auto sync is active', () => {
+      renderComponent({
+        collapseToAutoWhenEnabled: true,
+        isAutoSync: true,
+        autoSyncEnabled: true,
+        buttonSize: 120,
+        buttonSizeSub: 40,
+        'data-testid': 'sync-button-root',
+      });
+      expect(screen.queryByTestId('sync-button-main')).not.toBeInTheDocument();
+      const autoButton = screen.getByTestId('sync-button-auto-sync');
+      expect(autoButton).toBeInTheDocument();
+      const compact = screen.getByTestId('sync-button-root').querySelector('.ant-space-compact');
+      expect(compact).toHaveStyle({ height: '40px' });
+      expect(compact).toHaveStyle({ width: '28px' });
+    });
+
+    it('does not collapse when auto sync is inactive despite collapseToAutoWhenEnabled', () => {
+      renderComponent({
+        collapseToAutoWhenEnabled: true,
+        isAutoSync: false,
+        autoSyncEnabled: true,
+        buttonSizeSub: 40,
+      });
+      expect(screen.getByTestId('sync-button-main')).toBeInTheDocument();
+      expect(screen.getByTestId('sync-button-auto-sync')).toBeInTheDocument();
     });
   });
 });

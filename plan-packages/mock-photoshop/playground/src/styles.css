@@ -1,0 +1,21 @@
+:root {
+  color-scheme: light;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #f4f6fb;
+  color: rgba(21, 33, 60, 0.92);
+}
+
+body {
+  margin: 0;
+  background: #f4f6fb;
+}
+
+.app-shell {
+  min-height: 100vh;
+  margin: 0;
+  padding: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}

@@ -24,7 +24,7 @@ export interface ExclusiveSyncGroupProps {
   buttons: ButtonConfig[];
   onSync: (id: string, event: ModifierKeyEvent) => Promise<void>;
   onAutoSyncChange?: (activeId: string | null, event: ModifierKeyEvent) => void;
-  buttonWidth?: number | string;
+  buttonSize?: number | string;
   // Controlled/Uncontrolled support for auto active id
   activeAutoSyncId?: string | null;
   defaultActiveAutoSyncId?: string | null;
@@ -36,7 +36,7 @@ export const ExclusiveSyncGroup: React.FC<ExclusiveSyncGroupProps> = ({
   buttons,
   onSync,
   onAutoSyncChange,
-  buttonWidth,
+  buttonSize,
   activeAutoSyncId: activeAutoSyncIdProp,
   defaultActiveAutoSyncId = null,
   tooltipPlacement,
@@ -81,7 +81,7 @@ export const ExclusiveSyncGroup: React.FC<ExclusiveSyncGroupProps> = ({
       {buttons.map(config => (
         <SyncButton
           key={config.id}
-          buttonWidth={buttonWidth}
+          buttonSize={buttonSize}
           data-testid={`sync-button-${config.id}`}
           disabled={isAnyButtonSyncing}
           isAutoSync={activeAutoSyncId === config.id}

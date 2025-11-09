@@ -1,39 +1,47 @@
+import { sdpppSDK } from '@sdppp/common';
 import type {
   BoundaryRect as BaseBoundaryRect,
   BoundarySetting as BaseBoundarySetting,
+  BoundaryUri as BaseBoundaryUri,
   ContentType as BaseContentType,
+  ContentUri as BaseContentUri,
+  MaskUri as BaseMaskUri,
   TrackType as BaseTrackType,
 } from '../../../realtime-thumbnail/types';
+import { extractDocIdFromUris, parseBoundaryUri, parseContentUri } from '../../../realtime-thumbnail/uri-utils';
 
 export type ContentType = BaseContentType;
 export type TrackType = BaseTrackType;
 
 export type BoundaryRect = BaseBoundaryRect;
 export type BoundarySetting = BaseBoundarySetting;
+export type BoundaryUri = BaseBoundaryUri;
+export type ContentUri = BaseContentUri;
+export type MaskUri = BaseMaskUri;
 
 export interface AutoSyncConfig {
   type: TrackType;
+  docId: number;
   content: ContentType;
-  alt?: boolean;
   layerIdentify?: string | null;
   boundary?: BoundarySetting;
 }
 
 export interface SlotState {
   primaryTrackType?: TrackType | null;
-  primaryContent?: ContentType | null;
-  primaryLayerIdentify?: string | null;
-  primaryBoundary?: BoundarySetting;
-  primaryAlt?: boolean;
-  thumbnail?: string;
-  uploading?: boolean;
-  uploadId?: string | null;
+  primaryDocId?: number | null;
+  contentUri?: ContentUri | null;
+  boundaryUri?: BoundaryUri | null;
+  maskUri?: MaskUri | null;
+  fileUri?: string | null;
   primaryResourceId?: string | null;
   maskResourceId?: string | null;
-  compositeThumbnail?: string;
   compositeDirty?: boolean;
   compositeResourceId?: string | null;
+  uploading?: boolean;
+  uploadId?: string | null;
   maskAutoEnabled?: boolean;
+  primaryAutoEnabled?: boolean;
 }
 
 export interface ImageComponentState {
@@ -45,20 +53,51 @@ export interface ImageComponentState {
 }
 
 export const getSlotPrimaryConfig = (slot?: SlotState | null): AutoSyncConfig | null => {
-  if (!slot || !slot.primaryTrackType || !slot.primaryContent) {
+  // 仅当存在高级选图的关键 URI（contentUri 与 boundaryUri）时，才认为有配置
+  if (!slot) {
+    return null;
+  }
+  const hasAdvancedUris = !!slot.contentUri && !!slot.boundaryUri;
+  if (!hasAdvancedUris) {
     return null;
   }
 
-  const config: AutoSyncConfig = {
-    type: slot.primaryTrackType,
-    content: slot.primaryContent,
-    layerIdentify: slot.primaryLayerIdentify ?? null,
-    boundary: slot.primaryBoundary ?? null,
-  };
+  const docId =
+    slot.primaryDocId ??
+    extractDocIdFromUris([slot.contentUri ?? null, slot.boundaryUri ?? null, slot.maskUri ?? null]) ??
+    sdpppSDK?.stores?.PhotoshopStore?.getState?.()?.activeDocumentID ??
+    null;
 
-  if (typeof slot.primaryAlt === 'boolean') {
-    config.alt = slot.primaryAlt;
+  if (docId === null || docId === undefined) {
+    return null;
   }
 
-  return config;
+  let content: ContentType = 'canvas';
+  let layerIdentify: string | null = null;
+  try {
+    const parsedContent = parseContentUri(slot.contentUri as any);
+    content = parsedContent.content;
+    layerIdentify = parsedContent.layerIdentify ?? null;
+  } catch {
+    content = 'canvas';
+    layerIdentify = null;
+  }
+
+  let boundary: BoundarySetting = null;
+  try {
+    const parsedBoundary = parseBoundaryUri(slot.boundaryUri as any);
+    boundary = parsedBoundary.boundary ?? null;
+  } catch {
+    boundary = null;
+  }
+
+  const normalizedDocId = Math.max(0, Math.floor(docId));
+
+  return {
+    type: slot.primaryTrackType ?? 'image',
+    docId: normalizedDocId,
+    content,
+    layerIdentify,
+    boundary,
+  };
 };

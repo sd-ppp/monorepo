@@ -18,7 +18,7 @@ export interface ImageSyncGroupListProps {
   onAdd: () => void;
   onRemove: (index: number) => void;
   showAddRemove?: boolean;
-  buttonWidth?: number | string;
+  buttonSize?: number | string;
   // visual options
   background?: 'checkerboard' | 'white';
 }
@@ -30,7 +30,7 @@ export const ImageSyncGroupList: FC<ImageSyncGroupListProps> = ({
   onAdd,
   onRemove,
   showAddRemove = true,
-  buttonWidth,
+  buttonSize,
   background = 'checkerboard',
 }) => {
   const [hoveredRemoveIndex, setHoveredRemoveIndex] = useState<number | null>(null);
@@ -41,7 +41,7 @@ export const ImageSyncGroupList: FC<ImageSyncGroupListProps> = ({
         <div key={index} style={{ width: '100%' }}>
           <ImageSyncGroup
             {...group}
-            buttonWidth={buttonWidth}
+            buttonSize={buttonSize}
             data-testid={`image-sync-group-${index}`}
             onSync={(id, event) => onSync(index, id, event)}
             onAutoSyncChange={(activeId, event) => onAutoSyncChange(index, activeId, event)}

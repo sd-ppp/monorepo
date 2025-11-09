@@ -1,9 +1,9 @@
-export { GlobalImageStore } from './global-image-store-store';
-export type { GlobalImageStoreState } from './global-image-store-store';
+import { create } from 'zustand';
+import { createComponentSlice, type ComponentSlice } from './component-slice';
+import { createSlotSlice, type SlotSlice } from './slot-slice';
+export type GlobalImageStoreState = ComponentSlice & SlotSlice;
 
-export type { ComponentSlice } from './component-slice';
-export type { SlotSlice } from './slot-slice';
-export type { ThumbnailSlice } from './thumbnail-slice';
-
-export * from './types';
-export { useComponent, useImageSlotState } from './hooks';
+export const GlobalImageStore = create<GlobalImageStoreState>((...args) => ({
+  ...createComponentSlice(...args),
+  ...createSlotSlice(...args),
+}));

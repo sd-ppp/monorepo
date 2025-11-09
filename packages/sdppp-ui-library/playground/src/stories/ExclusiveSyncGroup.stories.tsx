@@ -24,6 +24,6 @@ export const Default: Story = {
     buttons,
     onSync: async () => {},
     onAutoSyncChange: () => {},
-    buttonWidth: 140,
+    buttonSize: 140,
   },
 };

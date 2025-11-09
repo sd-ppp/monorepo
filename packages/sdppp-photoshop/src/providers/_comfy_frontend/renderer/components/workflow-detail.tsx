@@ -1,5 +1,6 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from 'zustand';
+import { shallow } from 'zustand/shallow';
 import { sdpppSDK } from '@sdppp/common';
 import { WidgetableRenderer as WorkflowEdit } from '@sdppp/widgetable-ui';
 import './workflow-detail.less';
@@ -20,9 +21,13 @@ export function WorkflowDetail({
   setCurrentWorkflow,
 }: WorkflowDetailProps) {
   workflowDetailRenderCount++;
-  const widgetableValues = useStore(sdpppSDK.stores.ComfyStore, (state) => state.widgetableValues) ?? EMPTY_OBJECT;
-  const widgetableStructure = useStore(sdpppSDK.stores.ComfyStore, (state) => state.widgetableStructure) ?? EMPTY_OBJECT;
-  const widgetableErrors = useStore(sdpppSDK.stores.ComfyStore, (state) => state.widgetableErrors);
+  const widgetableValues =
+    useStore(sdpppSDK.stores.ComfyStore, (state) => state.widgetableValues ?? EMPTY_OBJECT, shallow) ??
+    EMPTY_OBJECT;
+  const widgetableStructure =
+    useStore(sdpppSDK.stores.ComfyStore, (state) => state.widgetableStructure ?? EMPTY_OBJECT, shallow) ??
+    EMPTY_OBJECT;
+  const widgetableErrors = useStore(sdpppSDK.stores.ComfyStore, (state) => state.widgetableErrors ?? null, shallow);
 
   const widgetablePath = useMemo(
     () => (typeof (widgetableStructure as any)?.widgetablePath === 'string'
@@ -31,36 +36,50 @@ export function WorkflowDetail({
     [widgetableStructure],
   );
 
-  const [hasRecoverHistory, setHasRecoverHistory] = useState<boolean>(false);
   const [uploading, setUploading] = useState<boolean>(false);
   const [prevWidgetableValues, setPrevWidgetableValues] = useState<Record<string, any>>(widgetableValues);
+  const prevWidgetableHashRef = useRef<string>('');
+  const historyRecoveryRef = useRef<{ workflow: string | null; recovered: boolean }>({
+    workflow: null,
+    recovered: false,
+  });
 
   useEffect(() => {
-    if (
+    const pathMatches =
       currentWorkflow &&
       widgetablePath &&
-      currentWorkflow === widgetablePath.replace(/^workflows\//, '') &&
-      !hasRecoverHistory
-    ) {
-      const historyValues = comfyWorkflowStore.getState().historyValues[currentWorkflow];
-      if (historyValues) {
-        const values = Object.entries(historyValues)
-          .reduce((acc, [nodeID, values]) => {
-            return acc.concat(
-              values.map((value: any, widgetIndex: number) => ({
-                nodeID,
-                widgetIndex,
-                value,
-              })),
-            );
-          }, [] as Array<{ nodeID: string; widgetIndex: number; value: any }>);
-        sdpppSDK.plugins.ComfyCaller.setWidgetValue({ values });
-      }
-      setHasRecoverHistory(true);
-    } else {
-      setHasRecoverHistory(false);
+      currentWorkflow === widgetablePath.replace(/^workflows\//, '');
+
+    const recoveredState = historyRecoveryRef.current;
+    if (!pathMatches) {
+      historyRecoveryRef.current = { workflow: currentWorkflow, recovered: false };
+      return;
     }
-  }, [currentWorkflow, widgetablePath, hasRecoverHistory]);
+
+    if (
+      recoveredState.workflow === currentWorkflow &&
+      recoveredState.recovered
+    ) {
+      return;
+    }
+
+    const historyValues = comfyWorkflowStore.getState().historyValues[currentWorkflow];
+    if (historyValues) {
+      const values = Object.entries(historyValues)
+        .reduce((acc, [nodeID, values]) => {
+          return acc.concat(
+            values.map((value: any, widgetIndex: number) => ({
+              nodeID,
+              widgetIndex,
+              value,
+            })),
+          );
+        }, [] as Array<{ nodeID: string; widgetIndex: number; value: any }>);
+      sdpppSDK.plugins.ComfyCaller.setWidgetValue({ values });
+    }
+
+    historyRecoveryRef.current = { workflow: currentWorkflow, recovered: true };
+  }, [currentWorkflow, widgetablePath]);
 
   const handleWidgetChange = useCallback((
     nodeID: string,
@@ -84,14 +103,17 @@ export function WorkflowDetail({
   }, []);
 
   useEffect(() => {
-    if (JSON.stringify(prevWidgetableValues) !== JSON.stringify(widgetableValues)) {
+    const nextHash = JSON.stringify(widgetableValues ?? EMPTY_OBJECT);
+    const prevHash = prevWidgetableHashRef.current;
+    if (prevHash !== nextHash) {
       comfyWorkflowStore.getState().setHistoryValues({
         ...comfyWorkflowStore.getState().historyValues,
         [currentWorkflow]: widgetableValues,
       });
       setPrevWidgetableValues(widgetableValues);
+      prevWidgetableHashRef.current = nextHash;
     }
-  }, [widgetableValues, currentWorkflow, prevWidgetableValues]);
+  }, [widgetableValues, currentWorkflow]);
 
   return (
     <div className="workflow-edit-wrap">

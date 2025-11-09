@@ -1,4 +1,4 @@
-import { GlobalImageStore, getSlotPrimaryConfig } from '../stores/global-image-store';
+import { GlobalImageStore } from '../stores/global-image-store';
 
 export type AdvancedAutoContent = 'canvas' | 'curlayer' | 'selection';
 
@@ -27,12 +27,14 @@ export function shiftSlotsAfterRemoval(
     if (k < startIndex) continue;
     const src = compState.slots?.[k + 1];
     if (src) {
-      store.setSlotPrimaryConfig(componentId, k, getSlotPrimaryConfig(src));
-      store.setSlotThumbnail(componentId, k, src.thumbnail);
       store.setSlotUploading(componentId, k, !!src.uploading, src.uploadId || null);
       store.setSlotPrimaryResource(componentId, k, src.primaryResourceId ?? null);
       store.setSlotMaskResource(componentId, k, src.maskResourceId ?? null);
-      store.setSlotCompositeThumbnail(componentId, k, src.compositeThumbnail);
+      store.setSlotContentUri(componentId, k, src.contentUri ?? null);
+      store.setSlotBoundaryUri(componentId, k, src.boundaryUri ?? null);
+      store.setSlotMaskUri(componentId, k, src.maskUri ?? null);
+      store.setSlotFileUri(componentId, k, src.fileUri ?? null);
+      store.setSlotPrimaryAutoEnabled(componentId, k, !!src.primaryAutoEnabled);
       store.markSlotCompositeDirty(
         componentId,
         k,

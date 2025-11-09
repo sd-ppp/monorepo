@@ -1,0 +1,42 @@
+{
+  "name": "@sdppp/resourcing",
+  "version": "0.1.0",
+  "description": "Shared resource management utilities for SDPPP.",
+  "type": "module",
+  "exports": {
+    "./resource-types": {
+      "import": "./dist/resource-types.js",
+      "types": "./dist/resource-types.d.ts"
+    },
+    "./resource-uris": {
+      "import": "./dist/resource-uris.js",
+      "types": "./dist/resource-uris.d.ts"
+    },
+    "./@uxp/*": {
+      "import": "./dist/@uxp/*.js",
+      "types": "./dist/@uxp/*.d.ts"
+    },
+    "./@sideweb/*": {
+      "import": "./dist/@sideweb/*.js",
+      "types": "./dist/@sideweb/*.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "rimraf dist",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@sdppp/common": "workspace:*",
+    "buffer": "^6.0.3",
+    "jimp": "^1.6.0",
+    "uuid": "^11.1.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "rimraf": "^6.0.1",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  }
+}

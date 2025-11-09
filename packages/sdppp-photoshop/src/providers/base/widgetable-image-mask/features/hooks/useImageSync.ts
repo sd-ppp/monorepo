@@ -4,6 +4,9 @@ import { useUploadResource } from './upload-handlers';
 import { useAdvancedSelection } from './useAdvancedSelection';
 import { useSyncHandlers } from './useSyncHandlers';
 import type { SyncEvent, SyncType } from './image-sync-types';
+import { GlobalImageStore } from '../../foundation/stores/global-image-store';
+import { getSlotPrimaryConfig } from '../../foundation/stores/types';
+import { captureAutoImage } from '../../services/photoshop/operations';
 
 export type { SyncEvent, SyncType } from './image-sync-types';
 
@@ -68,13 +71,33 @@ export function useImageSync({
       try {
         setUploadError('');
         await advancedSelect(index);
+        // After advanced selection:
+        // 1) If a file token was selected, upload it directly.
+        // 2) Else, if advanced config exists, capture & upload.
+        const slot = GlobalImageStore.getState().getSlot(componentId, index);
+        if (slot?.fileUri) {
+          setUploading(true);
+          uploadResource(slot.fileUri, index);
+          return;
+        }
+        const config = getSlotPrimaryConfig(slot);
+        if (config) {
+          setUploading(true);
+          const capture = await captureAutoImage(componentId, index, config);
+          if (capture.resource) {
+            uploadResource(capture.resource, index);
+          } else {
+            setUploading(false);
+            setUploadError('Advanced selection capture returned empty resource');
+          }
+        }
       } catch (error) {
         setUploading(false);
         console.warn('onAdvancedSelect error:', error);
         setUploadError((error as any)?.message || String(error));
       }
     },
-    [advancedSelect, setUploadError, setUploading]
+    [advancedSelect, componentId, setUploadError, setUploading, uploadResource]
   );
 
   return { onSync, onAdvancedSelect, onAdvancedCancel, uploading, uploadError };

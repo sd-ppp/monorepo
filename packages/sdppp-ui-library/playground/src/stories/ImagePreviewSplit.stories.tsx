@@ -97,7 +97,7 @@ export const ExclusiveGroupExample: Story = {
           onSync={(id, event) => handleSync(id)}
           onAutoSyncChange={nextId => setActiveAutoId(nextId)}
           activeAutoSyncId={activeAutoId}
-          buttonWidth={140}
+          buttonSize={140}
           tooltipPlacement="right"
           autoTooltipPlacement="right"
         />
@@ -212,14 +212,6 @@ export const ConditionalControlsExample: Story = {
       [updateImage]
     );
 
-    const handleAdvancedCancel = useCallback(
-      (_event?: { altKey: boolean; shiftKey: boolean }) => {
-        setAdvancedAuto(false);
-        setAdvancedExpanded(false);
-      },
-      []
-    );
-
     const handleMaskSync = useCallback(
       (_event?: { altKey: boolean; shiftKey: boolean }) => {
         updateImage(colorMap.green, maskAuto ? 'Mask Auto' : 'Mask Manual');
@@ -268,7 +260,7 @@ export const ConditionalControlsExample: Story = {
         isAutoSync={maskAuto}
         onSync={(event) => handleMaskSync(event)}
         onAutoSyncToggle={(event) => handleMaskAutoToggle(event)}
-        buttonWidth={160}
+        buttonSize={160}
       >
         {maskAuto ? (
           '自动取遮罩中...'
@@ -298,7 +290,7 @@ export const ConditionalControlsExample: Story = {
             handleMainSync(event);
           }}
           onAutoSyncToggle={(event) => handleMainAutoToggle(event)}
-          buttonWidth={160}
+          buttonSize={160}
         >
           {mainButtonLabel}
         </SyncButton>
@@ -328,10 +320,8 @@ export const ConditionalControlsExample: Story = {
             isAutoSync={advancedAuto}
             onSync={(event) => handleAdvancedSync(event)}
             onAutoSyncToggle={(event) => handleAdvancedAutoToggle(event)}
-            onCancel={(event) => handleAdvancedCancel(event)}
             autoSyncEnabled={advancedExpanded}
-            cancelEnabled={advancedExpanded}
-            buttonWidth={160}
+            buttonSize={160}
           >
             {advancedButtonLabel}
           </SyncButton>

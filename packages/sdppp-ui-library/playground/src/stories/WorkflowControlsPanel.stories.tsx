@@ -48,6 +48,7 @@ const DemoPanel: FC = () => {
   const [pixelWidth, setPixelWidth] = useState(2048);
   const [coveragePercent, setCoveragePercent] = useState(100);
   const [statusKey, setStatusKey] = useState<StatusKey>('text');
+  const [isBodyLeftVisible, setIsBodyLeftVisible] = useState(false);
   const [form] = Form.useForm();
   const previewHoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const runHoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -288,6 +289,10 @@ const DemoPanel: FC = () => {
     setIsScaleModalOpen(false);
   }, [form]);
 
+  const handleEnableBodyLeft = useCallback(() => {
+    setIsBodyLeftVisible(true);
+  }, []);
+
   const headerRow = useMemo(() => ({
     left: headerLeftSlot,
     center: <Text strong>workflow/example.json</Text>,
@@ -295,7 +300,7 @@ const DemoPanel: FC = () => {
   }), [Text, headerLeftSlot, headerRightSlot]);
 
   const bodyRow = useMemo(() => ({
-    left: (
+    left: isBodyLeftVisible ? (
       <div
         onMouseEnter={showPreviewHover}
         onMouseLeave={hidePreviewHover}
@@ -318,10 +323,17 @@ const DemoPanel: FC = () => {
       >
         PREVIEW
       </div>
-    ),
+    ) : undefined,
     center: null,
     right: rightSlot,
-  }), [PREVIEW_SIZE, hidePreviewHover, isPreviewHoverActive, rightSlot, showPreviewHover]);
+  }), [
+    PREVIEW_SIZE,
+    hidePreviewHover,
+    isBodyLeftVisible,
+    isPreviewHoverActive,
+    rightSlot,
+    showPreviewHover,
+  ]);
 
   const middleTopRow = useMemo(() => ({
     left: (
@@ -347,6 +359,33 @@ const DemoPanel: FC = () => {
 
   const middleBottomRow = useMemo(() => {
     const showRight = isRunHoverVisible || isRunButtonsHovering;
+
+    if (!isBodyLeftVisible) {
+      return {
+        left: (
+          <Typography.Link
+            onClick={handleEnableBodyLeft}
+            style={{
+              fontSize: 12,
+              lineHeight: 1.2,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'flex-start',
+              justifyContent: 'center',
+              height: ACTION_SIZE,
+            }}
+          >
+            <span>输出至</span>
+            <span>全画布</span>
+          </Typography.Link>
+        ),
+        center: showRight
+          ? undefined
+          : (persistentStatus ?? <div className="workflow-controls-middle-bottom-placeholder" />),
+        right: showRight ? runMultiplierButtons : undefined,
+      };
+    }
+
     const showLeft = !showRight && isPreviewHoverVisible;
     const showCenter = !showLeft && !showRight;
 
@@ -362,6 +401,9 @@ const DemoPanel: FC = () => {
       right: showRight ? runMultiplierButtons : undefined,
     };
   }, [
+    ACTION_SIZE,
+    handleEnableBodyLeft,
+    isBodyLeftVisible,
     isPreviewHoverVisible,
     isRunButtonsHovering,
     isRunHoverVisible,

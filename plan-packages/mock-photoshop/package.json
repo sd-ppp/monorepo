@@ -1,0 +1,32 @@
+{
+  "name": "@sdppp/mock-photoshop",
+  "version": "0.0.0",
+  "private": false,
+  "type": "module",
+  "main": "./src/index.ts",
+  "module": "./src/index.ts",
+  "types": "./src/index.ts",
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "vite --config playground/vite.config.ts",
+    "preview": "vite preview --config playground/vite.config.ts"
+  },
+  "dependencies": {
+    "konva": "^9.3.3",
+    "react-konva": "^18.0.5"
+  },
+  "peerDependencies": {
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.1",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^5.1.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "typescript": "~5.8.3",
+    "vite": "^7.1.9"
+  }
+}

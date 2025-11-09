@@ -1,5 +1,7 @@
 import { useEffect } from 'react';
-import { GlobalImageStore, useComponent, type ImageComponentState } from '../../foundation/stores/global-image-store';
+import { GlobalImageStore } from '../../foundation/stores/global-image-store';
+import { useComponent } from '../../foundation/stores/hooks';
+import type { ImageComponentState } from '../../foundation/stores/types';
 
 interface UseImageComponentRegistrationOptions {
   componentId: string;

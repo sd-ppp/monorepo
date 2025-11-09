@@ -1,8 +1,15 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Tooltip, Typography, Modal, Form, InputNumber } from 'antd';
 import { useTranslation } from '@sdppp/common';
 import { useStore } from 'zustand';
 import { sdpppSDK } from '@sdppp/common';
+import {
+  buildBoundaryUri,
+  buildImageContentUri,
+  buildMaskContentUri,
+} from '../../../../../base/realtime-thumbnail/utils';
+import { useRealtimeImageThumbnail } from '../../../../../base/realtime-thumbnail/hooks';
+import type { BoundarySetting } from '../../../../../base/realtime-thumbnail/types';
 import { EMPTY_OBJECT } from '../constants';
 
 const { Link } = Typography;
@@ -104,73 +111,85 @@ export const BoundarySettingsLink: React.FC<BoundarySettingsLinkProps> = ({
 export const BoundaryPreview: React.FC<BoundaryPreviewProps> = ({ previewQuality }) => {
   const { t } = useTranslation();
   const translate = t as unknown as (key: string, options?: Record<string, unknown>) => string;
-  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
   const [isHovered, setIsHovered] = useState(false);
   const activeDocumentID = useStore(sdpppSDK.stores.PhotoshopStore, (state) => state.activeDocumentID);
-  const selectionStateID = useStore(sdpppSDK.stores.PhotoshopStore, (state: any) => (state as any).selectionStateID);
-  const canvasStateID = useStore(sdpppSDK.stores.PhotoshopStore, (state) => state.canvasStateID);
   const workBoundaries = useStore(
     sdpppSDK.stores.WebviewStore,
     (state: any) => state?.workBoundaries || EMPTY_OBJECT,
   );
-  const boundary = (workBoundaries as any)?.[activeDocumentID];
+  const boundary = (workBoundaries as any)?.[activeDocumentID] as BoundarySetting | undefined;
+
+  const realtimeConfig = useMemo(() => {
+    if (typeof activeDocumentID !== 'number' || !Number.isFinite(activeDocumentID)) {
+      return null;
+    }
+    const docId = Math.max(0, Math.floor(activeDocumentID));
+    const boundarySetting: BoundarySetting = boundary ?? null;
+    return {
+      docId,
+      boundaryUri: buildBoundaryUri(docId, boundarySetting, {
+        imageSize: 192,
+        imageQuality: previewQuality,
+      }),
+      contentUri: buildImageContentUri(docId, 'canvas'),
+      maskUri: buildMaskContentUri(docId, 'canvas'),
+    };
+  }, [activeDocumentID, boundary, previewQuality]);
+
+  const realtimeParams = useMemo(() => {
+    if (!realtimeConfig) {
+      return {
+        contentUri: buildImageContentUri(0, 'canvas'),
+        boundaryUri: buildBoundaryUri(0, null, {
+          imageSize: 192,
+          imageQuality: previewQuality,
+        }),
+        maskUri: buildMaskContentUri(0, 'canvas'),
+        autoFetch: false,
+        realtime: false,
+        compose: false,
+      } as const;
+    }
+    return {
+      contentUri: realtimeConfig.contentUri,
+      boundaryUri: realtimeConfig.boundaryUri,
+      maskUri: realtimeConfig.maskUri,
+      autoFetch: false,
+      realtime: false,
+      compose: false,
+    } as const;
+  }, [realtimeConfig, previewQuality]);
+
+  const {
+    data: realtimeComposite,
+    image: realtimeImage,
+    isFetching: realtimeLoading,
+    error: realtimeError,
+    refetch: realtimeRefetch,
+  } = useRealtimeImageThumbnail(realtimeParams);
+
+  const lastBoundaryUriRef = useRef<string | null>(null);
+
+  const previewUrl = useMemo(() => {
+    return realtimeComposite || realtimeImage || null;
+  }, [realtimeComposite, realtimeImage]);
+
+  useEffect(() => {
+    if (!realtimeConfig) return;
+    if (lastBoundaryUriRef.current === realtimeConfig.boundaryUri) {
+      return;
+    }
+    lastBoundaryUriRef.current = realtimeConfig.boundaryUri;
+    void realtimeRefetch().catch(error => {
+      console.warn('[BoundaryPreview] refetch failed', error);
+    });
+  }, [realtimeConfig, realtimeRefetch]);
 
   useEffect(() => {
     return () => {
       sdpppSDK.plugins.photoshop.manageGuides({ action: 'clear' }).catch(() => undefined);
     };
   }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      if (!boundary) {
-        if (!cancelled) {
-          setThumbnailUrl(null);
-        }
-        return;
-      }
-      try {
-        const res = await sdpppSDK.plugins.photoshop.getImage({
-          boundary,
-          content: 'canvas',
-          imageSize: 192,
-          imageQuality: previewQuality,
-          cropBySelection: 'no',
-        } as any);
-        let thumb = (res as any)?.thumbnail;
-        if (!thumb && (res as any)?.resource) {
-          try {
-            const thumbRes = await (sdpppSDK.plugins.photoshop as any)?.getThumbnail?.({
-              resource: (res as any).resource,
-              maxSize: 192,
-            });
-            thumb = thumbRes?.thumbnail ?? thumb;
-          } catch (err) {
-            console.warn('[WorkflowBoundaryPreview] getThumbnail failed', err);
-          }
-        }
-        if (!cancelled) {
-          setThumbnailUrl(thumb ?? null);
-        }
-        if (typeof (res as any)?.resource === 'string') {
-          try {
-            await (sdpppSDK.plugins.photoshop as any)?.deleteDownloadedImage?.({ resources: [(res as any).resource] });
-          } catch (err) {
-            console.warn('[WorkflowBoundaryPreview] deleteDownloadedImage failed', err);
-          }
-        }
-      } catch (error) {
-        console.warn('Failed to load boundary preview:', error);
-        if (!cancelled) {
-          setThumbnailUrl(null);
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [activeDocumentID, boundary, canvasStateID, previewQuality, selectionStateID]);
 
   const handleClick = useCallback(async () => {
     try {
@@ -234,7 +253,9 @@ export const BoundaryPreview: React.FC<BoundaryPreviewProps> = ({ previewQuality
 
   const previewClassNames = [
     'workflow-boundary-preview',
-    !thumbnailUrl && 'workflow-boundary-preview-empty',
+    !previewUrl && 'workflow-boundary-preview-empty',
+    realtimeLoading && 'workflow-boundary-preview-loading',
+    realtimeError && !previewUrl && 'workflow-boundary-preview-error',
     isHovered && 'workflow-boundary-preview-hovered',
   ]
     .filter(Boolean)
@@ -252,9 +273,9 @@ export const BoundaryPreview: React.FC<BoundaryPreviewProps> = ({ previewQuality
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
-        {thumbnailUrl ? (
+        {previewUrl ? (
           <img
-            src={thumbnailUrl}
+            src={previewUrl}
             alt={translate('boundary.preview_alt', { defaultMessage: 'Boundary preview' })}
           />
         ) : (

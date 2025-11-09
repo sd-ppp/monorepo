@@ -105,16 +105,19 @@ async function materializeUploadInput(uploadInput: UploadPassInput, signal?: Abo
   }
 
   const buffer = base64ToArrayBuffer(dataPart);
-  const fileName = ensureFileName(uploadInput.fileName, resolvedMime);
+  // Prefer caller-provided mimeType (e.g., force PNG to preserve alpha),
+  // otherwise fall back to plugin-reported type.
+  const preferredMime = uploadInput.mimeType ?? resolvedMime;
+  const fileName = ensureFileName(uploadInput.fileName, preferredMime);
 
   return {
     type: 'buffer',
     resource: {
       data: buffer,
-      mimeType: resolvedMime ?? uploadInput.mimeType,
+      mimeType: preferredMime,
     },
     fileName,
-    mimeType: resolvedMime ?? uploadInput.mimeType,
+    mimeType: preferredMime,
     resourceId: resourceHandle,
   };
 }
@@ -142,6 +145,24 @@ export function UploadPassProvider({ children, uploader }: UploadPassProviderPro
         try {
           const rawUploadInput = await pass.getUploadFile(abortController.signal);
           const uploadInput = await materializeUploadInput(rawUploadInput, abortController.signal);
+          try {
+            const log = sdpppSDK.logger.extend('upload-pass');
+            log('prepared', {
+              type: uploadInput.type,
+              fileName: uploadInput.fileName,
+              mimeType: uploadInput.mimeType,
+              hasResourceId: !!uploadInput.resourceId,
+              resourceId: uploadInput.resourceId ?? null,
+            });
+            // eslint-disable-next-line no-console
+            console.debug('[UploadPass] prepared', {
+              type: uploadInput.type,
+              fileName: uploadInput.fileName,
+              mimeType: uploadInput.mimeType,
+              hasResourceId: !!uploadInput.resourceId,
+              resourceId: uploadInput.resourceId ?? null,
+            });
+          } catch {}
           const fileURL = await uploader(uploadInput, abortController.signal);
           if (pass.onUploaded && !abortController.signal.aborted) {
             await pass.onUploaded(fileURL);

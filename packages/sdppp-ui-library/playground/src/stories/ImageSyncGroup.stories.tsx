@@ -65,7 +65,7 @@ export const Default: Story = {
         buttons={buttons}
         onSync={async (id) => handleSync(id)}
         onAutoSyncChange={() => {}}
-        buttonWidth={140}
+        buttonSize={140}
       />
     );
   },

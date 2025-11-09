@@ -16,6 +16,9 @@ export class SDPPPRunningHub extends Client<{
     super(config);
   }
 
+  // Simple in-module store to keep latest nodeInfoList per webappId
+  private static nodeInfoListStore: Record<string, any[] | undefined> = {};
+
   private getBaseHost(): string {
     const locale = getCurrentLanguage();
     return locale === 'en-US' ? 'www.runninghub.ai' : 'www.runninghub.cn';
@@ -94,6 +97,12 @@ export class SDPPPRunningHub extends Client<{
       // {"code":0,"msg":"success","data":{"curl":"curl --location --request POST 'https://www.runninghub.cn/task/openapi/ai-app/run' \\\n--header 'Host: www.runninghub.cn' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    \"webappId\": \"null\",\n    \"apiKey\": \"4b80b05c1f724f8fb3958333a982ad58\",\n    \"nodeInfoList\": [\n        {\n            \"nodeId\": \"39\",\n            \"fieldName\": \"image\",\n            \"fieldValue\": \"a293d89506f9c484f4ea5695f93024a80cd62ef98f4ee4543faba357536b37ec.jpg\",\n            \"description\": \"上传图像\"\n        },\n        {\n            \"nodeId\": \"37\",\n            \"fieldName\": \"model\",\n            \"fieldValue\": \"flux-kontext-pro\",\n            \"description\": \"模型切换\"\n        },\n        {\n            \"nodeId\": \"37\",\n            \"fieldName\": \"aspect_ratio\",\n            \"fieldValue\": \"match_input_image\",\n            \"description\": \"输出比例\"\n        },\n        {\n            \"nodeId\": \"52\",\n            \"fieldName\": \"prompt\",\n            \"fieldValue\": \"给这个女人的发型变成齐耳短发,\",\n            \"description\": \"图像编辑文本输入框\"\n        }\n    ]\n}'","nodeInfoList":[{"nodeId":"39","nodeName":"LoadImage","fieldName":"image","fieldValue":"a293d89506f9c484f4ea5695f93024a80cd62ef98f4ee4543faba357536b37ec.jpg","fieldData":"[[\"bd7129b7707661dc1f37ec6a00af5605cca6d18ea51d0d37e26e3ff0d3bdb515.png\", \"e8db2c11b83f0698ff0afcae9fbb802fa038ec228ba4ee84b7f25cbacc673321.png\", \"example.png\", \"keep_this_dic\"], {\"image_upload\": true}]","fieldType":"IMAGE","description":"上传图像","descriptionEn":"Upload image"},{"nodeId":"37","nodeName":"RH_ComfyFluxKontext","fieldName":"model","fieldValue":"flux-kontext-pro","fieldData":"[{\"name\":\"flux-kontext-pro\",\"index\":\"flux-kontext-pro\",\"description\":\"flux-kontext-pro 模型（默认）\"},{\"name\":\"flux-kontext-max\",\"index\":\"flux-kontext-max\",\"description\":\"flux-kontext-maX 模型\"},{\"default\":\"flux-kontext-pro\",\"description\":\"忽略\"}]","fieldType":"LIST","description":"模型切换","descriptionEn":"Model switch"},{"nodeId":"37","nodeName":"RH_ComfyFluxKontext","fieldName":"aspect_ratio","fieldValue":"match_input_image","fieldData":"[{\"name\":\"match_input_image\",\"index\":\"match_input_image\",\"description\":\"匹配上传图像比例\"},{\"name\":\"1:1\",\"index\":\"1:1\",\"description\":\"1:1 正方形，适配社交媒体图文 （Instagram/小红书）\"},{\"name\":\"16:9\",\"index\":\"16:9\",\"description\":\"16:9 横版宽屏，主流视频平台（电视 / YouTube）\"},{\"name\":\"9:16\",\"index\":\"9:16\",\"description\":\"9:16 竖版长屏，适配抖音等短视频竖屏\"},{\"name\":\"4:3\",\"index\":\"4:3\",\"description\":\"4:3 传统比例，老式屏幕 / 教育课件\"},{\"name\":\"3:4\",\"index\":\"3:4\",\"description\":\"3:4 竖版构图，人像摄影 / 竖版海报\"},{\"name\":\"3:2\",\"index\":\"3:2\",\"description\":\"3:2 胶片经典比例，人文风景摄影\"},{\"name\":\"2:3\",\"index\":\"2:3\",\"description\":\"2:3 纵向延伸，书籍封面 / 长图设计\"},{\"name\":\"4:5\",\"index\":\"4:5\",\"description\":\"4:5 手机竖屏适配，移动端拍摄 / 广告\"},{\"name\":\"5:4\",\"index\":\"5:4\",\"description\":\"5:4 横向拓展，艺术摄影 / 杂志封面\"},{\"name\":\"21:9\",\"index\":\"21:9\",\"description\":\"21:9 超宽屏，电影 / 游戏全景场景\"},{\"name\":\"9:21\",\"index\":\"9:21\",\"description\":\"9:21 极端竖版，短视频创意分镜\"},{\"name\":\"2:1\",\"index\":\"2:1\",\"description\":\"2:1 横向长条，横幅海报 / 网页 Banner\"},{\"name\":\"1:2\",\"index\":\"1:2\",\"description\":\"1:2 纵向长条，垂直网页 / 手机长图\"},{\"default\":\"match_input_image\",\"description\":\"忽略\"}]","fieldType":"LIST","description":"输出比例","descriptionEn":"Output ratio"},{"nodeId":"52","nodeName":"RH_Translator","fieldName":"prompt","fieldValue":"给这个女人的发型变成齐耳短发,","fieldData":"[\"STRING\", {\"default\": \"\", \"multiline\": true}]","fieldType":"STRING","description":"图像编辑文本输入框","descriptionEn":"Image editing text input box"}]}}
       const { widgetableNodes, defaultInput } = this.convertFormDataToNodes(formData.data);
 
+      // Cache nodeInfoList for run() usage
+      try {
+        const rawList = Array.isArray(formData?.data?.nodeInfoList) ? formData.data.nodeInfoList : undefined;
+        SDPPPRunningHub.nodeInfoListStore[webappId] = rawList;
+      } catch {}
+
       return {
         widgetableNodes,
         defaultInput,
@@ -154,12 +163,18 @@ export class SDPPPRunningHub extends Client<{
         throw new DOMException('Task creation aborted', 'AbortError');
       }
 
-      // 动态导入store以避免循环依赖
-      const { runninghubStore } = await import('./renderer/runninghub.store');
-      const { currentNodeInfoList } = runninghubStore.getState();
-
+      // Ensure nodeInfoList is available (fetch on-demand)
+      let currentNodeInfoList = SDPPPRunningHub.nodeInfoListStore[webappId];
       if (!currentNodeInfoList || currentNodeInfoList.length === 0) {
-        const errorMsg = 'run API failed - nodeInfoList is required for task execution';
+        try {
+          await this.getNodes(webappId);
+          currentNodeInfoList = SDPPPRunningHub.nodeInfoListStore[webappId];
+        } catch (e) {
+          // ignore; handled below
+        }
+      }
+      if (!currentNodeInfoList || currentNodeInfoList.length === 0) {
+        const errorMsg = 'run API failed - nodeInfoList unavailable. Please call getNodes() first.';
         log('run error', { webappId, error: 'nodeInfoList empty', url: apiUrl });
         throw new Error(errorMsg);
       }

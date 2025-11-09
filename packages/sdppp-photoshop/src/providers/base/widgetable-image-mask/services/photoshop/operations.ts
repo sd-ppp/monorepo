@@ -7,8 +7,6 @@ interface CaptureContext {
   imageSize: number;
 }
 
-export const DEFAULT_THUMBNAIL_SIZE = 192;
-
 export const resolveWorkBoundaryContext = (): CaptureContext => {
   const activeDocumentID =
     sdpppSDK.stores.PhotoshopStore.getState().activeDocumentID;
@@ -60,39 +58,17 @@ export const captureWorkBoundaryImage = async (
   });
 
   const resource: string | undefined = result?.resource;
-  const thumbnail: string | undefined = result?.thumbnail;
-
   GlobalImageStore.getState().setSlotPrimaryResource(
     componentId,
     index,
     resource ?? null
   );
 
-  if (thumbnail) {
-    GlobalImageStore.getState().setSlotThumbnail(componentId, index, thumbnail);
-  } else if (resource) {
-    try {
-      const thumbRes = await sdpppSDK.plugins.photoshop.getThumbnail({
-        resource,
-        maxSize: DEFAULT_THUMBNAIL_SIZE,
-      });
-      if (thumbRes?.thumbnail) {
-        GlobalImageStore.getState().setSlotThumbnail(
-          componentId,
-          index,
-          thumbRes.thumbnail
-        );
-      }
-    } catch (error) {
-      console.warn('[captureWorkBoundaryImage] getThumbnail failed', error);
-    }
-  }
-
   GlobalImageStore.getState().markSlotCompositeDirty(componentId, index, true);
 
   return {
     resource,
-    thumbnail: thumbnail ?? undefined,
+    thumbnail: result?.thumbnail ?? undefined,
     width: result?.width,
     height: result?.height,
   };
@@ -111,36 +87,18 @@ export const captureAutoImage = async (
     boundary,
     imageSize,
     imageQuality: 1,
-    cropBySelection: config.alt ? 'negative' : 'no',
+    cropBySelection: 'no',
     layer_identify: config.layerIdentify ?? undefined,
   });
 
   const resource: string | undefined = result?.resource;
-  const thumbnail: string | undefined = result?.thumbnail;
-
   GlobalImageStore.getState().setSlotPrimaryResource(componentId, index, resource ?? null);
-
-  if (thumbnail) {
-    GlobalImageStore.getState().setSlotThumbnail(componentId, index, thumbnail);
-  } else if (resource) {
-    try {
-      const thumbRes = await sdpppSDK.plugins.photoshop.getThumbnail({
-        resource,
-        maxSize: DEFAULT_THUMBNAIL_SIZE,
-      });
-      if (thumbRes?.thumbnail) {
-        GlobalImageStore.getState().setSlotThumbnail(componentId, index, thumbRes.thumbnail);
-      }
-    } catch (error) {
-      console.warn('[captureAutoImage] getThumbnail failed', error);
-    }
-  }
 
   GlobalImageStore.getState().markSlotCompositeDirty(componentId, index, true);
 
   return {
     resource,
-    thumbnail: thumbnail ?? undefined,
+    thumbnail: result?.thumbnail ?? undefined,
     width: result?.width,
     height: result?.height,
   };
@@ -196,84 +154,6 @@ export const captureCurrentMask = async (
   };
 };
 
-export const ensureCompositeThumbnail = async (
-  componentId: string,
-  index: number
-): Promise<string | undefined> => {
-  const slot = GlobalImageStore.getState().getSlot(componentId, index);
-  if (!slot) return undefined;
-
-  const {
-    primaryResourceId,
-    maskResourceId,
-    compositeDirty,
-    compositeThumbnail,
-    compositeResourceId,
-  } = slot;
-
-  if (!primaryResourceId || !maskResourceId) {
-    return compositeThumbnail ?? slot.thumbnail;
-  }
-
-  if (!compositeDirty) {
-    if (compositeThumbnail) {
-      return compositeThumbnail;
-    }
-
-    if (compositeResourceId) {
-      try {
-        const res = await sdpppSDK.plugins.photoshop.getThumbnail({
-          resource: compositeResourceId,
-          maxSize: DEFAULT_THUMBNAIL_SIZE,
-        });
-        if (res?.thumbnail) {
-          GlobalImageStore.getState().setSlotCompositeThumbnail(
-            componentId,
-            index,
-            res.thumbnail
-          );
-          return res.thumbnail;
-        }
-      } catch (error) {
-        console.warn('[ensureCompositeThumbnail] cached composite thumbnail failed', error);
-        GlobalImageStore.getState().markSlotCompositeDirty(componentId, index, true);
-      }
-    }
-  }
-
-  try {
-    const composite = await composeImageWithMask(componentId, index);
-    if (composite.thumbnail) {
-      GlobalImageStore.getState().setSlotCompositeThumbnail(
-        componentId,
-        index,
-        composite.thumbnail
-      );
-      return composite.thumbnail;
-    }
-
-    if (composite.resource) {
-      const res = await sdpppSDK.plugins.photoshop.getThumbnail({
-        resource: composite.resource,
-        maxSize: DEFAULT_THUMBNAIL_SIZE,
-      });
-      if (res?.thumbnail) {
-        GlobalImageStore.getState().setSlotCompositeThumbnail(
-          componentId,
-          index,
-          res.thumbnail
-        );
-        return res.thumbnail;
-      }
-    }
-  } catch (error) {
-    console.warn('[ensureCompositeThumbnail] compose failed', error);
-    GlobalImageStore.getState().markSlotCompositeDirty(componentId, index, true);
-  }
-
-  return GlobalImageStore.getState().getSlot(componentId, index)?.compositeThumbnail ?? slot.thumbnail;
-};
-
 export const composeImageWithMask = async (
   componentId: string,
   index: number
@@ -305,32 +185,11 @@ export const composeImageWithMask = async (
 
     GlobalImageStore.getState().setSlotCompositeResource(componentId, index, result.resource);
 
-    let thumbnail = result?.thumbnail;
-    if (!thumbnail) {
-      try {
-        const res = await sdpppSDK.plugins.photoshop.getThumbnail({
-          resource: result.resource,
-          maxSize: DEFAULT_THUMBNAIL_SIZE,
-        });
-        if (res?.thumbnail) {
-          thumbnail = res.thumbnail;
-        }
-      } catch (thumbError) {
-        console.warn('[composeImageWithMask] thumbnail fetch failed', thumbError);
-      }
-    }
-
-    if (thumbnail) {
-      GlobalImageStore.getState().setSlotCompositeThumbnail(componentId, index, thumbnail);
-      GlobalImageStore.getState().markSlotCompositeDirty(componentId, index, false);
-    } else {
-      GlobalImageStore.getState().setSlotCompositeThumbnail(componentId, index, undefined);
-      GlobalImageStore.getState().markSlotCompositeDirty(componentId, index, true);
-    }
+    GlobalImageStore.getState().markSlotCompositeDirty(componentId, index, false);
 
     return {
       resource: result.resource,
-      thumbnail: thumbnail ?? undefined,
+      thumbnail: result?.thumbnail ?? undefined,
       width: result?.width,
       height: result?.height,
     };
