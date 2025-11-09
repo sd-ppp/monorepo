@@ -8,7 +8,7 @@ import {
   LOCAL_IMAGE_PACK_LAYOUT_CONSTANTS,
   type LocalImagePackPreviewCell,
 } from '../../features/local-image-pack/layout';
-import { UploadIndicator, type UploadIndicatorStatus } from '../shared/UploadIndicator';
+import { UploadIndicator, type UploadIndicatorStatus } from '../common/UploadIndicator';
 
 const {
   WRAPPER_GAP,
@@ -32,6 +32,7 @@ export interface LocalImagePackLayoutProps {
   uploadErrorMessage?: React.ReactNode;
   onUploadRetry?: () => void;
   onUploadDismiss?: () => void;
+  uploadProgress?: { current: number; total: number };
   onAdd: () => void;
   onClear: () => void;
 }
@@ -45,6 +46,7 @@ export const LocalImagePackLayout: React.FC<LocalImagePackLayoutProps> = ({
   uploadErrorMessage,
   onUploadRetry,
   onUploadDismiss,
+  uploadProgress,
   onAdd,
   onClear,
 }) => {
@@ -103,10 +105,9 @@ export const LocalImagePackLayout: React.FC<LocalImagePackLayoutProps> = ({
   const hasImages = totalItems > 0;
   const addIconSize = Math.max(16, Math.min(40, layout.tileSize * 0.35));
 
-  return (
+  const mainLayout = (
     <div
       ref={rootRef}
-      data-widgetable-id={widgetableId}
       style={{
         display: 'flex',
         alignItems: 'stretch',
@@ -264,13 +265,33 @@ export const LocalImagePackLayout: React.FC<LocalImagePackLayoutProps> = ({
             </div>
           </Image.PreviewGroup>
         )}
-        <UploadIndicator
-          status={uploadStatus}
-          errorMessage={uploadErrorMessage}
-          onRetry={onUploadRetry}
-          onDismiss={onUploadDismiss}
-        />
       </div>
+    </div>
+  );
+
+  return (
+    <div
+      data-widgetable-id={widgetableId}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 8,
+        width: '100%',
+      }}
+    >
+      {mainLayout}
+      <UploadIndicator
+        status={uploadStatus}
+        errorMessage={uploadErrorMessage}
+        onRetry={onUploadRetry}
+        onDismiss={onUploadDismiss}
+        progressCurrent={uploadProgress?.current}
+        progressTotal={uploadProgress?.total}
+        containerStyle={{
+          position: 'static',
+          width: '100%',
+        }}
+      />
     </div>
   );
 };

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useArgs } from '@storybook/preview-api';
 import { ImageSelector } from '@sdppp/widget-image-mask-ui/components/ImageSelector';
 import type { Meta, StoryObj } from '@storybook/react';
 
@@ -29,9 +30,23 @@ export default meta;
 type Story = StoryObj<typeof ImageSelector>;
 
 export const SingleImage: Story = {
-  render: args => (
-    <div style={{ width: 320, maxWidth: 320 }}>
-      <ImageSelector {...args} />
-    </div>
-  ),
+  render: args => {
+    const [{ value }, updateArgs] = useArgs<{
+      value: string[];
+    }>();
+
+    const handleValueChange = (next: string[]) => {
+      updateArgs({ value: next });
+    };
+
+    return (
+      <div style={{ width: 320, maxWidth: 320 }}>
+        <ImageSelector
+          {...args}
+          value={value}
+          onValueChange={handleValueChange}
+        />
+      </div>
+    );
+  },
 };

@@ -3,7 +3,7 @@ import { ImagePreviewSplitList, SyncButton } from '@sdppp/ui-library';
 import { Button } from 'antd';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Plus } from 'lucide-react';
-import { UploadableImagePreviewSplit } from './shared/UploadableImagePreviewSplit';
+import { UploadableImagePreviewSplit } from './common/UploadableImagePreviewSplit';
 
 interface MultiImageSelectorProps {
   widgetableId: string;
@@ -50,6 +50,9 @@ export const MultiImageSelector: React.FC<MultiImageSelectorProps> = ({
 
   const [uploadingCounts, setUploadingCounts] = useState<Record<number, number>>({});
   const [uploadErrors, setUploadErrors] = useState<Record<number, string>>({});
+  const [uploadProgressByIndex, setUploadProgressByIndex] = useState<
+    Record<number, { current: number; total: number }>
+  >({});
 
   const setErrorForIndex = useCallback((index: number, message: string | null) => {
     setUploadErrors(prev => {
@@ -97,10 +100,16 @@ export const MultiImageSelector: React.FC<MultiImageSelectorProps> = ({
   const handleAddFromFile = useCallback(
     async (index: number) => {
       markUploadingStart(index);
+      setUploadProgressByIndex(prev => ({
+        ...prev,
+        [index]: { current: 0, total: 1 },
+      }));
       setErrorForIndex(index, null);
+      let encounteredError = false;
       try {
         const createResult = await actions['resource.file.createFromLocal']();
         if (!createResult || createResult.error) {
+          encounteredError = true;
           const message =
             (typeof createResult?.error === 'string' && createResult.error.trim().length
               ? createResult.error.trim()
@@ -110,6 +119,7 @@ export const MultiImageSelector: React.FC<MultiImageSelectorProps> = ({
         }
         const resource = createResult.resource;
         if (!resource) {
+          encounteredError = true;
           setErrorForIndex(index, t('image.upload.error', { defaultValue: '上传失败，请重试' }));
           return;
         }
@@ -130,17 +140,38 @@ export const MultiImageSelector: React.FC<MultiImageSelectorProps> = ({
         base[index] = resource;
         emitValue(base);
         setErrorForIndex(index, null);
+        setUploadProgressByIndex(prev => ({
+          ...prev,
+          [index]: { current: 1, total: prev[index]?.total ?? 1 },
+        }));
       } catch (err) {
         const message =
           err instanceof Error && err.message
             ? err.message
             : t('image.upload.error', { defaultValue: '上传失败，请重试' });
         setErrorForIndex(index, message);
+        encounteredError = true;
       } finally {
         markUploadingEnd(index);
+        if (!encounteredError) {
+          setUploadProgressByIndex(prev => {
+            if (!(index in prev)) return prev;
+            const { [index]: _removed, ...rest } = prev;
+            return rest;
+          });
+        }
       }
     },
-    [actions, emitValue, value, markUploadingStart, markUploadingEnd, setErrorForIndex, t],
+    [
+      actions,
+      emitValue,
+      value,
+      markUploadingStart,
+      markUploadingEnd,
+      setErrorForIndex,
+      t,
+      setUploadProgressByIndex,
+    ],
   );
 
   const items = useMemo(() => {
@@ -149,6 +180,7 @@ export const MultiImageSelector: React.FC<MultiImageSelectorProps> = ({
       const isUploading = (uploadingCounts[index] ?? 0) > 0;
        const errorMessage = uploadErrors[index];
        const uploadStatus = errorMessage ? 'error' : isUploading ? 'uploading' : 'idle';
+      const progress = uploadProgressByIndex[index];
       const leftNode = (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {/* Advanced hint + modify (fixed total width 160) */}
@@ -218,19 +250,39 @@ export const MultiImageSelector: React.FC<MultiImageSelectorProps> = ({
           left={leftNode}
           imageUrl={imageUrl}
           background="checkerboard"
+          indicatorPlacement="below"
           uploadStatus={uploadStatus}
           uploadIndicatorErrorMessage={errorMessage}
+          uploadIndicatorProgressCurrent={progress?.current}
+          uploadIndicatorProgressTotal={progress?.total}
           onUploadDismiss={
             errorMessage
               ? () => {
                   setErrorForIndex(index, null);
+                  setUploadProgressByIndex(prev => {
+                    if (!(index in prev)) return prev;
+                    const { [index]: _removed, ...rest } = prev;
+                    return rest;
+                  });
                 }
               : undefined
           }
         />
       );
     });
-  }, [slots, previews, t, advancedHintLines, handleAddFromFile, widgetableId, uploadingCounts, uploadErrors, setErrorForIndex]);
+  }, [
+    slots,
+    previews,
+    t,
+    advancedHintLines,
+    handleAddFromFile,
+    widgetableId,
+    uploadingCounts,
+    uploadErrors,
+    setErrorForIndex,
+    uploadProgressByIndex,
+    setUploadProgressByIndex,
+  ]);
 
   const showAddRemove = limit !== 1;
 

@@ -35,7 +35,7 @@ export const createMockActions = (deps: FactoryDeps): WidgetImageMaskActions => 
     'resource.boundary.normalize': payload => normalizeBoundary(ctx, payload),
     'resource.thumbnail': handleThumbnail,
     'resource.file.createFromCBM': params => createFromCBM(ctx, params),
-    'resource.file.createFromLocal': () => createFromLocal(ctx),
+    'resource.file.createFromLocal': params => createFromLocal(ctx, params),
   };
 };
 

@@ -7,7 +7,7 @@ const meta: Meta<typeof SingleVideoSelector> = {
   component: SingleVideoSelector,
   args: {
     widgetableId: 'demo-single-video-selector',
-    value: ['https://picsum.photos/seed/sdppp-video/400/300'],
+    value: ['https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4'],
   },
   argTypes: {
     value: {

@@ -2,7 +2,7 @@ import { useWidgetText } from '../context/WidgetImageMaskContext';
 import { ImagePreviewSplitList, SyncButton } from '@sdppp/ui-library';
 import React, { useMemo } from 'react';
 import { Plus } from 'lucide-react';
-import { UploadableImagePreviewSplit } from './shared/UploadableImagePreviewSplit';
+import { UploadableImagePreviewSplit } from './common/UploadableImagePreviewSplit';
 
 interface MaskSelectorProps {
   widgetableId: string;

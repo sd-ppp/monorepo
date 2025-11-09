@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   useWidgetLogger,
   useWidgetText,
@@ -37,6 +37,10 @@ export const LocalImagePackSelector: React.FC<LocalImagePackSelectorProps> = ({
   const [previewCache, setPreviewCache] = useState<Record<string, string>>({});
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'error'>('idle');
   const [uploadErrorMessage, setUploadErrorMessage] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number }>({
+    current: 0,
+    total: 0,
+  });
 
   const uploadErrorLabel = useMemo(
     () => t('image.upload.error', { defaultValue: '上传失败，请重试' }),
@@ -59,10 +63,16 @@ export const LocalImagePackSelector: React.FC<LocalImagePackSelectorProps> = ({
   const handleAddFromFile = useCallback(async () => {
     setUploadErrorMessage(null);
     setUploadStatus('uploading');
+    setUploadProgress({ current: 0, total: 0 });
     try {
       const selection = await selectLocalImages();
       if (!selection.items.length && !selection.hasError) {
         return;
+      }
+
+      const totalForProgress = Math.max(selection.items.length, selection.hasError ? 1 : 0);
+      if (totalForProgress > 0) {
+        setUploadProgress({ current: 0, total: totalForProgress });
       }
 
       if (selection.items.length) {
@@ -79,6 +89,7 @@ export const LocalImagePackSelector: React.FC<LocalImagePackSelectorProps> = ({
       const base = Array.isArray(value) ? value.filter(Boolean) : [];
       const appended: string[] = [];
       let encounteredError = selection.hasError;
+      let completedCount = 0;
 
       if (selection.hasError) {
         recordUploadError();
@@ -108,12 +119,17 @@ export const LocalImagePackSelector: React.FC<LocalImagePackSelectorProps> = ({
             if (item.preview) {
               setPreviewCache(prev => ({ ...prev, [normalized]: item.preview as string }));
             }
-            logger('LocalImagePackSelector emitValue', [...base, ...appended]);
+            logger('LocalImagePackSelector emitValue', JSON.stringify([...base, ...appended]));
             emitValue([...base, ...appended]);
           } else {
             encounteredError = true;
             setPendingItems(curr => curr.filter(entry => entry.id !== item.resource));
             recordUploadError();
+          }
+          completedCount += 1;
+          if (totalForProgress > 0) {
+            const nextCurrent = Math.min(completedCount, totalForProgress);
+            setUploadProgress({ current: nextCurrent, total: totalForProgress });
           }
         } catch (error) {
           encounteredError = true;
@@ -123,6 +139,11 @@ export const LocalImagePackSelector: React.FC<LocalImagePackSelectorProps> = ({
             'LocalImagePackSelector upload error',
             error instanceof Error ? error.message : String(error),
           );
+          completedCount += 1;
+          if (totalForProgress > 0) {
+            const nextCurrent = Math.min(completedCount, totalForProgress);
+            setUploadProgress({ current: nextCurrent, total: totalForProgress });
+          }
         }
       }
 
@@ -130,6 +151,9 @@ export const LocalImagePackSelector: React.FC<LocalImagePackSelectorProps> = ({
         setUploadStatus('error');
       } else {
         setUploadStatus('idle');
+        if (totalForProgress > 0) {
+          setUploadProgress({ current: totalForProgress, total: totalForProgress });
+        }
       }
     } catch (error) {
       recordUploadError(error);
@@ -140,7 +164,15 @@ export const LocalImagePackSelector: React.FC<LocalImagePackSelectorProps> = ({
     } finally {
       setUploadStatus(prev => (prev === 'error' ? 'error' : 'idle'));
     }
-  }, [selectLocalImages, runUploadPassOnce, value, emitValue, logger, recordUploadError]);
+  }, [
+    selectLocalImages,
+    runUploadPassOnce,
+    value,
+    emitValue,
+    logger,
+    recordUploadError,
+    setUploadProgress,
+  ]);
 
   const buttonLabel = t('image.pack.local.button', { defaultValue: '本地图片包' });
   const emptyLabel = t('image.pack.local.empty', { defaultValue: '暂无图片' });
@@ -150,8 +182,15 @@ export const LocalImagePackSelector: React.FC<LocalImagePackSelectorProps> = ({
     logger('LocalImagePackSelector clearImages');
     setUploadErrorMessage(null);
     setUploadStatus('idle');
+    setUploadProgress({ current: 0, total: 0 });
     emitValue([]);
   }, [logger, emitValue]);
+
+  useEffect(() => {
+    if (uploadStatus === 'idle' && uploadErrorMessage === null) {
+      setUploadProgress({ current: 0, total: 0 });
+    }
+  }, [uploadStatus, uploadErrorMessage]);
 
   const successItems = useMemo<LocalImagePackPreviewCell[]>(
     () =>
@@ -176,11 +215,13 @@ export const LocalImagePackSelector: React.FC<LocalImagePackSelectorProps> = ({
       emptyLabel={emptyLabel}
       uploadStatus={uploadStatus}
       uploadErrorMessage={uploadErrorMessage ?? undefined}
+      uploadProgress={uploadProgress}
       onUploadDismiss={
         uploadStatus === 'error'
           ? () => {
               setUploadErrorMessage(null);
               setUploadStatus('idle');
+              setUploadProgress({ current: 0, total: 0 });
             }
           : undefined
       }

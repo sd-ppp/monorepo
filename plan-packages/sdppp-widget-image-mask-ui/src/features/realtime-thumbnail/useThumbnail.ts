@@ -27,12 +27,19 @@ type ThumbnailVariant =
       watchedContents: ContentType[];
     };
 
-export type UseThumbnailParams = {
-  contentUri?: ContentUri;
-  boundaryUri: BoundaryUri;
-  maskUri?: MaskUri | string;
-  fileUri?: FileUri;
-};
+export type UseThumbnailParams =
+  | {
+      contentUri: ContentUri;
+      boundaryUri: BoundaryUri;
+      maskUri?: MaskUri | string;
+      fileUri?: FileUri;
+    }
+  | {
+      fileUri: FileUri;
+      contentUri?: ContentUri;
+      boundaryUri?: BoundaryUri;
+      maskUri?: MaskUri | string;
+    };
 
 export interface UseThumbnailSnapshot {
   data: string | null;
@@ -50,10 +57,12 @@ export const useThumbnail = (params: UseThumbnailParams): UseThumbnailResult => 
   const realtimeSubscriber = useWidgetRealtimeSubscriber();
   const debug = useWidgetDebug();
 
-  const fileUri = 'fileUri' in params ? params.fileUri : undefined;
-  const contentUri = 'contentUri' in params ? params.contentUri : undefined;
-  const boundaryUri = 'boundaryUri' in params ? params.boundaryUri : undefined;
-  const maskUri = 'maskUri' in params ? params.maskUri : undefined;
+  const {
+    fileUri,
+    contentUri,
+    boundaryUri,
+    maskUri,
+  } = params;
 
   const parsed = useMemo<{
     value: ThumbnailVariant | null;
