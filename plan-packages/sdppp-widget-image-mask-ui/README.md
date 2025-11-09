@@ -114,6 +114,7 @@ export default function Demo() {
       <MaskSelector
         widgetableId="mask-1"
         value={["https://picsum.photos/seed/sdppp-mask-1/400/300"]}
+        workBoundary="uxp://boundary/1/canvas"
       />
 
       {/* 单视频（大号 + 按钮） */}

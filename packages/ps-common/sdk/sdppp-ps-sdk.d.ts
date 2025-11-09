@@ -643,6 +643,54 @@ export declare const sdpppSDK: {
 				imageUrl?: string | undefined;
 				apiTime?: number | undefined;
 			}>;
+			"fileResource.createFromLocal": (data: {
+				types?: {
+					description?: string | undefined;
+					extensions?: string[] | undefined;
+				}[] | undefined;
+			}, signal?: AbortSignal) => Promise<{
+				error?: string | undefined;
+				width?: number | undefined;
+				height?: number | undefined;
+				thumbnail?: string | undefined;
+				resource?: string | undefined;
+				mime?: string | undefined;
+			}>;
+			"fileResource.createFromCBM": (data: {
+				options?: Record<string, unknown> | undefined;
+				contentUri?: string | undefined;
+				boundaryUri?: string | undefined;
+				maskUri?: string | undefined;
+			}, signal?: AbortSignal) => Promise<{
+				error?: string | undefined;
+				width?: number | undefined;
+				height?: number | undefined;
+				thumbnail?: string | undefined;
+				resource?: string | undefined;
+				mime?: string | undefined;
+			}>;
+			"fileResource.thumbnail": (data: {
+				resource: string;
+				maxSize?: number | undefined;
+			}, signal?: AbortSignal) => Promise<{
+				error?: string | undefined;
+				width?: number | undefined;
+				height?: number | undefined;
+				thumbnail?: string | undefined;
+			}>;
+			"boundary.normalize": (data: {
+				boundary: string;
+			}, signal?: AbortSignal) => Promise<{
+				error?: string | undefined;
+				boundary?: string | undefined;
+			}>;
+			"layer.resolve": (data: {
+				type: "content" | "mask";
+				uri: string;
+			}, signal?: AbortSignal) => Promise<{
+				error?: string | undefined;
+				uri?: string | undefined;
+			}>;
 			downloadImage: (data: {
 				url: string;
 			}, signal?: AbortSignal) => Promise<{

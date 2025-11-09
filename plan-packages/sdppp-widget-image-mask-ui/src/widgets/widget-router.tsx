@@ -69,6 +69,7 @@ const renderSelector = (
         <MaskSelector
           widgetableId={fieldInfo.id}
           value={value as string[]}
+          workBoundary={resolveWorkBoundary()}
           onValueChange={onValueChange}
         />
       );
