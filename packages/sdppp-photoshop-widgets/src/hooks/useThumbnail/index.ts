@@ -221,7 +221,13 @@ export const useThumbnail = (params: UseThumbnailParams): UseThumbnailResult => 
     } catch (thrown) {
       const failure =
         thrown instanceof Error ? thrown : new Error(String(thrown ?? 'Unknown error'));
-      logger('useThumbnail failed', failure.message);
+      logger(
+        'useThumbnail failed',
+        JSON.stringify({
+          message: failure.message,
+          stack: failure.stack,
+        }),
+      );
       if (isActiveRef.current && requestIdRef.current === requestId) {
         setError(failure);
         setIsFetching(false);

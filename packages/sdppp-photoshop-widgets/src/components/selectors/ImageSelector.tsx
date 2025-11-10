@@ -1,6 +1,7 @@
 import { ImagePreviewFrame, SyncButton } from '@sdppp/ui-library';
 import { Button, Tooltip } from 'antd';
-import { Plus, Scan, Scissors } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+import { Layers, Plus, Scan, Scissors, Upload } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   useSelectAdvancedContentSource,
@@ -36,8 +37,8 @@ interface ImageSelectorProps {
   }) => void;
 }
 
-const SECTION_SIZE = 100;
-const ACTION_BUTTON_SIZE = 50;
+const SECTION_SIZE = 120;
+const ACTION_BUTTON_SIZE = 60;
 const SYNC_BUTTON_SIZE = SECTION_SIZE;
 export const ImageSelector: React.FC<ImageSelectorProps> = ({
   widgetableId,
@@ -117,8 +118,6 @@ export const ImageSelector: React.FC<ImageSelectorProps> = ({
       }
     }
     lastKnownValueRef.current = incoming;
-    setFileUri(prev => (incoming !== prev ? incoming : prev));
-    setContentUri('');
   }, [value]);
 
   useEffect(() => {
@@ -179,6 +178,68 @@ export const ImageSelector: React.FC<ImageSelectorProps> = ({
 
   const selectAdvancedContentSource = useSelectAdvancedContentSource();
 
+  const syncButtonIcon = useMemo(
+    () => (
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 4,
+        }}
+      >
+        <Plus size={16} strokeWidth={2} />
+        <span
+          style={{
+            width: 3,
+            height: 3,
+            borderRadius: '50%',
+            backgroundColor: 'var(--ant-color-text-tertiary, rgba(0, 0, 0, 0.45))',
+          }}
+        />
+        <Layers size={16} strokeWidth={2} />
+        <span
+          style={{
+            width: 3,
+            height: 3,
+            borderRadius: '50%',
+            backgroundColor: 'var(--ant-color-text-tertiary, rgba(0, 0, 0, 0.45))',
+          }}
+        />
+        <Upload size={16} strokeWidth={2} />
+      </div>
+    ),
+    [],
+  );
+
+  const createIconWithPlusOverlay = useCallback(
+    (BaseIcon: LucideIcon) => (
+      <span
+        style={{
+          position: 'relative',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: 24,
+          height: 24,
+        }}
+      >
+        <BaseIcon size={20} strokeWidth={2} />
+        <Plus
+          size={14}
+          strokeWidth={2}
+          style={{
+            position: 'absolute',
+            right: -5,
+            bottom: -5,
+          }}
+        />
+      </span>
+    ),
+    [],
+  );
+
   const { sync, rebuildMask, normalizeBoundary } = useImageCbmActions({
     actions,
     contentUri: derivedContentUri,
@@ -194,7 +255,11 @@ export const ImageSelector: React.FC<ImageSelectorProps> = ({
 
   const syncRef = useRef(sync);
   syncRef.current = sync;
-  const pendingAutoOverridesRef = useRef<{ maskUri?: string | null; boundaryUri?: string | null } | null>(null);
+  const pendingAutoOverridesRef = useRef<{
+    contentUri?: string | null;
+    maskUri?: string | null;
+    boundaryUri?: string | null;
+  } | null>(null);
 
   const { addUploadPass, removeUploadPass, runUploadPassOnce } = useWidgetUploadPassHandlers();
   const autoUploadPassRef = useRef<{ pass: WidgetUploadPass } | null>(null);
@@ -229,6 +294,7 @@ export const ImageSelector: React.FC<ImageSelectorProps> = ({
       }
       setUploadError(null);
       lastKnownValueRef.current = normalizedUploaded;
+      setFileUri(normalizedUploaded);
       emitValue([normalizedUploaded]);
       logger(
         'ImageSelector upload pass success',
@@ -246,7 +312,12 @@ export const ImageSelector: React.FC<ImageSelectorProps> = ({
       setUploadError(resolvedMessage);
       logger(
         'ImageSelector upload pass error',
-        JSON.stringify({ resource, mode, message: resolvedMessage }),
+        JSON.stringify({
+          resource,
+          mode,
+          message: resolvedMessage,
+          stack: error instanceof Error ? error.stack : undefined,
+        }),
       );
     },
     [logger, setUploadError, uploadErrorLabel],
@@ -427,9 +498,18 @@ export const ImageSelector: React.FC<ImageSelectorProps> = ({
   );
 
   const handleSync = useCallback(
-    async (overrides?: { maskUri?: string | null; boundaryUri?: string | null }) => {
+    async (overrides?: {
+      contentUri?: string | null;
+      maskUri?: string | null;
+      boundaryUri?: string | null;
+    }) => {
       if (auto) {
-        pendingAutoOverridesRef.current = overrides ?? null;
+        if (overrides) {
+          pendingAutoOverridesRef.current = {
+            ...(pendingAutoOverridesRef.current ?? {}),
+            ...overrides,
+          };
+        }
         tryRegisterAutoUploadPass();
         return;
       }
@@ -448,7 +528,7 @@ export const ImageSelector: React.FC<ImageSelectorProps> = ({
           pendingManualFileRef.current = false;
           setContentUri(normalized);
           setFileUri('');
-          await handleSync();
+          await handleSync({ contentUri: normalized });
         }
       } else if (selection?.fileUri) {
         const normalized = selection.fileUri.trim();
@@ -463,7 +543,10 @@ export const ImageSelector: React.FC<ImageSelectorProps> = ({
     } catch (error) {
       logger(
         'ImageSelector selectAdvancedContentSource error',
-        JSON.stringify({ message: error instanceof Error ? error.message : String(error) }),
+        JSON.stringify({
+          message: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+        }),
       );
     }
   }, [handleResourceUpload, handleSync, logger, selectAdvancedContentSource]);
@@ -552,7 +635,7 @@ export const ImageSelector: React.FC<ImageSelectorProps> = ({
               }}
               title={addPrimaryLabel}
             >
-              <Plus size={18} strokeWidth={2} />
+              {syncButtonIcon}
             </span>
           </SyncButton>
         </div>
@@ -596,7 +679,7 @@ export const ImageSelector: React.FC<ImageSelectorProps> = ({
             >
               <Button
                 type="default"
-                icon={<Scissors size={18} strokeWidth={2} />}
+                icon={createIconWithPlusOverlay(Scissors)}
                 aria-label={cutLabel}
                 title={cutLabel}
                 style={{ ...actionButtonStyle, margin: 0 }}
@@ -618,7 +701,7 @@ export const ImageSelector: React.FC<ImageSelectorProps> = ({
             >
               <Button
                 type="default"
-                icon={<Scan size={18} strokeWidth={2} />}
+                icon={createIconWithPlusOverlay(Scan)}
                 aria-label={scanLabel}
                 title={scanLabel}
                 style={{ ...actionButtonStyle, margin: 0 }}

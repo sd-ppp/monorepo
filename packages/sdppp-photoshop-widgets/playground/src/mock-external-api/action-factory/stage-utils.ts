@@ -32,16 +32,54 @@ const cloneStage = (stage: KonvaStage): KonvaStage => {
   return Konva.Stage.create(json, container);
 };
 
+const sanitizeLayerId = (layerId: string | null | undefined): string | null => {
+  const trimmed = typeof layerId === 'string' ? layerId.trim() : '';
+  return trimmed.length ? trimmed : null;
+};
+
 export const captureStageArea = (
   stage: KonvaStage,
   rect: StageRect | null,
-  includeSelectionOverlay = false
+  includeSelectionOverlay = false,
+  options?: { isolateLayerId?: string | null }
 ): Snapshot => {
   const clone = cloneStage(stage);
   const overlays = clone.find('.selection-overlay');
   if (!includeSelectionOverlay) {
     overlays.forEach(node => node.visible(false));
   }
+
+  const isolateLayerId = sanitizeLayerId(options?.isolateLayerId);
+  if (isolateLayerId) {
+    clone.find(node => {
+      if (typeof node.hasName === 'function' && node.hasName('selection-overlay')) {
+        node.visible(false);
+        return false;
+      }
+      const type = typeof (node as { getType?: () => string }).getType === 'function'
+        ? (node as { getType: () => string }).getType()
+        : undefined;
+      if (type === 'Stage' || type === 'Layer') {
+        return false;
+      }
+      if (typeof node.id === 'function') {
+        const nodeId = node.id();
+        if (nodeId === isolateLayerId) {
+          node.visible(true);
+          return false;
+        }
+        if (nodeId) {
+          node.visible(false);
+          return false;
+        }
+      }
+      if (typeof (node as { visible?: (visible: boolean) => unknown }).visible === 'function') {
+        (node as { visible: (visible: boolean) => unknown }).visible(false);
+      }
+      return false;
+    });
+  }
+
   clone.batchDraw();
 
   const target = normalizeRect(rect ?? fullStageRect(stage));

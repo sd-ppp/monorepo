@@ -4,13 +4,14 @@
   "description": "Shared resource management utilities for SDPPP.",
   "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
     "clean": "rimraf dist",
     "lint": "tsc -p tsconfig.json --noEmit",
     "test": "vitest"
   },
   "dependencies": {
     "@sdppp/common": "workspace:*",
+    "@sdppp/ps-uxp": "workspace:*",
+    "@sdppp/mcp-mesh-photoshop": "workspace:*",
     "buffer": "^6.0.3",
     "jimp": "^1.6.0",
     "uuid": "^11.1.0",

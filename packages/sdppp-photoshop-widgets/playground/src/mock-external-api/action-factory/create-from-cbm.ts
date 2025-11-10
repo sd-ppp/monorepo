@@ -1,5 +1,5 @@
 import type { FileResourceCreateFromCBMParams, FileResourceMaterializeResult } from '../../../src/context/WidgetImageMaskContext';
-import { createContentSnapshot, resolveContentRect } from './content-utils';
+import { createContentSnapshot, resolveContentArea } from './content-utils';
 import { createMaskSnapshot, resolveMaskRect, resolveMaskSnapshotFromResource, applyMaskToSnapshot } from './mask-utils';
 import { parseBoundaryRect } from './boundary-utils';
 import { cropSnapshot, ensurePositiveRect, intersectRect, normalizeRect } from './stage-utils';
@@ -19,8 +19,9 @@ export const createFromCBM = async (
   try {
     const stage = ctx.getStage();
     const selection = ctx.getSelection();
+    const currentLayerId = ctx.getCurrentLayerId();
     const boundaryRect = params.boundaryUri
-      ? ensurePositiveRect(normalizeRect(parseBoundaryRect(stage, selection, params.boundaryUri)))
+      ? ensurePositiveRect(parseBoundaryRect(ctx, params.boundaryUri))
       : null;
 
     if (!params.contentUri) {
@@ -42,8 +43,13 @@ export const createFromCBM = async (
       return await createMaskSnapshot(stage, ctx.resourceStore, maskRect ?? null, boundaryRect ?? null);
     }
 
-    const contentRect = resolveContentRect(stage, params.contentUri, selection);
-    const contentSnapshot = createContentSnapshot(stage, contentRect);
+    const { rect: contentRect, layerId: contentLayerId } = resolveContentArea(
+      stage,
+      params.contentUri,
+      selection,
+      currentLayerId
+    );
+    const contentSnapshot = createContentSnapshot(stage, contentRect, { isolateLayerId: contentLayerId });
     const maskSnapshot = resolveMaskSnapshotFromResource(stage, params.maskUri ?? undefined, ctx.resourceStore);
     const maskedSnapshot = await applyMaskToSnapshot(
       contentSnapshot,

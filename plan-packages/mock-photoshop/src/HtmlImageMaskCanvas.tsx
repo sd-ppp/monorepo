@@ -215,6 +215,7 @@ export const HtmlImageMaskCanvas: React.FC<HtmlImageMaskCanvasProps> = ({
             {shapes.map(shape => {
               const baseProps = {
                 key: shape.id,
+                id: shape.id,
                 x: shape.x,
                 y: shape.y,
                 rotation: shape.rotation,

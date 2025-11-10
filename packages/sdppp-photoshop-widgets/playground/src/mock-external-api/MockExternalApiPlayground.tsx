@@ -9,6 +9,7 @@ export const MockExternalApiPlayground: React.FC<MockExternalApiPlaygroundProps>
   stageRef,
   selectionRect,
   updateSelectionRect,
+  setCurrentLayerId,
   notifyContentChange,
   imageUrls,
   onImageUrlsChange,
@@ -86,6 +87,7 @@ export const MockExternalApiPlayground: React.FC<MockExternalApiPlaygroundProps>
           selectionRect={selectionRect}
           updateSelectionRect={updateSelectionRect}
           notifyContentChange={notifyContentChange}
+          onLayerIdChange={setCurrentLayerId}
         />
       </div>
     </div>

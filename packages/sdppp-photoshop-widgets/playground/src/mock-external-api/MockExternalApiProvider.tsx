@@ -29,7 +29,7 @@ export const MockExternalApiProvider: React.FC<MockExternalApiProviderProps> = (
   onImageUrlsChange,
   panelWidth,
 }) => {
-  const { actions, contextValue, resourceStore } = useProvideMockExternalApi(logger);
+  const { actions, contextValue, resourceStore, getCurrentLayerId } = useProvideMockExternalApi(logger);
   const activeUploadsRef = useRef(new Map<WidgetUploadPass, AbortController | null>());
   const registeredPassesRef = useRef(new Set<WidgetUploadPass>());
   const runningUploadPassesRef = useRef(false);
@@ -282,6 +282,8 @@ export const MockExternalApiProvider: React.FC<MockExternalApiProviderProps> = (
     }
   }, [isAbortError, logger, performUpload, lastUploadRunSummary]);
 
+  // NOTE: keep legacy file-picker logic for reference. The new mock returns a layer content URI.
+  /*
   const pickSingleImageFile = useCallback(async (): Promise<File | null> => {
     if (typeof window === 'undefined' || typeof document === 'undefined') {
       return null;
@@ -346,7 +348,7 @@ export const MockExternalApiProvider: React.FC<MockExternalApiProviderProps> = (
     [logger],
   );
 
-  const selectAdvancedContentSource = useCallback(async () => {
+  const selectAdvancedContentSourceLegacy = useCallback(async () => {
     try {
       const file = await pickSingleImageFile();
       if (!file) return null;
@@ -381,6 +383,22 @@ export const MockExternalApiProvider: React.FC<MockExternalApiProviderProps> = (
       return null;
     }
   }, [logger, measureImage, pickSingleImageFile, resourceStore]);
+  */
+
+  const selectAdvancedContentSource = useCallback(async () => {
+    const rawLayerId = getCurrentLayerId();
+    const normalizedLayerId = typeof rawLayerId === 'string' ? rawLayerId.trim() : '';
+    if (!normalizedLayerId) {
+      try {
+        logger('MockExternalApi selectAdvancedContentSource missing layerId');
+      } catch {
+        // ignore logging failures
+      }
+      return null;
+    }
+    const encoded = encodeURIComponent(normalizedLayerId);
+    return { contentUri: `uxp://content/0/layer?layerId=${encoded}` };
+  }, [getCurrentLayerId, logger]);
 
   return (
     <WidgetImageMaskProvider
@@ -397,6 +415,7 @@ export const MockExternalApiProvider: React.FC<MockExternalApiProviderProps> = (
         stageRef={contextValue.stageRef}
         selectionRect={contextValue.selectionRect}
         updateSelectionRect={contextValue.updateSelectionRect}
+        setCurrentLayerId={contextValue.setCurrentLayerId}
         notifyContentChange={contextValue.notifyContentChange}
         imageUrls={imageUrls}
         onImageUrlsChange={next => {

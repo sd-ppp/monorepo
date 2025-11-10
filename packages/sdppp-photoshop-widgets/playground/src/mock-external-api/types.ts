@@ -14,6 +14,7 @@ export interface MockExternalApiRefs {
   stageRef: MutableRefObject<KonvaStage | null>;
   selectionRect: SelectionRect | null;
   updateSelectionRect: (rect: SelectionRect | null) => void;
+  setCurrentLayerId: (layerId: string | null) => void;
   notifyContentChange: (content: MockRealtimeContent) => void;
 }
 

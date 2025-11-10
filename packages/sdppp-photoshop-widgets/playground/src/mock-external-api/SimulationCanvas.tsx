@@ -22,6 +22,7 @@ interface SimulationCanvasProps {
   selectionRect: SelectionRect | null;
   updateSelectionRect: (rect: SelectionRect | null) => void;
   notifyContentChange: (content: MockRealtimeContent) => void;
+  onLayerIdChange?: (layerId: string | null) => void;
 }
 
 export const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
@@ -29,6 +30,7 @@ export const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
   selectionRect,
   updateSelectionRect,
   notifyContentChange,
+  onLayerIdChange,
 }) => {
   const [shapes, setShapes] = useState<ShapeDefinition[]>(() =>
     generateShapes(SHAPE_COUNT, CANVAS_DIMENSIONS.width, CANVAS_DIMENSIONS.height)
@@ -43,6 +45,10 @@ export const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
       return shapes[shapes.length - 1]?.id ?? null;
     });
   }, [shapes]);
+
+  useEffect(() => {
+    onLayerIdChange?.(selectedLayerId);
+  }, [onLayerIdChange, selectedLayerId]);
 
   const handleSelectionChange = useCallback(
     (rect: Parameters<typeof updateSelectionRect>[0]) => {

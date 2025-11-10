@@ -18,12 +18,14 @@ export interface FactoryDeps {
   stageRef: MutableRefObject<KonvaStage | null>;
   selectionRef: MutableRefObject<SelectionRect | null>;
   resourceStore: MockResourceStore;
+  currentLayerIdRef: MutableRefObject<string | null>;
   logger: WidgetImageMaskLogger;
 }
 
 export interface ActionContext {
   getStage: () => KonvaStage;
   getSelection: () => SelectionRect | null;
+  getCurrentLayerId: () => string | null;
   resourceStore: MockResourceStore;
   logger: WidgetImageMaskLogger;
 }

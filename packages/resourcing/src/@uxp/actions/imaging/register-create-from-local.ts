@@ -1,13 +1,14 @@
 import { Buffer } from "buffer";
-import { storage } from "uxp";
 import { Jimp, JimpMime } from "jimp";
+import { storage } from "uxp";
 
 import { createResource, updateResource } from "../../image-holder.js";
-import { mimeFromExtension, normaliseExtension, isImageExtension, buildGenericFileThumbnail, buildVideoThumbnail, extensionFromMime } from "./helpers.js";
 import { VIDEO_EXTENSIONS } from "./constants.js";
 import type { ImagingActionContext, MaterializedPayload } from "./context.js";
+import { buildGenericFileThumbnail, buildVideoThumbnail, extensionFromMime, isImageExtension, mimeFromExtension, normaliseExtension } from "./helpers.js";
 
 interface CreateFromLocalParams {
+  multiple?: boolean;
   types?: Array<{ description?: string; extensions?: string[] }>;
 }
 
@@ -28,24 +29,43 @@ function extensionFromName(name?: string | null): string | undefined {
   return normaliseExtension(name.slice(dot));
 }
 
-async function materializeViaSystemDialog(params: CreateFromLocalParams | undefined): Promise<MaterializedPayload> {
-  const options = params?.types ? { types: params.types } : undefined;
-  const file = await storage.localFileSystem.getFileForOpening(options as any).catch(() => undefined);
-  if (!file) {
+async function materializeViaSystemDialog(params: CreateFromLocalParams | undefined): Promise<MaterializedPayload[]> {
+  const pickerOptions: Record<string, unknown> = {
+    allowMultiple: params?.multiple ?? false
+  };
+
+  if (params?.types) {
+    pickerOptions.types = params.types;
+  }
+
+  const entries = await storage.localFileSystem
+    .getFileForOpening(pickerOptions as any)
+
+  if (!entries) {
     throw new Error("cancelled");
   }
-  const name = file.name ?? "local-file";
-  const extension = extensionFromName(name);
-  const mime = mimeFromExtension(extension);
-  const arrayBuffer = await file.read({ format: storage.formats.binary });
-  return {
-    buffer: toUint8Array(arrayBuffer),
-    mime,
-    name,
-    meta: {
-      nativePath: file.nativePath
-    }
-  };
+
+  const files = Array.isArray(entries) ? entries : [entries];
+  if (!files.length) {
+    throw new Error("cancelled");
+  }
+
+  return Promise.all(
+    files.map(async file => {
+      const name = file.name ?? "local-file";
+      const extension = extensionFromName(name);
+      const mime = mimeFromExtension(extension);
+      const arrayBuffer = await file.read({ format: storage.formats.binary });
+      return {
+        buffer: toUint8Array(arrayBuffer),
+        mime,
+        name,
+        meta: {
+          nativePath: file.nativePath
+        }
+      };
+    })
+  );
 }
 
 export function registerCreateFromLocalAction(context: ImagingActionContext): void {
@@ -55,73 +75,103 @@ export function registerCreateFromLocalAction(context: ImagingActionContext): vo
     "fileResource.createFromLocal",
     async (params: CreateFromLocalParams = {}) => {
       try {
-        const payload = context.materializers?.fromLocalFile
-          ? await context.materializers.fromLocalFile(params)
-          : await materializeViaSystemDialog(params);
+        const payloads = await materializeViaSystemDialog(params);
+        const results: Array<{
+          resource: string | null;
+          thumbnail?: string;
+          width?: number;
+          height?: number;
+          mime?: string;
+          error?: string;
+        }> = [];
 
-        const buffer = toUint8Array(payload.buffer);
-        let extension = extensionFromName(payload.name);
-        if (!extension && payload.mime) {
-          extension = extensionFromMime(payload.mime);
-        }
-        const mime = payload.mime ?? mimeFromExtension(extension);
-
-        let thumbnailBase64: string | undefined = payload.thumbnail;
-        let imgWidth = payload.width;
-        let imgHeight = payload.height;
-
-        if (!thumbnailBase64) {
-          if (isImageExtension(extension)) {
-            try {
-              const image = await Jimp.read(Buffer.from(buffer));
-              imgWidth = imgWidth ?? image.width;
-              imgHeight = imgHeight ?? image.height;
-              image.scaleToFit({ w: 320, h: 320 });
-              const thumbnailBuffer = await image.getBuffer(JimpMime.png);
-              thumbnailBase64 = "data:image/png;base64," + thumbnailBuffer.toString("base64");
-            } catch {
-              thumbnailBase64 = buildGenericFileThumbnail(extension ?? "");
+        for (const payload of payloads) {
+          try {
+            const buffer = toUint8Array(payload.buffer);
+            let extension = extensionFromName(payload.name);
+            if (!extension && payload.mime) {
+              extension = extensionFromMime(payload.mime);
             }
-          } else if (isVideoExtension(extension)) {
-            thumbnailBase64 = buildVideoThumbnail();
-          } else {
-            thumbnailBase64 = buildGenericFileThumbnail(extension ?? "");
-          }
-        }
+            const mime = payload.mime ?? mimeFromExtension(extension);
 
-        const resourceId = createResource({
-          type: "file",
-          data: {
-            buffer,
-            mime,
-            path: payload.meta?.nativePath as string | undefined
-          },
-          originalMeta: {
-            fileName: payload.name,
-            width: imgWidth,
-            height: imgHeight,
-            ...payload.meta
-          }
-        });
+            let thumbnailBase64: string | undefined = payload.thumbnail;
+            let imgWidth = payload.width;
+            let imgHeight = payload.height;
 
-        if (thumbnailBase64) {
-          updateResource(resourceId, {
-            thumbnailCache: {
-              base64: thumbnailBase64,
+            if (!thumbnailBase64) {
+              if (isImageExtension(extension)) {
+                try {
+                  const image = await Jimp.read(Buffer.from(buffer));
+                  imgWidth = imgWidth ?? image.width;
+                  imgHeight = imgHeight ?? image.height;
+                  image.scaleToFit({ w: 320, h: 320 });
+                  const thumbnailBuffer = await image.getBuffer(JimpMime.png);
+                  thumbnailBase64 = "data:image/png;base64," + thumbnailBuffer.toString("base64");
+                } catch {
+                  thumbnailBase64 = buildGenericFileThumbnail(extension ?? "");
+                }
+              } else if (isVideoExtension(extension)) {
+                thumbnailBase64 = buildVideoThumbnail();
+              } else {
+                thumbnailBase64 = buildGenericFileThumbnail(extension ?? "");
+              }
+            }
+
+            const resourceId = createResource({
+              type: "file",
+              data: {
+                buffer,
+                mime,
+                path: payload.meta?.nativePath as string | undefined
+              },
+              originalMeta: {
+                fileName: payload.name,
+                width: imgWidth,
+                height: imgHeight,
+                ...payload.meta
+              }
+            });
+
+            if (thumbnailBase64) {
+              updateResource(resourceId, {
+                thumbnailCache: {
+                  base64: thumbnailBase64,
+                  width: imgWidth,
+                  height: imgHeight,
+                  mime: "image/png",
+                  generatedAt: Date.now()
+                }
+              });
+            }
+
+            results.push({
+              resource: resourceId,
+              thumbnail: thumbnailBase64,
               width: imgWidth,
               height: imgHeight,
-              mime: "image/png",
-              generatedAt: Date.now()
-            }
-          });
+              mime
+            });
+          } catch (fileError: any) {
+            results.push({
+              resource: null,
+              error: fileError?.message || String(fileError)
+            });
+          }
+        }
+
+        const successful = results.filter(entry => entry.resource && !entry.error);
+        if (!successful.length) {
+          return results[0] ?? { resource: null, error: "no-successful-resource" };
+        }
+
+        const [primary, ...rest] = successful;
+        if (!rest.length) {
+          return primary;
         }
 
         return {
-          resource: resourceId,
-          thumbnail: thumbnailBase64,
-          width: imgWidth,
-          height: imgHeight,
-          mime
+          ...primary,
+          batch: successful
         };
       } catch (error: any) {
         const message = (error?.message || String(error)).toLowerCase();

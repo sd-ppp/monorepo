@@ -7,9 +7,7 @@ export const normalizeBoundary = async (
 ): Promise<{ boundary: string }> => {
   ctx.logger('mock resource.boundary.normalize in', boundary);
   try {
-    const stage = ctx.getStage();
-    const selection = ctx.getSelection();
-    const result = normalizeBoundaryUri(stage, selection, boundary);
+    const result = normalizeBoundaryUri(ctx, boundary);
     ctx.logger('mock resource.boundary.normalize out', result);
     return { boundary: result };
   } catch (error) {

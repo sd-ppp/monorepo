@@ -20,6 +20,7 @@ const createActionContext = (deps: FactoryDeps): ActionContext => ({
     return stage;
   },
   getSelection: () => deps.selectionRef.current ?? null,
+  getCurrentLayerId: () => deps.currentLayerIdRef.current ?? null,
   resourceStore: deps.resourceStore,
   logger: deps.logger,
 });
@@ -31,7 +32,7 @@ export const createMockActions = (deps: FactoryDeps): WidgetImageMaskActions => 
     createResourceThumbnail(ctx, params);
 
   return {
-    'resource.layer.resolve': resolveLayer,
+    'resource.layer.resolve': params => resolveLayer(ctx, params),
     'resource.boundary.normalize': payload => normalizeBoundary(ctx, payload),
     'resource.thumbnail': handleThumbnail,
     'resource.file.createFromCBM': params => createFromCBM(ctx, params),

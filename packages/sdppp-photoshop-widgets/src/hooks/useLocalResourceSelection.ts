@@ -15,6 +15,8 @@ export interface LocalResourceSelectionItem {
 export interface LocalResourceSelectionResult {
   items: LocalResourceSelectionItem[];
   hasError: boolean;
+  errorMessage?: string;
+  errorDetail?: unknown;
 }
 
 export interface LocalResourceSelectionOptions {
@@ -39,6 +41,21 @@ export const useLocalResourceSelection = (
   return useCallback(async (): Promise<LocalResourceSelectionResult> => {
     const items: LocalResourceSelectionItem[] = [];
     let hasError = false;
+    let firstErrorMessage: string | undefined;
+    let firstErrorDetail: unknown;
+
+    const captureError = (detail: unknown, message?: unknown) => {
+      if (firstErrorDetail === undefined && detail !== undefined) {
+        firstErrorDetail = detail;
+      }
+      if (typeof message === 'string' && !firstErrorMessage && message.trim().length) {
+        firstErrorMessage = message.trim();
+      } else if (!firstErrorMessage && typeof detail === 'string' && detail.trim().length) {
+        firstErrorMessage = detail.trim();
+      } else if (!firstErrorMessage && detail instanceof Error && detail.message?.trim().length) {
+        firstErrorMessage = detail.message.trim();
+      }
+    };
 
     try {
       const result = await actions['resource.file.createFromLocal'](actionParams);
@@ -47,7 +64,13 @@ export const useLocalResourceSelection = (
       logger('LocalResourceSelection createFromLocal', result);
 
       if (result.error && !result.batch?.length) {
-        return { items, hasError: true };
+        captureError(result, result.error);
+        return {
+          items,
+          hasError: true,
+          errorMessage: firstErrorMessage,
+          errorDetail: firstErrorDetail ?? result,
+        };
       }
 
       const entries =
@@ -60,11 +83,15 @@ export const useLocalResourceSelection = (
 
         if (!entry || entry.error) {
           hasError = true;
+          if (entry) {
+            captureError(entry, typeof entry.error === 'string' ? entry.error : undefined);
+          }
           continue;
         }
 
         const resource = normalizeResource(entry.resource);
         if (!resource) {
+          captureError(entry, entry?.error);
           hasError = true;
           continue;
         }
@@ -86,6 +113,7 @@ export const useLocalResourceSelection = (
                   ? thumbnailError.message
                   : String(thumbnailError),
               );
+              captureError(thumbnailError, thumbnailError instanceof Error ? thumbnailError.message : String(thumbnailError));
               hasError = true;
             }
           }
@@ -103,9 +131,15 @@ export const useLocalResourceSelection = (
         'LocalResourceSelection createFromLocal error',
         error instanceof Error ? error.message : String(error),
       );
+      captureError(error, error instanceof Error ? error.message : String(error));
       hasError = true;
     }
 
-    return { items, hasError };
+    return {
+      items,
+      hasError,
+      errorMessage: firstErrorMessage,
+      errorDetail: firstErrorDetail,
+    };
   }, [actions, logger, actionParams, maxItems, disablePreviewCapture]);
 };

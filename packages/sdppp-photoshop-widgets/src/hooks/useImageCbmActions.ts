@@ -19,7 +19,11 @@ export interface UseImageCbmActionsOptions {
 }
 
 export interface UseImageCbmActionsResult {
-  sync: (overrides?: { maskUri?: string | null; boundaryUri?: string | null }) => Promise<string | undefined>;
+  sync: (overrides?: {
+    contentUri?: string | null;
+    maskUri?: string | null;
+    boundaryUri?: string | null;
+  }) => Promise<string | undefined>;
   rebuildMask: () => Promise<string | undefined>;
   normalizeBoundary: () => Promise<string | undefined>;
 }
@@ -39,13 +43,19 @@ export const useImageCbmActions = ({
   const sync = useCallback<UseImageCbmActionsResult['sync']>(
     async overrides => {
       try {
+        const overrideContentUri = overrides?.contentUri ?? contentUri;
         const overrideMaskUri = overrides?.maskUri ?? maskUri;
         const overrideBoundaryUri = overrides?.boundaryUri ?? boundaryUri;
+        const normalizedContentCandidate =
+          typeof overrideContentUri === 'string' ? overrideContentUri.trim() : '';
+        const normalizedContentUri = normalizedContentCandidate.length
+          ? normalizedContentCandidate
+          : contentUri;
         const normalizedMaskUri = overrideMaskUri?.trim() || undefined;
         const normalizedBoundaryUri = overrideBoundaryUri?.trim() || undefined;
 
         const result = await actions['resource.file.createFromCBM']({
-          contentUri,
+          contentUri: normalizedContentUri,
           maskUri: normalizedMaskUri,
           boundaryUri: normalizedBoundaryUri,
         });
@@ -67,7 +77,11 @@ export const useImageCbmActions = ({
         if (logger) {
           logger(
             'ImageCbmActions sync error',
-            JSON.stringify({ overrides, message }),
+            JSON.stringify({
+              overrides,
+              message,
+              stack: error instanceof Error ? error.stack : undefined,
+            }),
           );
         }
       }
@@ -99,7 +113,10 @@ export const useImageCbmActions = ({
       if (logger) {
         logger(
           'ImageCbmActions rebuildMask error',
-          JSON.stringify({ message }),
+          JSON.stringify({
+            message,
+            stack: error instanceof Error ? error.stack : undefined,
+          }),
         );
       }
     }
@@ -129,7 +146,10 @@ export const useImageCbmActions = ({
       if (logger) {
         logger(
           'ImageCbmActions normalizeBoundary error',
-          JSON.stringify({ message }),
+          JSON.stringify({
+            message,
+            stack: error instanceof Error ? error.stack : undefined,
+          }),
         );
       }
     }

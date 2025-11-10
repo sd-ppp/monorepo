@@ -7,20 +7,24 @@ import {
   useWidgetUploadPassHandlers,
   type WidgetUploadPass,
 } from '../../context/WidgetImageMaskContext';
-import { useLocalResourceSelection } from '../../hooks/useLocalResourceSelection';
+import {
+  useLocalResourceSelection,
+  type LocalResourceSelectionItem,
+} from '../../hooks/useLocalResourceSelection';
 import { UploadIndicator } from '../shared/UploadIndicator';
+
+const ALLOWED_VIDEO_EXTENSIONS = new Set([
+  '.mp4',
+  '.mov',
+  '.webm',
+  '.mkv',
+  '.avi',
+  '.flv',
+  '.wmv',
+]);
 
 const VIDEO_SELECTION_PARAMS = {
   multiple: false,
-  types: [
-    {
-      description: 'Videos',
-      extensions: ['.mp4', '.mov', '.webm', '.mkv', '.avi', '.flv', '.wmv'],
-      accept: {
-        'video/*': ['.mp4', '.mov', '.webm', '.mkv', '.avi', '.flv', '.wmv'],
-      },
-    },
-  ],
 } as const;
 
 const WRAPPER_GAP = 8;
@@ -37,6 +41,78 @@ const PREVIEW_CONTENT_STYLE: React.CSSProperties = {
   alignItems: 'center',
   gap: 12,
   textAlign: 'center',
+};
+
+const safeJsonStringify = (value: unknown): string => {
+  const seen = new WeakSet<object>();
+  const replacer = (_: string, val: unknown) => {
+    if (typeof val === 'bigint') {
+      return val.toString();
+    }
+  if (val instanceof Error) {
+      const base: Record<string, unknown> = {
+        name: val.name,
+        message: val.message,
+      };
+      if (typeof val.stack === 'string') {
+        base.stack = val.stack;
+      }
+      try {
+        const ownKeys = Object.getOwnPropertyNames(val);
+        for (const key of ownKeys) {
+          const descriptor = (val as Record<string, unknown>)[key];
+          if (!(key in base) && descriptor !== undefined) {
+            base[key] = descriptor;
+          }
+        }
+      } catch {
+        // ignore descriptor failures
+      }
+      return base;
+    }
+    if (typeof val === 'object' && val !== null) {
+      if (seen.has(val as object)) {
+        return '[Circular]';
+      }
+      seen.add(val as object);
+    }
+    return val;
+  };
+  try {
+    return JSON.stringify(value, replacer);
+  } catch {
+    try {
+      return String(value);
+    } catch {
+      return '[Unserializable]';
+    }
+  }
+};
+
+const buildErrorPayload = (reason: unknown): unknown => {
+  if (!reason) return null;
+  if (reason instanceof Error) {
+    const payload: Record<string, unknown> = {
+      name: reason.name,
+      message: reason.message,
+    };
+    if (typeof reason.stack === 'string') {
+      payload.stack = reason.stack;
+    }
+    const errorAsRecord = reason as Record<string, unknown>;
+    for (const key of Object.keys(errorAsRecord)) {
+      payload[key] = errorAsRecord[key];
+    }
+    const cause = (reason as unknown as { cause?: unknown }).cause;
+    if (cause !== undefined) {
+      payload.cause = cause;
+    }
+    return payload;
+  }
+  if (typeof reason === 'object') {
+    return reason;
+  }
+  return { value: reason };
 };
 
 export const SingleVideoSelector: React.FC<{
@@ -66,6 +142,93 @@ export const SingleVideoSelector: React.FC<{
     [t],
   );
 
+  const extractErrorMessage = useCallback((reason?: unknown): string => {
+    if (!reason) return '';
+    if (reason instanceof Error) {
+      if (reason.message && reason.message.trim().length) {
+        return reason.message.trim();
+      }
+      return reason.toString();
+    }
+    if (typeof reason === 'string') {
+      return reason.trim();
+    }
+    if (typeof reason === 'object' && reason !== null) {
+      const obj = reason as Record<string, any>;
+      const candidates = [
+        obj.message,
+        obj.msg,
+        obj.error,
+        obj.detail,
+        obj.data?.message,
+        obj.data?.error,
+        obj.response?.data?.message,
+        obj.response?.data?.error,
+      ];
+      for (const candidate of candidates) {
+        if (typeof candidate === 'string' && candidate.trim().length) {
+          return candidate.trim();
+        }
+      }
+      try {
+        return JSON.stringify(reason);
+      } catch {
+        return Object.prototype.toString.call(reason);
+      }
+    }
+    try {
+      return String(reason);
+    } catch {
+      return '';
+    }
+  }, []);
+
+  const logErrorDetail = useCallback(
+    (reason?: unknown, fallback?: string) => {
+      const detail = extractErrorMessage(reason) || fallback || uploadErrorLabel;
+       const payload = buildErrorPayload(reason);
+       const serialized = payload ? safeJsonStringify(payload) : '';
+      try {
+        if (serialized && serialized !== '{}') {
+          logger('SingleVideoSelector upload error detail', detail, serialized);
+        } else {
+          logger('SingleVideoSelector upload error detail', detail);
+        }
+      } catch {
+        // ignore logger failures
+      }
+      const consolePayload = payload
+        ? {
+            message: detail,
+            payload,
+            original: reason,
+          }
+        : detail;
+      // eslint-disable-next-line no-console
+      console.error('SingleVideoSelector upload error detail:', consolePayload);
+    },
+    [extractErrorMessage, logger, uploadErrorLabel],
+  );
+
+  const parseExtension = useCallback((fileName?: string | null): string => {
+    if (!fileName) return '';
+    const lastDot = fileName.lastIndexOf('.');
+    if (lastDot === -1) return '';
+    return fileName.slice(lastDot).trim().toLowerCase();
+  }, []);
+
+  const isSupportedVideo = useCallback(
+    (item: LocalResourceSelectionItem): boolean => {
+      const mime = (item.mime ?? '').toLowerCase();
+      if (mime.startsWith('video/')) {
+        return true;
+      }
+      const ext = parseExtension(item.fileName);
+      return ALLOWED_VIDEO_EXTENSIONS.has(ext);
+    },
+    [parseExtension],
+  );
+
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'error'>('idle');
   const [uploadErrorMessage, setUploadErrorMessage] = useState<string | null>(null);
   const [displayNameCache, setDisplayNameCache] = useState<Record<string, string>>({});
@@ -84,15 +247,16 @@ export const SingleVideoSelector: React.FC<{
 
   const recordUploadError = useCallback(
     (reason?: unknown) => {
+      const normalizedMessage = extractErrorMessage(reason);
       setUploadStatus('error');
       setUploadErrorMessage(prev => {
         if (prev) return prev;
-        if (reason instanceof Error && reason.message) return reason.message;
-        if (typeof reason === 'string' && reason.trim().length) return reason.trim();
+        if (normalizedMessage.trim().length) return normalizedMessage;
         return uploadErrorLabel;
       });
+      logErrorDetail(reason, normalizedMessage);
     },
-    [uploadErrorLabel],
+    [extractErrorMessage, logErrorDetail, uploadErrorLabel],
   );
 
   const handleAddFromFile = useCallback(async () => {
@@ -101,27 +265,62 @@ export const SingleVideoSelector: React.FC<{
     setUploadProgress({ current: 0, total: 1 });
     try {
       const selection = await selectLocalVideo();
-      const totalForProgress = Math.max(selection.items.length, selection.hasError ? 1 : 0);
+      const validItems = selection.items.filter(isSupportedVideo);
+      const invalidItems = selection.items.filter(item => !validItems.includes(item));
+      const totalForProgress = Math.max(validItems.length, selection.hasError ? 1 : 0);
       if (totalForProgress > 0) {
         setUploadProgress({ current: 0, total: totalForProgress });
       } else {
         setUploadProgress({ current: 0, total: 0 });
       }
-      if (!selection.items.length) {
+
+      if (selection.hasError) {
+        const errorPayload = selection.errorDetail ? safeJsonStringify(selection.errorDetail) : '';
+        try {
+          if (errorPayload && errorPayload !== '{}') {
+            logger(
+              'SingleVideoSelector selection error detail',
+              selection.errorMessage ?? uploadErrorLabel,
+              errorPayload,
+            );
+          } else {
+            logger(
+              'SingleVideoSelector selection error detail',
+              selection.errorMessage ?? uploadErrorLabel,
+            );
+          }
+        } catch {
+          // ignore logger failures
+        }
+      }
+
+      if (invalidItems.length) {
+        const invalidNames = invalidItems.map(item => item.fileName).filter(Boolean);
+        const invalidMessage =
+          invalidNames.length > 0
+            ? `不支持的视频格式：${invalidNames.join(', ')}`
+            : '所选文件不是支持的视频格式';
+        recordUploadError(invalidMessage);
+        logger('SingleVideoSelector invalid video selection', invalidMessage);
+        setUploadStatus('error');
+        return;
+      }
+
+      if (!validItems.length) {
         if (selection.hasError) {
-          recordUploadError();
+          recordUploadError(selection.errorMessage ?? selection.errorDetail);
           setUploadStatus('error');
         } else {
-          setUploadStatus('idle');
+          setUploadStatus('error');
         }
         return;
       }
 
       if (selection.hasError) {
-        recordUploadError();
+        recordUploadError(selection.errorMessage ?? selection.errorDetail);
       }
 
-      const [item] = selection.items;
+      const [item] = validItems;
       if (!item) {
         setUploadStatus(selection.hasError ? 'error' : 'idle');
         return;
@@ -170,23 +369,25 @@ export const SingleVideoSelector: React.FC<{
         recordUploadError(error);
         logger(
           'SingleVideoSelector upload error',
-          error instanceof Error ? error.message : String(error),
+          extractErrorMessage(error) || (error instanceof Error ? error.message : String(error)),
         );
       }
     } catch (err) {
       recordUploadError(err);
       logger(
         'SingleVideoSelector selection error',
-        err instanceof Error ? err.message : String(err),
+        extractErrorMessage(err) || (err instanceof Error ? err.message : String(err)),
       );
     } finally {
       setUploadStatus(prev => (prev === 'error' ? 'error' : 'idle'));
     }
   }, [
     selectLocalVideo,
+    isSupportedVideo,
     recordUploadError,
     runUploadPassOnce,
     logger,
+    extractErrorMessage,
     emitValue,
     currentResource,
     setUploadProgress,

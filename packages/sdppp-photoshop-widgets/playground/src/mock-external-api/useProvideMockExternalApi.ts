@@ -12,10 +12,12 @@ import type { MockRealtimeContent, SelectionRect } from './types';
 export interface ProvideResult {
   actions: WidgetImageMaskActions;
   resourceStore: MockResourceStore;
+  getCurrentLayerId: () => string | null;
   contextValue: {
     stageRef: React.MutableRefObject<KonvaStage | null>;
     selectionRect: SelectionRect | null;
     updateSelectionRect: (rect: SelectionRect | null) => void;
+    setCurrentLayerId: (layerId: string | null) => void;
     subscribeToRealtimeChanges: (
       docId: number,
       contents: MockRealtimeContent[],
@@ -30,6 +32,7 @@ export const useProvideMockExternalApi = (logger: WidgetImageMaskLogger): Provid
   const resourceStore = useMemo(() => new MockResourceStore(), []);
   const [selectionRect, setSelectionRect] = useState<SelectionRect | null>(null);
   const selectionRef = useRef<SelectionRect | null>(null);
+  const currentLayerIdRef = useRef<string | null>(null);
   const subscribersRef = useRef(
     new Map<number, { docId: number; contents: Set<MockRealtimeContent>; callback: () => void }>()
   );
@@ -88,12 +91,18 @@ export const useProvideMockExternalApi = (logger: WidgetImageMaskLogger): Provid
     [notifySubscribers]
   );
 
+  const setCurrentLayerId = useCallback((layerId: string | null) => {
+    const trimmed = typeof layerId === 'string' ? layerId.trim() : '';
+    currentLayerIdRef.current = trimmed.length ? trimmed : null;
+  }, []);
+
   const actions = useMemo<WidgetImageMaskActions>(
     () =>
       createMockActions({
         stageRef,
         selectionRef,
         resourceStore,
+        currentLayerIdRef,
         logger,
       }),
     [logger, resourceStore]
@@ -102,13 +111,14 @@ export const useProvideMockExternalApi = (logger: WidgetImageMaskLogger): Provid
   return {
     actions,
     resourceStore,
+    getCurrentLayerId: () => currentLayerIdRef.current,
     contextValue: {
       stageRef,
       selectionRect,
       updateSelectionRect,
+      setCurrentLayerId,
       subscribeToRealtimeChanges,
       notifyContentChange: notifySubscribers,
     },
   };
 };
-
