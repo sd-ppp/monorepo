@@ -1,11 +1,11 @@
 import {
-  ArrowLeftOutlined,
-  CloseCircleOutlined,
-  ForwardOutlined,
-  PlayCircleFilled,
-  ReloadOutlined,
-  SaveOutlined,
-} from '@ant-design/icons';
+  ArrowLeft,
+  CircleX,
+  FastForward,
+  PlayCircle,
+  RotateCcw,
+  Save,
+} from 'lucide-react';
 import {
   WorkflowControlsPanel,
   WorkflowStatusDisplay,
@@ -136,7 +136,7 @@ const DemoPanel: FC = () => {
     <Tooltip title="返回列表">
       <Button
         size="large"
-        icon={<ArrowLeftOutlined />}
+        icon={<ArrowLeft size={18} />}
         onClick={() => console.log('Back')}
         data-testid="storybook-back"
         style={{ width: ACTION_SIZE, height: ACTION_SIZE, borderRadius: 8 }}
@@ -149,7 +149,7 @@ const DemoPanel: FC = () => {
       <Tooltip title="保存工作流">
         <Button
         size="large"
-        icon={<SaveOutlined />}
+        icon={<Save size={18} />}
         onClick={() => console.log('Save workflow')}
         style={{ width: ACTION_SIZE, height: ACTION_SIZE, borderRadius: 8 }}
         />
@@ -157,7 +157,7 @@ const DemoPanel: FC = () => {
       <Tooltip title="重载节点">
         <Button
         size="large"
-        icon={<ReloadOutlined />}
+        icon={<RotateCcw size={18} />}
         onClick={cycleStatus}
         style={{ width: ACTION_SIZE, height: ACTION_SIZE, borderRadius: 8 }}
         />
@@ -171,7 +171,7 @@ const DemoPanel: FC = () => {
         <Button
         size="large"
         danger
-        icon={<CloseCircleOutlined />}
+        icon={<CircleX size={18} />}
         onClick={() => console.log('Stop all')}
         style={{ width: ACTION_SIZE, height: ACTION_SIZE, borderRadius: 8 }}
         />
@@ -180,7 +180,7 @@ const DemoPanel: FC = () => {
         <Button
         size="large"
         type={isAutoRun ? 'primary' : 'default'}
-        icon={<ForwardOutlined />}
+        icon={<FastForward size={18} />}
         onClick={() => setIsAutoRun((value) => !value)}
         style={{ width: ACTION_SIZE, height: ACTION_SIZE, borderRadius: 8 }}
         />
@@ -219,7 +219,7 @@ const DemoPanel: FC = () => {
       <Button
         type="primary"
         size="large"
-        icon={<PlayCircleFilled />}
+        icon={<PlayCircle size={24} />}
         style={{
           width: PREVIEW_SIZE,
           height: PREVIEW_SIZE,

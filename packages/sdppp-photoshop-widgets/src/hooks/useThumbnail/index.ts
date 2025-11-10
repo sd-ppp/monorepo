@@ -186,7 +186,7 @@ export const useThumbnail = (params: UseThumbnailParams): UseThumbnailResult => 
             ? result.thumbnail
             : null;
       } else {
-        if (debug) {
+        // if (debug) {
           logger(
             'useThumbnail fetch',
             JSON.stringify({
@@ -197,7 +197,7 @@ export const useThumbnail = (params: UseThumbnailParams): UseThumbnailResult => 
               watchedContents: parsed.value.watchedContents,
             }),
           );
-        }
+        // }
         const result = await actions['resource.file.createFromCBM']({
           contentUri: parsed.value.contentUri,
           boundaryUri: parsed.value.boundaryUri,

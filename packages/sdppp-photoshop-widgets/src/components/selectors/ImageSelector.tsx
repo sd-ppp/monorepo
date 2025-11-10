@@ -29,6 +29,7 @@ interface ImageSelectorProps {
   workBoundary: string;
   onValueChange?: (value: string[]) => void;
   showUploadIndicator?: boolean;
+  defaultAuto?: boolean;
   externalErrorDismissSignal?: number;
   onUploadStateChange?: (state: {
     status: 'idle' | 'uploading' | 'error';
@@ -47,6 +48,7 @@ export const ImageSelector: React.FC<ImageSelectorProps> = ({
   workBoundary,
   onValueChange,
   showUploadIndicator = true,
+  defaultAuto = true,
   externalErrorDismissSignal,
   onUploadStateChange,
 }) => {
@@ -67,7 +69,7 @@ export const ImageSelector: React.FC<ImageSelectorProps> = ({
   const [contentUri, setContentUri] = useState<string>('');
   const [boundaryUri, setBoundaryUri] = useState<string>(workBoundary);
   const [maskUri, setMaskUri] = useState<string>('');
-  const [auto, setAuto] = useState<boolean>(true);
+  const [auto, setAuto] = useState<boolean>(defaultAuto);
   const autoRef = useRef<boolean>(auto);
   autoRef.current = auto;
   const pendingManualFileRef = useRef(false);

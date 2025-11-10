@@ -1,10 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Button, Tooltip } from 'antd';
-import {
-  CloseCircleOutlined,
-  ForwardOutlined,
-  PlayCircleFilled,
-} from '@ant-design/icons';
+import { CircleX, FastForward, PlayCircle } from 'lucide-react';
 import { useStore } from 'zustand';
 import { sdpppSDK } from '@sdppp/common';
 import { useTranslation } from '@sdppp/common';
@@ -12,6 +8,8 @@ import { useUploadPasses } from '../../../../../base/upload-pass-context';
 import { ComfyTask } from '../../../../ComfyTask';
 
 const AUTO_RUN_ACTIVE_CLASS = 'workflow-action-active';
+const ICON_SIZE = 16;
+const PRIMARY_ICON_SIZE = 32;
 
 const runAndWaitResult = async (multi: number, currentWorkflow: string): Promise<ComfyTask> => {
   const activeDocumentID = sdpppSDK.stores.PhotoshopStore.getState().activeDocumentID;
@@ -54,7 +52,7 @@ export const StopAndCancelButton: React.FC<{ className?: string }> = ({ classNam
     <Tooltip title={translate('comfy.stop_cancel_all')}>
       <Button
         className={className}
-        icon={<CloseCircleOutlined />}
+        icon={<CircleX size={ICON_SIZE} />}
         danger
         onClick={onClearAndInterrupt}
       />
@@ -103,7 +101,7 @@ export const AutoRunButton: React.FC<AutoRunButtonProps> = ({
   return (
     <Tooltip title={isAutoRunning ? translate('comfy.stop_auto_run') : translate('comfy.start_auto_run')}>
       <Button
-        icon={<ForwardOutlined />}
+        icon={<FastForward size={ICON_SIZE} />}
         type={isAutoRunning ? 'primary' : 'default'}
         className={`${className ?? ''} ${isAutoRunning ? AUTO_RUN_ACTIVE_CLASS : ''}`.trim()}
         onClick={() => {
@@ -140,7 +138,7 @@ export const RunButton: React.FC<RunButtonProps> = ({
     <Tooltip title={translate('comfy.run')}>
       <Button
         type="primary"
-        icon={<PlayCircleFilled />}
+        icon={<PlayCircle size={PRIMARY_ICON_SIZE} />}
         onClick={doRun}
         disabled={isDisabled}
         className="workflow-main-action-button workflow-detail-run-button"

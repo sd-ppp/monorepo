@@ -1,9 +1,6 @@
 import React from "react";
 import { List, Button, Space, Typography } from "antd";
-import {
-  FolderOutlined,
-  RightOutlined
-} from "@ant-design/icons";
+import { ChevronRight, Folder } from "lucide-react";
 import { sdpppSDK } from '@sdppp/common';
 import './workflow-item.less';
 import { useStore } from "zustand";
@@ -74,7 +71,7 @@ const DirectoryItem: React.FC<DirectoryItemProps> = ({
   return (
     <BaseListItem onClick={handleClick}>
       <Space>
-        <FolderOutlined style={{ fontSize: ICON_SIZE }} />
+        <Folder size={ICON_SIZE} />
         <Text>{path.slice(0, -1).split('/').pop()}</Text>
       </Space>
     </BaseListItem>
@@ -112,7 +109,7 @@ const WorkflowActions: React.FC<{
       <Button
         type="text"
         size="small"
-        icon={<RightOutlined />}
+        icon={<ChevronRight size={ICON_SIZE} />}
         onClick={onEdit}
         className={CLASS_NAMES.TIPS_ICON}
       />

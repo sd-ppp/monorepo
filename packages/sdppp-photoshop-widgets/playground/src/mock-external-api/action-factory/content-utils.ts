@@ -40,7 +40,9 @@ export const resolveContentArea = (
     }
     if (target === 'curlayer' || target === 'layer') {
       const resolvedLayerId =
-        sanitizeLayerId(url.searchParams.get('layerId')) ?? sanitizeLayerId(currentLayerId);
+        sanitizeLayerId(url.searchParams.get('layername')) ??
+        sanitizeLayerId(url.searchParams.get('layerid')) ??
+        sanitizeLayerId(currentLayerId);
       if (resolvedLayerId) {
         const layerRect = resolveLayerRect(stage, resolvedLayerId);
         if (layerRect) {

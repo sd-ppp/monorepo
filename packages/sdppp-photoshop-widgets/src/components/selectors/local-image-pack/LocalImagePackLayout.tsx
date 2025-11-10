@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Image, Spin } from 'antd';
-import { DeleteOutlined } from '@ant-design/icons';
-import { Plus } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import {
   computeLocalImagePackCells,
   computeLocalImagePackLayout,
@@ -150,7 +149,7 @@ export const LocalImagePackLayout: React.FC<LocalImagePackLayoutProps> = ({
           <Button
             block
             type="default"
-            icon={<DeleteOutlined />}
+            icon={<Trash2 size={16} />}
             style={{
               height: TRASH_BUTTON_HEIGHT,
               lineHeight: `${TRASH_BUTTON_HEIGHT}px`,

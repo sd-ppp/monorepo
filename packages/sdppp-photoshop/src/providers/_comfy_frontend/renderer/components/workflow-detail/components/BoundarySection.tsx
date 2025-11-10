@@ -1,15 +1,13 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Tooltip, Typography, Modal, Form, InputNumber } from 'antd';
-import { useTranslation } from '@sdppp/common';
-import { useStore } from 'zustand';
-import { sdpppSDK } from '@sdppp/common';
+import { sdpppSDK, useTranslation } from '@sdppp/common';
 import {
   buildBoundaryUri,
-  buildImageContentUri,
-  buildMaskContentUri,
-} from '../../../../../base/realtime-thumbnail/utils';
+  buildContentUri,
+  type BoundarySetting
+} from '@sdppp/resourcing/src/resource-uris';
+import { Form, InputNumber, Modal, Tooltip, Typography } from 'antd';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useThumbnail, type UseThumbnailParams } from 'sdppp-photoshop-widgets/useThumbnail';
-import type { BoundarySetting } from '../../../../../base/realtime-thumbnail/types';
+import { useStore } from 'zustand';
 import { EMPTY_OBJECT } from '../constants';
 
 const { Link } = Typography;
@@ -131,26 +129,23 @@ export const BoundaryPreview: React.FC<BoundaryPreviewProps> = ({ previewQuality
         imageSize: 192,
         imageQuality: previewQuality,
       }),
-      contentUri: buildImageContentUri(docId, 'canvas'),
-      maskUri: buildMaskContentUri(docId, 'canvas'),
+      contentUri: buildContentUri(docId, 'canvas')
     };
   }, [activeDocumentID, boundary, previewQuality]);
 
   const thumbnailParams = useMemo<UseThumbnailParams>(() => {
     if (!thumbnailConfig) {
       return {
-        contentUri: buildImageContentUri(0, 'canvas'),
+        contentUri: buildContentUri(0, 'canvas'),
         boundaryUri: buildBoundaryUri(0, null, {
           imageSize: 192,
           imageQuality: previewQuality,
-        }),
-        maskUri: buildMaskContentUri(0, 'canvas'),
+        })
       };
     }
     return {
       contentUri: thumbnailConfig.contentUri,
       boundaryUri: thumbnailConfig.boundaryUri,
-      maskUri: thumbnailConfig.maskUri,
     };
   }, [thumbnailConfig, previewQuality]);
 

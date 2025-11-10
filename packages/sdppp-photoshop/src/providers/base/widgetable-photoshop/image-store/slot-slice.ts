@@ -1,6 +1,6 @@
 import { StateCreator } from 'zustand';
 import { sdpppSDK } from '@sdppp/common';
-import { buildBoundaryUri, buildImageContentUri, buildMaskContentUri } from '../../../realtime-thumbnail/utils';
+import { buildBoundaryUri, buildContentUri, buildMaskContentUri } from '@sdppp/resourcing/src/resource-uris';
 import type { ComponentSlice } from './component-slice';
 import type { AutoSyncConfig, BoundaryUri, ContentUri, MaskUri, SlotState } from './types';
 
@@ -75,9 +75,9 @@ export const createSlotSlice: StateCreator<SlotStore, [], [], SlotSlice> = (set,
           Number.isFinite(rawDocId) && typeof rawDocId === 'number'
             ? Math.max(0, Math.floor(rawDocId))
             : fallbackDocId;
-        const contentUri = buildImageContentUri(docId, config.content, config.layerIdentify ?? null);
-        const boundaryUri = buildBoundaryUri(docId, config.boundary ?? null);
-        const maskUri = buildMaskContentUri(docId, config.content, config.layerIdentify ?? null);
+        const contentUri = buildContentUri(docId, config.content, config.layerIdentify ?? null) as ContentUri;
+        const boundaryUri = buildBoundaryUri(docId, config.boundary ?? null) as BoundaryUri;
+        const maskUri = buildMaskContentUri(docId, config.content, config.layerIdentify ?? null) as MaskUri;
 
         nextSlot = {
           ...prev,
@@ -190,7 +190,10 @@ export const createSlotSlice: StateCreator<SlotStore, [], [], SlotSlice> = (set,
         prevPrimary: prev.primaryResourceId ?? null,
         nextPrimary: nextSlot.primaryResourceId ?? null,
         compositeDirty: nextSlot.compositeDirty ?? false,
-        clearedComposite: nextSlot.compositeResourceId === null && prev.compositeResourceId && prev.compositeResourceId !== nextSlot.compositeResourceId,
+        clearedComposite:
+          nextSlot.compositeResourceId === null &&
+          prev.compositeResourceId &&
+          prev.compositeResourceId !== nextSlot.compositeResourceId,
       });
       return nextState;
     });
@@ -225,7 +228,10 @@ export const createSlotSlice: StateCreator<SlotStore, [], [], SlotSlice> = (set,
         prevMask: prev.maskResourceId ?? null,
         nextMask: nextSlot.maskResourceId ?? null,
         compositeDirty: nextSlot.compositeDirty ?? false,
-        clearedComposite: nextSlot.compositeResourceId === null && prev.compositeResourceId && prev.compositeResourceId !== nextSlot.compositeResourceId,
+        clearedComposite:
+          nextSlot.compositeResourceId === null &&
+          prev.compositeResourceId &&
+          prev.compositeResourceId !== nextSlot.compositeResourceId,
       });
       return nextState;
     });

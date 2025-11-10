@@ -1,4 +1,3 @@
-import { QuestionCircleOutlined, StopOutlined } from '@ant-design/icons';
 import { sdpppSDK, useTranslation } from '@sdppp/common';
 import { WidgetableNode } from '@sdppp/common/schemas/schemas';
 import type { WorkflowStatusDescriptor } from '@sdppp/ui-library';
@@ -6,14 +5,14 @@ import { loadRemoteConfig } from '@sdppp/vite-remote-config-loader';
 import { WidgetableProvider, WorkflowEditApiFormat } from '@sdppp/widgetable-ui';
 import { Alert, Button, Flex, Input, Tooltip } from 'antd';
 import Link from 'antd/es/typography/Link';
+import { CircleStop, HelpCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { SimpleWorkflowControlPanel } from '../../_comfy_frontend/renderer/components/workflow-detail/components/SimpleWorkflowControlPanel';
 import { ModelSelector } from '../../base/components/ModelSelector';
 import '../../base/styles/workflow-controls.less';
 import { UploadPassProvider } from '../../base/upload-pass-context';
 import { useTaskExecutor } from '../../base/useTaskExecutor';
-import { createImageMaskWidgetRegistry } from '../../base/widgetable-image-mask/widgetable-widgets';
-import { WidgetablePhotoshopProvider } from '../../base/widgetable-photoshop';
+import { WidgetablePhotoshopProvider, createImageMaskWidgetRegistry } from '../../base/widgetable-photoshop';
 import './replicate.less';
 import { changeSelectedModel, createTask, replicateStore } from './replicate.store';
 
@@ -51,7 +50,7 @@ function ReplicateRendererModels() {
     const client = replicateStore((state) => state.client);
     const [loading, setLoading] = useState(false);
     const [loadError, setLoadError] = useState<string>('');
-    
+
     // Load initial model on mount
     useEffect(() => {
         if (client && selectedModel && !replicateStore.getState().currentNodes.length) {
@@ -64,7 +63,7 @@ function ReplicateRendererModels() {
             });
         }
     }, [client, selectedModel]);
-    
+
     if (!client) {
         return null;
     }
@@ -90,8 +89,8 @@ function ReplicateRendererModels() {
         }
     };
 
-    const modelOptions = availableModels.map((model) => ({ 
-        label: model, 
+    const modelOptions = availableModels.map((model) => ({
+        label: model,
         value: model,
         deletable: model !== selectedModel
     }));
@@ -132,21 +131,21 @@ function ReplicateRendererModels() {
                 return await client.uploadImage('buffer', payload, format, signal);
             }}
         >
-        <WidgetablePhotoshopProvider>
-            <WidgetableProvider widgetRegistry={createImageMaskWidgetRegistry()}>
-                <ReplicateRendererForm
-                    selectedModel={selectedModel}
-                    loading={loading}
-                    loadError={loadError}
-                    modelOptions={modelOptions}
-                    onModelChange={handleModelChange}
-                    onModelRemove={removeModel}
-                    language={language}
-                />
-                {loading && <Alert message={translate('replicate.loading', { defaultMessage: 'Loading...' })} type="info" showIcon />}
-                {loadError && <Alert message={loadError} type="error" showIcon />}
-            </WidgetableProvider>
-        </WidgetablePhotoshopProvider>
+            <WidgetablePhotoshopProvider>
+                <WidgetableProvider widgetRegistry={createImageMaskWidgetRegistry()}>
+                    <ReplicateRendererForm
+                        selectedModel={selectedModel}
+                        loading={loading}
+                        loadError={loadError}
+                        modelOptions={modelOptions}
+                        onModelChange={handleModelChange}
+                        onModelRemove={removeModel}
+                        language={language}
+                    />
+                    {loading && <Alert message={translate('replicate.loading', { defaultMessage: 'Loading...' })} type="info" showIcon />}
+                    {loadError && <Alert message={loadError} type="error" showIcon />}
+                </WidgetableProvider>
+            </WidgetablePhotoshopProvider>
         </UploadPassProvider>
     )
 }
@@ -185,13 +184,13 @@ function ReplicateRendererForm({
         beforeCreateTaskHook: (values) => {
             // Process image fields to extract URLs
             const processedValues = { ...values };
-            
+
             currentNodes.forEach((node) => {
                 if (node.widgets[0].outputType === 'images') {
                     const fieldValue = processedValues[node.id];
                     if (fieldValue) {
                         if (Array.isArray(fieldValue)) {
-                            processedValues[node.id] = fieldValue.map((item: any) => 
+                            processedValues[node.id] = fieldValue.map((item: any) =>
                                 (typeof item === 'object' && item.url) ? item.url : item
                             );
                         } else if (typeof fieldValue === 'object' && fieldValue.url) {
@@ -200,7 +199,7 @@ function ReplicateRendererForm({
                     }
                 }
             });
-            
+
             return processedValues;
         }
     });
@@ -213,7 +212,7 @@ function ReplicateRendererForm({
                     <Button
                         type="text"
                         size="small"
-                        icon={<QuestionCircleOutlined />}
+                        icon={<HelpCircle size={16} />}
                         style={{ color: 'var(--sdppp-host-text-color-secondary)' }}
                         onClick={async () => {
                             const banners = loadRemoteConfig('banners');
@@ -247,7 +246,7 @@ function ReplicateRendererForm({
                         <Button
                             className="workflow-action-button"
                             danger
-                            icon={<StopOutlined />}
+                            icon={<CircleStop size={18} />}
                             onClick={handleCancel}
                             disabled={!canCancel}
                         />

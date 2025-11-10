@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Tooltip, Popover } from 'antd';
-import { EditOutlined } from '@ant-design/icons';
+import { Pencil } from 'lucide-react';
 import { useStore } from 'zustand';
 import { sdpppSDK } from '@sdppp/common';
 import { useTranslation } from '@sdppp/common';
@@ -254,7 +254,7 @@ export const WorkBoundary: React.FC<WorkBoundaryProps> = ({ className }) => {
         <div className="work-boundary-right">
           {isHovered && (
             <div className="work-boundary-edit-icon">
-              <EditOutlined />
+              <Pencil size={16} />
             </div>
           )} 
           {/* Current selected max size badge (placed left of boundary display) */}

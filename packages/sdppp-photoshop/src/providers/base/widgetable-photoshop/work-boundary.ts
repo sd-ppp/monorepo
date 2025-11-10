@@ -1,6 +1,6 @@
 import { sdpppSDK } from '@sdppp/common';
-import { GlobalImageStore } from '../../foundation/stores/global-image-store';
-import type { AutoSyncConfig } from '../../foundation/stores/types';
+import { GlobalImageStore } from './image-store/global-image-store';
+import type { AutoSyncConfig } from './image-store/types';
 
 interface CaptureContext {
   boundaryParam: any;

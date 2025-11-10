@@ -1,4 +1,13 @@
-import { DeleteOutlined, LeftOutlined, MoreOutlined, RightOutlined, SaveOutlined, SendOutlined, ShrinkOutlined, StepForwardOutlined } from '@ant-design/icons';
+import {
+  ChevronLeft,
+  ChevronRight,
+  Minimize2,
+  MoreHorizontal,
+  Save,
+  Send,
+  StepForward,
+  Trash2,
+} from 'lucide-react';
 import { sdpppSDK, useTranslation } from '@sdppp/common';
 import { SyncButton } from '@sdppp/ui-library';
 import { Button, Divider, Dropdown } from 'antd';
@@ -23,6 +32,7 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
 
   const currentItem = images[currentIndex];
   const isCurrentItemImage = currentItem ? isImage(currentItem.url) : false;
+  const ICON_SIZE = 16;
 
   // Get boundary display text (similar to WorkBoundary.tsx)
   const getBoundaryText = (boundary: any): string => {
@@ -250,7 +260,7 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
       <Button
         className="image-preview__close-btn"
         type="text"
-        icon={<ShrinkOutlined />}
+        icon={<Minimize2 size={ICON_SIZE} />}
         onClick={handleClose}
         size="middle"
       />
@@ -258,7 +268,7 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
     prev: images.length > 1 ? (
       <Button
         className="image-preview__nav image-preview__nav--prev"
-        icon={<LeftOutlined />}
+        icon={<ChevronLeft size={ICON_SIZE} />}
         onClick={handlePrev}
         shape="circle"
         size="middle"
@@ -267,7 +277,7 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
     next: images.length > 1 ? (
       <Button
         className="image-preview__nav image-preview__nav--next"
-        icon={<RightOutlined />}
+        icon={<ChevronRight size={ICON_SIZE} />}
         onClick={handleNext}
         shape="circle"
         size="middle"
@@ -276,7 +286,7 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
     jumpToLast: currentIndex < images.length - 1 ? (
       <Button
         className="image-preview__floating-btn--jump"
-        icon={<StepForwardOutlined />}
+        icon={<StepForward size={ICON_SIZE} />}
         onClick={handleJumpToLast}
         shape="circle"
         size="middle"
@@ -286,7 +296,7 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
     deleteCurrent: (
       <Button
         className="image-preview__floating-btn--delete"
-        icon={<DeleteOutlined />}
+        icon={<Trash2 size={ICON_SIZE} />}
         onClick={handleDeleteCurrent}
         shape="circle"
         size="middle"
@@ -301,7 +311,7 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
     bottomDeleteAll: (
       <Button
         className="image-preview__bottom-delete-all"
-        icon={<DeleteOutlined />}
+        icon={<Trash2 size={ICON_SIZE} />}
         onClick={handleClearAll}
         shape="circle"
         size="large"
@@ -311,7 +321,7 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
     bottomDeleteCurrent: (
       <div className="image-preview__bottom-delete-current" style={{ background: 'transparent', boxShadow: 'none', color: 'inherit' }}>
         <Button
-          icon={<DeleteOutlined />}
+          icon={<Trash2 size={ICON_SIZE} />}
           onClick={handleDeleteCurrent}
           size="middle"
           type="default"
@@ -336,7 +346,7 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
           syncButtonTooltip={t('image.import_as_smartobject') + ' | ' + t('image.import_tip')}
           data-testid="image-preview-sync-button"
         >
-          {sending ? t('image.sending') : <SendOutlined />}
+          {sending ? t('image.sending') : <Send size={ICON_SIZE} />}
         </SyncButton>
       </div>
     ) : (
@@ -347,7 +357,7 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
         size="middle"
         style={{ width: '56px' }}
       >
-        <SaveOutlined />
+        <Save size={ICON_SIZE} />
       </Button>
     ),
     bottomIndicator: (
@@ -357,13 +367,13 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
             {
               key: 'saveCurrent',
               label: t('image.save_current'),
-              icon: <SaveOutlined />,
+              icon: <Save size={ICON_SIZE} />,
               onClick: handleSaveCurrent
             },
             {
               key: 'saveAll',
               label: t('image.save_all'),
-              icon: <SaveOutlined />,
+              icon: <Save size={ICON_SIZE} />,
               onClick: handleSaveAll
             },
             {
@@ -372,7 +382,7 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
             {
               key: 'clearAll',
               label: t('image.clear_all'),
-              icon: <DeleteOutlined />,
+              icon: <Trash2 size={ICON_SIZE} />,
               onClick: handleClearAll
             }
           ]
@@ -382,7 +392,7 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
         overlayStyle={{ minWidth: 'auto', width: 'max-content' }}
       >
         <div className="image-preview__bottom-indicator" style={{ cursor: 'pointer' }}>
-          {currentIndex + 1} / {images.length} <MoreOutlined />
+          {currentIndex + 1} / {images.length} <MoreHorizontal size={ICON_SIZE} />
         </div>
       </Dropdown>
     )

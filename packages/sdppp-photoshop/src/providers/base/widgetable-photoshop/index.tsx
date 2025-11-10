@@ -2,6 +2,7 @@ import { sdpppSDK } from '@sdppp/common';
 import { useTranslation } from '@sdppp/common/i18n/react';
 import { subscribeToRealtimeChanges as resourcingRealtimeSubscriber } from '@sdppp/resourcing/src/@sideweb/realtime-thumbnail';
 import type { ContentType } from '@sdppp/resourcing/src/resource-uris';
+import type { WidgetRegistry, WidgetRenderer } from '@sdppp/widgetable-ui';
 import React, { useCallback, useMemo } from 'react';
 import {
     WidgetImageMaskProvider,
@@ -9,9 +10,24 @@ import {
     type WidgetImageMaskLogger,
     type WidgetRealtimeSubscriber,
 } from 'sdppp-photoshop-widgets/context/WidgetImageMaskContext';
-import { buildBoundaryUri } from '../realtime-thumbnail/utils';
+import { imageMaskWidgetRouter } from 'sdppp-photoshop-widgets/widget-router';
+import { buildBoundaryUri } from '@sdppp/resourcing/src/resource-uris';
 import { useUploadPasses } from '../upload-pass-context';
-import { resolveWorkBoundaryContext } from '../widgetable-image-mask/services/photoshop/operations';
+import { resolveWorkBoundaryContext } from './work-boundary';
+
+// 渲染旧版 PS_DOCUMENT / PS_LAYER 节点的占位内容
+export const renderDeprecatedWidget: WidgetRenderer = () => {
+    return <span>SDPPP 2.0不需要这个节点了</span>;
+};
+
+export const createImageMaskWidgetRegistry = (): WidgetRegistry => {
+    return {
+        images: imageMaskWidgetRouter,
+        masks: imageMaskWidgetRouter,
+        PS_DOCUMENT: renderDeprecatedWidget,
+        PS_LAYER: renderDeprecatedWidget,
+    };
+};
 
 const fallbackLogger: WidgetImageMaskLogger = () => undefined;
 

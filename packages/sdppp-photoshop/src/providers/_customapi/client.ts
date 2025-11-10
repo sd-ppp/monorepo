@@ -1,7 +1,7 @@
-import { WidgetableNode, WidgetableWidget } from '@sdppp/common/schemas/schemas';
+import { sdpppSDK, t } from '@sdppp/common';
+import { WidgetableNode } from '@sdppp/common/schemas/schemas';
 import { Client } from '../base/Client';
 import { Task } from '../base/Task';
-import { t, getCurrentLanguage, sdpppSDK } from '@sdppp/common';
 // GoogleGenAI and OpenAI moved to mesh actions
 
 // Gemini and OpenAI interfaces moved to mesh actions - keeping for compatibility
@@ -173,26 +173,20 @@ export class SDPPPCustomAPI extends Client<{
     }
   }
 
-  async uploadImage(type: 'token' | 'buffer' | 'resource', image: ArrayBuffer | string, format: 'png' | 'jpg' | 'jpeg' | 'webp', signal?: AbortSignal): Promise<string> {
+  async uploadImage(type: 'resource', image: ArrayBuffer | string, format: 'png' | 'jpg' | 'jpeg' | 'webp', signal?: AbortSignal): Promise<string> {
     try {
       // Check if already aborted
       if (signal?.aborted) {
         throw new DOMException('Upload aborted', 'AbortError');
       }
 
-      if (type === 'buffer') {
-        const arrayBuffer = image as ArrayBuffer;
-        const bytes = new Uint8Array(arrayBuffer);
-        const binary = Array.from(bytes).map(b => String.fromCharCode(b)).join('');
-        const base64 = typeof btoa === 'function'
-          ? btoa(binary)
-          : Buffer.from(arrayBuffer).toString('base64');
-        return `data:image/${format};base64,${base64}`;
-      }
+      if (type === 'resource') {
+        const { base64 } = await sdpppSDK.plugins.photoshop.getImageBase64({ token: image as string })
+        return base64 || '';
 
-      const token = image as string;
-      const { base64 } = await sdpppSDK.plugins.photoshop.getImageBase64({ token });
-      return base64 || '';
+      } else {
+        throw new Error('Unsupported image input type');
+      }
     } catch (error) {
       console.error('Error uploading image:', error);
       throw error;

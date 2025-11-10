@@ -16,21 +16,13 @@ import {
 import { buildBoundaryUri, extractDocIdFromUris, parseContentResource, parseMaskResource } from "../../../resource-uris.js";
 import {
   createResource,
-  updateResource,
-  resolveResourceBuffer as resolveSharedResourceBuffer
+  resolveResourceBuffer as resolveSharedResourceBuffer,
+  updateResource
 } from "../../image-holder.js";
 import type { CreateFromCbmParams, ImagingActionContext, MaterializedCbmPayload } from "./context.js";
 
 const PNG_MIME = "image/png";
 const DATA_URL_REGEX = /^data:([^;,]+)?(;base64)?,(.*)$/i;
-
-function logMaterializer(event: string, payload: Record<string, unknown> = {}): void {
-  try {
-    console.log("[createFromCBM]", event, JSON.stringify(payload));
-  } catch {
-    console.log("[createFromCBM]", event, payload);
-  }
-}
 
 function normalizeUri(value?: string | null): string | undefined {
   if (typeof value !== "string") return undefined;
@@ -58,30 +50,14 @@ async function isPhotoshopSelectionEmpty(): Promise<boolean> {
     if (!doc) return true;
     const selection = doc.selection;
     if (!selection) return true;
-    if (typeof (selection as any).isEmpty === "function") {
-      return await (selection as any).isEmpty();
-    }
 
     const bounds = (selection as any).bounds;
-    if (!bounds || !Array.isArray(bounds) || bounds.length < 4) {
+    if (!bounds) {
       return true;
     }
 
-    const [left, top, right, bottom] = bounds;
-    const leftVal = typeof left === "object" && left ? Number(left?.value ?? left) : Number(left);
-    const topVal = typeof top === "object" && top ? Number(top?.value ?? top) : Number(top);
-    const rightVal = typeof right === "object" && right ? Number(right?.value ?? right) : Number(right);
-    const bottomVal = typeof bottom === "object" && bottom ? Number(bottom?.value ?? bottom) : Number(bottom);
-
-    if ([leftVal, topVal, rightVal, bottomVal].some((value) => !Number.isFinite(value))) {
-      return true;
-    }
-
-    const width = rightVal - leftVal;
-    const height = bottomVal - topVal;
-    return width <= 0 || height <= 0;
+    return false; 
   } catch (error) {
-    logMaterializer("selectionCheck.error", { message: error instanceof Error ? error.message : String(error) });
     return true;
   }
 }
@@ -214,25 +190,10 @@ async function buildThumbnailBase64(image: Jimp): Promise<string> {
 }
 
 function applyMaskToImage(image: Jimp, mask: Jimp): void {
-  logMaterializer("applyMask.prepare", {
-    imageWidth: image.bitmap.width,
-    imageHeight: image.bitmap.height,
-    maskWidth: mask.bitmap.width,
-    maskHeight: mask.bitmap.height
-  });
-
   if (mask.bitmap.width !== image.bitmap.width || mask.bitmap.height !== image.bitmap.height) {
-    logMaterializer("applyMask.resizeNeeded", {
-      fromWidth: mask.bitmap.width,
-      fromHeight: mask.bitmap.height
-    });
     mask = mask.clone().resize({
       w: image.bitmap.width,
       h: image.bitmap.height
-    });
-    logMaterializer("applyMask.resizeDone", {
-      maskWidth: mask.bitmap.width,
-      maskHeight: mask.bitmap.height
     });
   }
 
@@ -245,17 +206,14 @@ function applyMaskToImage(image: Jimp, mask: Jimp): void {
     for (let x = 0; x < width; x += 1) {
       const baseIdx = (y * image.bitmap.width + x) * 4;
       const maskIdx = (y * mask.bitmap.width + x) * 4;
-      const alpha = maskData[maskIdx + 3];
-      if (alpha <= 0) continue;
-      const factor = Math.max(0, 1 - Math.min(1, alpha / 255));
+      const rgbAverage = Math.round(
+        (maskData[maskIdx + 0] + maskData[maskIdx + 1] + maskData[maskIdx + 2]) / 3
+      );
+      if (rgbAverage <= 0) continue;
+      const factor = Math.max(0, 1 - Math.min(1, rgbAverage / 255));
       baseData[baseIdx + 3] = Math.round(baseData[baseIdx + 3] * factor);
     }
   }
-
-  logMaterializer("applyMask.complete", {
-    finalMaskWidth: mask.bitmap.width,
-    finalMaskHeight: mask.bitmap.height
-  });
 }
 
 async function loadMaskSnapshotForMaterializer(mesh: any, boundaryUri: string, maskUri: string | undefined | null) {
@@ -265,14 +223,12 @@ async function loadMaskSnapshotForMaterializer(mesh: any, boundaryUri: string, m
   }
 
   if (normalizedMaskUri.startsWith("uxp://mask/")) {
-    logMaterializer("maskSnapshot.layer", { maskUri: normalizedMaskUri, boundaryUri });
     const parsedMask = parseMaskResource(normalizedMaskUri);
     const selectionEmpty = parsedMask.content === "selection" ? await isPhotoshopSelectionEmpty() : false;
     const layerSnapshot = await loadMaskSnapshotJimp(mesh, boundaryUri, normalizedMaskUri);
     const width = layerSnapshot.jimp.bitmap.width;
     const height = layerSnapshot.jimp.bitmap.height;
     if (selectionEmpty) {
-      logMaterializer("maskSnapshot.layer.emptySelection", { width, height });
       const fallback = await createSolidMask(width, height);
       return {
         jimp: fallback,
@@ -280,21 +236,12 @@ async function loadMaskSnapshotForMaterializer(mesh: any, boundaryUri: string, m
       };
     }
 
-    logMaterializer("maskSnapshot.layer.loaded", { width, height });
     return layerSnapshot;
   }
 
   if (normalizedMaskUri.startsWith("uxp://file/")) {
-    logMaterializer("maskSnapshot.resource", { maskUri: normalizedMaskUri });
     const { buffer } = await resolveSharedResourceBuffer(normalizedMaskUri);
-    logMaterializer("maskSnapshot.resource.buffer", {
-      byteLength: buffer?.byteLength ?? buffer?.length ?? null
-    });
     const jimpImage = await Jimp.read(Buffer.from(buffer));
-    logMaterializer("maskSnapshot.resource.loaded", {
-      width: jimpImage.bitmap.width,
-      height: jimpImage.bitmap.height
-    });
     return {
       jimp: jimpImage,
       thumbnail: await buildThumbnailBase64(jimpImage)
@@ -302,24 +249,14 @@ async function loadMaskSnapshotForMaterializer(mesh: any, boundaryUri: string, m
   }
 
   if (DATA_URL_REGEX.test(normalizedMaskUri)) {
-    logMaterializer("maskSnapshot.dataUrl", { maskUriLength: normalizedMaskUri.length });
     const decoded = decodeDataUrl(normalizedMaskUri);
-    logMaterializer("maskSnapshot.dataUrl.decoded", {
-      byteLength: decoded.buffer.byteLength,
-      mime: decoded.mime
-    });
     const jimpImage = await Jimp.read(decoded.buffer);
-    logMaterializer("maskSnapshot.dataUrl.loaded", {
-      width: jimpImage.bitmap.width,
-      height: jimpImage.bitmap.height
-    });
     return {
       jimp: jimpImage,
       thumbnail: await buildThumbnailBase64(jimpImage)
     };
   }
 
-  logMaterializer("maskSnapshot.unsupported", { maskUri: normalizedMaskUri });
   return null;
 }
 
@@ -335,15 +272,7 @@ async function createSolidMask(width: number, height: number): Promise<Jimp> {
 
 export async function loadContentSnapshotJimp(mesh: any, boundaryUri: string, contentUri: string) {
   const built = buildGetImageParamsFromResources(boundaryUri, contentUri);
-  logMaterializer("contentSnapshot.buildParams", {
-    boundary: built.boundary,
-    content: built.content,
-    imageSize: built.imageSize,
-    imageQuality: built.imageQuality,
-    layerIdentify: built.layer_identify
-  });
   const effectiveImageSize = getEffectiveImageSize(mesh, built.imageSize);
-  logMaterializer("contentSnapshot.effectiveSize", { effectiveImageSize });
   const boundaryParam = await resolveBoundaryParam(built.boundary, built.layer_identify ?? null);
   const layerIdentify = resolveLayerIdentifyForContent(built.content, built.layer_identify ?? null);
   const documentIdentify = SpeicialIDManager.get_SPECIAL_DOCUMENT_CURRENT();
@@ -354,10 +283,6 @@ export async function loadContentSnapshotJimp(mesh: any, boundaryUri: string, co
     boundary: boundaryParam,
     max_wh: effectiveImageSize,
     quality: built.imageQuality
-  });
-  logMaterializer("contentSnapshot.loaded", {
-    width: jimpImage.bitmap.width,
-    height: jimpImage.bitmap.height
   });
 
   if (built.content === "selection") {
@@ -377,8 +302,8 @@ export async function loadContentSnapshotJimp(mesh: any, boundaryUri: string, co
           }
         }
       }
-    } catch (error) {
-      console.warn("[createFromCBM] Failed to apply selection alpha", error);
+    } catch {
+      // ignore selection alpha errors
     }
   }
 
@@ -390,15 +315,7 @@ export async function loadContentSnapshotJimp(mesh: any, boundaryUri: string, co
 
 export async function loadMaskSnapshotJimp(mesh: any, boundaryUri: string, maskUri: string) {
   const built = buildGetMaskParamsFromResources(boundaryUri, maskUri);
-  logMaterializer("maskSnapshot.buildParams", {
-    boundary: built.boundary,
-    content: built.content,
-    imageSize: built.imageSize,
-    reverse: built.reverse,
-    layerIdentify: built.layer_identify
-  });
   const effectiveImageSize = getEffectiveImageSize(mesh, built.imageSize);
-  logMaterializer("maskSnapshot.effectiveSize", { effectiveImageSize });
   const boundaryParam = await resolveBoundaryParam(built.boundary, built.layer_identify ?? null);
   const layerIdentify = resolveLayerIdentifyForMask(built.content, built.layer_identify ?? null);
   const documentIdentify = SpeicialIDManager.get_SPECIAL_DOCUMENT_CURRENT();
@@ -427,8 +344,8 @@ export async function loadMaskSnapshotJimp(mesh: any, boundaryUri: string, maskU
           }
         }
       }
-    } catch (error) {
-      console.warn("[createFromCBM] Failed to apply selection alpha to mask", error);
+    } catch {
+      // ignore selection alpha errors
     }
   }
 
@@ -441,11 +358,6 @@ export async function loadMaskSnapshotJimp(mesh: any, boundaryUri: string, maskU
     jimpImage.bitmap.data[idx + 3] = grayValue;
   });
 
-  logMaterializer("maskSnapshot.layer.snapshotReady", {
-    width: jimpImage.bitmap.width,
-    height: jimpImage.bitmap.height
-  });
-
   return {
     jimp: jimpImage,
     thumbnail: await buildThumbnailBase64(jimpImage)
@@ -453,33 +365,21 @@ export async function loadMaskSnapshotJimp(mesh: any, boundaryUri: string, maskU
 }
 
 async function materializeFromCBM(mesh: any, params: CreateFromCbmParams): Promise<MaterializedCbmPayload> {
-  logMaterializer("start", {
-    hasContent: !!params.contentUri,
-    hasMask: !!params.maskUri,
-    boundaryUri: params.boundaryUri
-  });
-
+  console.log('materializeFromCBM', params);
   const contentUri = normalizeUri(params.contentUri);
   const maskUri = normalizeUri(params.maskUri);
 
   if (!contentUri && !maskUri) {
-    logMaterializer("errorMissingUris");
     throw new Error("contentUri or maskUri must be provided");
   }
 
   const boundaryUri = await resolveEffectiveBoundaryUri(params);
-  logMaterializer("boundaryResolved", { boundaryUri });
 
   if (!contentUri && maskUri) {
     const maskSnapshot = await loadMaskSnapshotForMaterializer(mesh, boundaryUri, maskUri);
     if (!maskSnapshot) {
-      logMaterializer("maskSnapshotMissing", { maskUri });
       throw new Error("Unable to resolve mask snapshot");
     }
-    logMaterializer("materializeMask", {
-      width: maskSnapshot.jimp.bitmap.width,
-      height: maskSnapshot.jimp.bitmap.height
-    });
     return {
       type: "mask",
       image: maskSnapshot.jimp,
@@ -493,17 +393,10 @@ async function materializeFromCBM(mesh: any, params: CreateFromCbmParams): Promi
   }
 
   if (!contentUri) {
-    logMaterializer("errorMissingContent", { maskUri });
     throw new Error("contentUri is required when maskUri is not provided");
   }
 
   const contentSnapshot = await loadContentSnapshotJimp(mesh, boundaryUri, contentUri);
-  logMaterializer("contentSnapshot", {
-    width: contentSnapshot.jimp.bitmap.width,
-    height: contentSnapshot.jimp.bitmap.height,
-    boundaryUri,
-    contentUri
-  });
 
   const image = contentSnapshot.jimp;
   let thumbnail = contentSnapshot.thumbnail;
@@ -515,23 +408,12 @@ async function materializeFromCBM(mesh: any, params: CreateFromCbmParams): Promi
   if (maskUri) {
     const maskSnapshot = await loadMaskSnapshotForMaterializer(mesh, boundaryUri, maskUri);
     if (!maskSnapshot) {
-      logMaterializer("maskSnapshotMissing", { maskUri });
       throw new Error("Unable to resolve mask snapshot");
     }
-    logMaterializer("applyMask", {
-      maskWidth: maskSnapshot.jimp.bitmap.width,
-      maskHeight: maskSnapshot.jimp.bitmap.height
-    });
     applyMaskToImage(image, maskSnapshot.jimp);
     thumbnail = await buildThumbnailBase64(image);
     meta.maskApplied = maskUri;
   }
-
-  logMaterializer("success", {
-    width: image.bitmap.width,
-    height: image.bitmap.height,
-    hasMask: !!maskUri
-  });
 
   return {
     type: "image",
@@ -555,12 +437,6 @@ export function registerCreateFromCBMAction(context: ImagingActionContext): void
 
   mcpMesh.implementAction("fileResource.createFromCBM", async (rawParams: CreateFromCbmParams = {}) => {
     try {
-      try {
-        console.log("[createFromCBM] invoke", JSON.stringify(rawParams));
-      } catch {
-        console.log("[createFromCBM] invoke", rawParams);
-      }
-
       const params = ensureParams(rawParams);
       const materialized = await materializeFromCBM(mesh, params);
       if (!materialized?.image) {
@@ -609,30 +485,8 @@ export function registerCreateFromCBMAction(context: ImagingActionContext): void
         mime
       };
 
-      try {
-        console.log(
-          "[createFromCBM] response",
-          JSON.stringify({
-            resource: resourceId,
-            width,
-            height,
-            hasThumbnail: typeof thumbnail === "string"
-          })
-        );
-      } catch {
-        console.log("[createFromCBM] response", {
-          resource: resourceId,
-          width,
-          height,
-          hasThumbnail: typeof thumbnail === "string"
-        });
-      }
-
       return response;
     } catch (error: any) {
-      try {
-        console.error("[createFromCBM] error", error);
-      } catch {}
       return {
         error: error?.message || String(error)
       };

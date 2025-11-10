@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Alert, Flex, Spin, Typography, AutoComplete, Button, Input } from 'antd';
-import { DeleteOutlined } from '@ant-design/icons';
+import { Trash2 } from 'lucide-react';
 
 export interface ModelOption {
     value: string;
@@ -144,7 +144,7 @@ export function ModelSelector({
                             <Button
                                 type="text"
                                 size="small"
-                                icon={<DeleteOutlined />}
+                                icon={<Trash2 size={14} />}
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     onDelete(option.value);

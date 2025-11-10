@@ -21,9 +21,10 @@
       "import": "./src/index.ts"
     }
   },
-  "dependencies": {},
+  "dependencies": {
+    "lucide-react": "^0.553.0"
+  },
   "devDependencies": {
-    "@ant-design/icons": "^6.0.2",
     "@chromatic-com/storybook": "^4.1.2",
     "@eslint/js": "^9.36.0",
     "@storybook/addon-a11y": "^9.1.10",

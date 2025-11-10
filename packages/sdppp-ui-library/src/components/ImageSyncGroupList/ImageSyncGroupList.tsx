@@ -1,6 +1,6 @@
 import { type FC, useState } from 'react';
 import { Button } from 'antd';
-import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
+import { Plus, Trash2 } from 'lucide-react';
 import { ImageSyncGroup } from '../ImageSyncGroup/ImageSyncGroup';
 import type { ButtonConfig } from '../ExclusiveSyncGroup/ExclusiveSyncGroup';
 
@@ -55,7 +55,7 @@ export const ImageSyncGroupList: FC<ImageSyncGroupListProps> = ({
           <Button
             type="dashed"
             onClick={onAdd}
-            icon={<PlusOutlined />}
+            icon={<Plus size={16} />}
             style={{ width: 120, justifyContent: 'center' }}
           >
             Add
@@ -70,7 +70,7 @@ export const ImageSyncGroupList: FC<ImageSyncGroupListProps> = ({
                     key={`remove-${index}`}
                     size="small"
                     type="default"
-                    icon={isHovered ? <DeleteOutlined /> : undefined}
+                    icon={isHovered ? <Trash2 size={14} /> : undefined}
                     onMouseEnter={() => setHoveredRemoveIndex(index)}
                     onMouseLeave={() => setHoveredRemoveIndex(prev => (prev === index ? null : prev))}
                     onClick={() => onRemove(index)}

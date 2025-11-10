@@ -1,23 +1,17 @@
 import { sdpppSDK } from '@sdppp/common';
-import type {
-  BoundaryRect as BaseBoundaryRect,
-  BoundarySetting as BaseBoundarySetting,
-  BoundaryUri as BaseBoundaryUri,
-  ContentType as BaseContentType,
-  ContentUri as BaseContentUri,
-  MaskUri as BaseMaskUri,
-  TrackType as BaseTrackType,
-} from '../../../realtime-thumbnail/types';
-import { extractDocIdFromUris, parseBoundaryUri, parseContentUri } from '../../../realtime-thumbnail/uri-utils';
+import {
+  type BoundaryRect,
+  type BoundarySetting,
+  type BoundaryUri,
+  type ContentType,
+  type ContentUri,
+  type MaskUri,
+  extractDocIdFromUris,
+  parseBoundaryResource,
+  parseContentResource,
+} from '@sdppp/resourcing/src/resource-uris';
 
-export type ContentType = BaseContentType;
-export type TrackType = BaseTrackType;
-
-export type BoundaryRect = BaseBoundaryRect;
-export type BoundarySetting = BaseBoundarySetting;
-export type BoundaryUri = BaseBoundaryUri;
-export type ContentUri = BaseContentUri;
-export type MaskUri = BaseMaskUri;
+export type TrackType = 'image' | 'mask';
 
 export interface AutoSyncConfig {
   type: TrackType;
@@ -75,7 +69,7 @@ export const getSlotPrimaryConfig = (slot?: SlotState | null): AutoSyncConfig | 
   let content: ContentType = 'canvas';
   let layerIdentify: string | null = null;
   try {
-    const parsedContent = parseContentUri(slot.contentUri as any);
+    const parsedContent = parseContentResource(slot.contentUri as any);
     content = parsedContent.content;
     layerIdentify = parsedContent.layerIdentify ?? null;
   } catch {
@@ -85,7 +79,7 @@ export const getSlotPrimaryConfig = (slot?: SlotState | null): AutoSyncConfig | 
 
   let boundary: BoundarySetting = null;
   try {
-    const parsedBoundary = parseBoundaryUri(slot.boundaryUri as any);
+    const parsedBoundary = parseBoundaryResource(slot.boundaryUri as any);
     boundary = parsedBoundary.boundary ?? null;
   } catch {
     boundary = null;

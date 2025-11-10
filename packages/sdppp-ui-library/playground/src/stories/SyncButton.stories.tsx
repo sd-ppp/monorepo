@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { SyncButton } from '@sdppp/ui-library';
-import { PlusOutlined } from '@ant-design/icons';
+import { Plus } from 'lucide-react';
 
 const meta: Meta<typeof SyncButton> = {
   title: 'Components/SyncButton',
@@ -32,7 +32,7 @@ export const Default: Story = {
     disabled: false,
     isAutoSync: false,
     autoSyncEnabled: true,
-    children: <PlusOutlined />,
+    children: <Plus size={16} />,
     syncButtonTooltip: 'Click to sync',
     autoSyncButtonTooltips: {
       enabled: 'Auto-sync is ON',

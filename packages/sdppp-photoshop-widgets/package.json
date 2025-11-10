@@ -14,7 +14,6 @@
     "storybook": "storybook dev -p 6007 -c playground/.storybook"
   },
   "dependencies": {
-    "@ant-design/icons": "^6.1.0",
     "@sdppp/common": "workspace:*",
     "@sdppp/mock-photoshop": "workspace:*",
     "@sdppp/resourcing": "workspace:*",

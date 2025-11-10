@@ -32234,20 +32234,20 @@ function getAudioFingerprint() {
   }
   var hashFromIndex = 4500;
   var hashToIndex = 5e3;
-  var context2 = new AudioContext(1, hashToIndex, 44100);
-  var oscillator = context2.createOscillator();
+  var context = new AudioContext(1, hashToIndex, 44100);
+  var oscillator = context.createOscillator();
   oscillator.type = "triangle";
   oscillator.frequency.value = 1e4;
-  var compressor = context2.createDynamicsCompressor();
+  var compressor = context.createDynamicsCompressor();
   compressor.threshold.value = -50;
   compressor.knee.value = 40;
   compressor.ratio.value = 12;
   compressor.attack.value = 0;
   compressor.release.value = 0.25;
   oscillator.connect(compressor);
-  compressor.connect(context2.destination);
+  compressor.connect(context.destination);
   oscillator.start(0);
-  var _a3 = startRenderingAudio(context2), renderPromise = _a3[0], finishRendering = _a3[1];
+  var _a3 = startRenderingAudio(context), renderPromise = _a3[0], finishRendering = _a3[1];
   var fingerprintPromise = renderPromise.then(function(buffer2) {
     return getHash(buffer2.getChannelData(0).subarray(hashFromIndex));
   }, function(error) {
@@ -32265,7 +32265,7 @@ function getAudioFingerprint() {
 function doesCurrentBrowserSuspendAudioContext() {
   return isWebKit() && !isDesktopSafari() && !isWebKit606OrNewer();
 }
-function startRenderingAudio(context2) {
+function startRenderingAudio(context) {
   var renderTryMaxCount = 3;
   var renderRetryDelay = 500;
   var runningMaxAwaitTime = 500;
@@ -32277,7 +32277,7 @@ function startRenderingAudio(context2) {
     var isFinalized = false;
     var renderTryCount = 0;
     var startedRunningAt = 0;
-    context2.oncomplete = function(event) {
+    context.oncomplete = function(event) {
       return resolve2(event.renderedBuffer);
     };
     var startRunningTimeout = function() {
@@ -32290,11 +32290,11 @@ function startRenderingAudio(context2) {
     };
     var tryRender = function() {
       try {
-        var renderingPromise = context2.startRendering();
+        var renderingPromise = context.startRendering();
         if (isPromise(renderingPromise)) {
           suppressUnhandledRejectionWarning(renderingPromise);
         }
-        switch (context2.state) {
+        switch (context.state) {
           case "running":
             startedRunningAt = Date.now();
             if (isFinalized) {
@@ -32602,19 +32602,19 @@ function getCanvasFingerprint() {
   var winding = false;
   var geometry;
   var text;
-  var _a3 = makeCanvasContext(), canvas = _a3[0], context2 = _a3[1];
-  if (!isSupported(canvas, context2)) {
+  var _a3 = makeCanvasContext(), canvas = _a3[0], context = _a3[1];
+  if (!isSupported(canvas, context)) {
     geometry = text = "";
   } else {
-    winding = doesSupportWinding(context2);
-    renderTextImage(canvas, context2);
+    winding = doesSupportWinding(context);
+    renderTextImage(canvas, context);
     var textImage1 = canvasToString(canvas);
     var textImage2 = canvasToString(canvas);
     if (textImage1 !== textImage2) {
       geometry = text = "unstable";
     } else {
       text = textImage1;
-      renderGeometryImage(canvas, context2);
+      renderGeometryImage(canvas, context);
       geometry = canvasToString(canvas);
     }
   }
@@ -32626,51 +32626,51 @@ function makeCanvasContext() {
   canvas.height = 1;
   return [canvas, canvas.getContext("2d")];
 }
-function isSupported(canvas, context2) {
-  return !!(context2 && canvas.toDataURL);
+function isSupported(canvas, context) {
+  return !!(context && canvas.toDataURL);
 }
-function doesSupportWinding(context2) {
-  context2.rect(0, 0, 10, 10);
-  context2.rect(2, 2, 6, 6);
-  return !context2.isPointInPath(5, 5, "evenodd");
+function doesSupportWinding(context) {
+  context.rect(0, 0, 10, 10);
+  context.rect(2, 2, 6, 6);
+  return !context.isPointInPath(5, 5, "evenodd");
 }
-function renderTextImage(canvas, context2) {
+function renderTextImage(canvas, context) {
   canvas.width = 240;
   canvas.height = 60;
-  context2.textBaseline = "alphabetic";
-  context2.fillStyle = "#f60";
-  context2.fillRect(100, 1, 62, 20);
-  context2.fillStyle = "#069";
-  context2.font = '11pt "Times New Roman"';
+  context.textBaseline = "alphabetic";
+  context.fillStyle = "#f60";
+  context.fillRect(100, 1, 62, 20);
+  context.fillStyle = "#069";
+  context.font = '11pt "Times New Roman"';
   var printedText = "Cwm fjordbank gly ".concat(
     String.fromCharCode(55357, 56835)
     /* 😃 */
   );
-  context2.fillText(printedText, 2, 15);
-  context2.fillStyle = "rgba(102, 204, 0, 0.2)";
-  context2.font = "18pt Arial";
-  context2.fillText(printedText, 4, 45);
+  context.fillText(printedText, 2, 15);
+  context.fillStyle = "rgba(102, 204, 0, 0.2)";
+  context.font = "18pt Arial";
+  context.fillText(printedText, 4, 45);
 }
-function renderGeometryImage(canvas, context2) {
+function renderGeometryImage(canvas, context) {
   canvas.width = 122;
   canvas.height = 110;
-  context2.globalCompositeOperation = "multiply";
+  context.globalCompositeOperation = "multiply";
   for (var _i = 0, _a3 = [
     ["#f2f", 40, 40],
     ["#2ff", 80, 40],
     ["#ff2", 60, 80]
   ]; _i < _a3.length; _i++) {
     var _b2 = _a3[_i], color = _b2[0], x2 = _b2[1], y2 = _b2[2];
-    context2.fillStyle = color;
-    context2.beginPath();
-    context2.arc(x2, y2, 40, 0, Math.PI * 2, true);
-    context2.closePath();
-    context2.fill();
+    context.fillStyle = color;
+    context.beginPath();
+    context.arc(x2, y2, 40, 0, Math.PI * 2, true);
+    context.closePath();
+    context.fill();
   }
-  context2.fillStyle = "#f9c";
-  context2.arc(60, 60, 60, 0, Math.PI * 2, true);
-  context2.arc(60, 60, 20, 0, Math.PI * 2, true);
-  context2.fill("evenodd");
+  context.fillStyle = "#f9c";
+  context.arc(60, 60, 60, 0, Math.PI * 2, true);
+  context.arc(60, 60, 20, 0, Math.PI * 2, true);
+  context.fill("evenodd");
 }
 function canvasToString(canvas) {
   return canvas.toDataURL();
@@ -41987,9 +41987,9 @@ function requireTransformData() {
   var utils2 = requireUtils();
   var defaults = requireDefaults();
   transformData = function transformData2(data2, headers, status, fns) {
-    var context2 = this || defaults;
+    var context = this || defaults;
     utils2.forEach(fns, function transform(fn) {
-      data2 = fn.call(context2, data2, headers, status);
+      data2 = fn.call(context, data2, headers, status);
     });
     return data2;
   };
@@ -42474,10 +42474,10 @@ function requireAxios$1() {
   var defaults = requireDefaults();
   var formDataToJSON = requireFormDataToJSON();
   function createInstance(defaultConfig) {
-    var context2 = new Axios2(defaultConfig);
-    var instance2 = bind2(Axios2.prototype.request, context2);
-    utils2.extend(instance2, Axios2.prototype, context2);
-    utils2.extend(instance2, context2);
+    var context = new Axios2(defaultConfig);
+    var instance2 = bind2(Axios2.prototype.request, context);
+    utils2.extend(instance2, Axios2.prototype, context);
+    utils2.extend(instance2, context);
     instance2.create = function create2(instanceConfig) {
       return createInstance(mergeConfig2(defaultConfig, instanceConfig));
     };
@@ -43563,7 +43563,7 @@ var QrCodeAuthenticationClient = (
             });
           });
         }
-        var _a3, autoExchangeUserInfo, _b2, size, _c, containerSize, _d, interval, onStart, onResult, onScanned, onExpired, onSuccess, onCancel, onError, onCodeShow, onCodeLoaded, onCodeLoadFailed, onRetry, onMfa, onAuthFlow, _e, tips, context2, customData, extIdpConnId, withCustomData, lang, nowLang, _f, title2, _h, expired, _j, succeed, _k, retry, _l, middleTitle, _m, referText, node2, nodeWrapper, needGenerate, styleNode, style, loading, unloading, genTip, editTipText, genImage, genLogoInCenter, genShadowMiddleStatus, genReferTextNode, removeReferTextNode, genShadow, displayScannedUser, start;
+        var _a3, autoExchangeUserInfo, _b2, size, _c, containerSize, _d, interval, onStart, onResult, onScanned, onExpired, onSuccess, onCancel, onError, onCodeShow, onCodeLoaded, onCodeLoadFailed, onRetry, onMfa, onAuthFlow, _e, tips, context, customData, extIdpConnId, withCustomData, lang, nowLang, _f, title2, _h, expired, _j, succeed, _k, retry, _l, middleTitle, _m, referText, node2, nodeWrapper, needGenerate, styleNode, style, loading, unloading, genTip, editTipText, genImage, genLogoInCenter, genShadowMiddleStatus, genReferTextNode, removeReferTextNode, genShadow, displayScannedUser, start;
         var _this = this;
         return __generator$7(this, function(_o) {
           options2 = options2 || {};
@@ -43573,7 +43573,7 @@ var QrCodeAuthenticationClient = (
           } : _b2, _c = options2.containerSize, containerSize = _c === void 0 ? {
             height: 300,
             width: 300
-          } : _c, _d = options2.interval, interval = _d === void 0 ? 800 : _d, onStart = options2.onStart, onResult = options2.onResult, onScanned = options2.onScanned, onExpired = options2.onExpired, onSuccess = options2.onSuccess, onCancel = options2.onCancel, onError = options2.onError, onCodeShow = options2.onCodeShow, onCodeLoaded = options2.onCodeLoaded, onCodeLoadFailed = options2.onCodeLoadFailed, onRetry = options2.onRetry, onMfa = options2.onMfa, onAuthFlow = options2.onAuthFlow, _e = options2.tips, tips = _e === void 0 ? {} : _e, context2 = options2.context, customData = options2.customData, extIdpConnId = options2.extIdpConnId, withCustomData = options2.withCustomData;
+          } : _c, _d = options2.interval, interval = _d === void 0 ? 800 : _d, onStart = options2.onStart, onResult = options2.onResult, onScanned = options2.onScanned, onExpired = options2.onExpired, onSuccess = options2.onSuccess, onCancel = options2.onCancel, onError = options2.onError, onCodeShow = options2.onCodeShow, onCodeLoaded = options2.onCodeLoaded, onCodeLoadFailed = options2.onCodeLoadFailed, onRetry = options2.onRetry, onMfa = options2.onMfa, onAuthFlow = options2.onAuthFlow, _e = options2.tips, tips = _e === void 0 ? {} : _e, context = options2.context, customData = options2.customData, extIdpConnId = options2.extIdpConnId, withCustomData = options2.withCustomData;
           lang = this.options.lang;
           nowLang = lang === "zh-CN";
           _f = tips.title, title2 = _f === void 0 ? nowLang ? "请在移动端确认账号登录" : "Please be on the mobile" : _f, tips.canceled, _h = tips.expired, expired = _h === void 0 ? nowLang ? "二维码已过期" : "QR code has expired" : _h, _j = tips.succeed, succeed = _j === void 0 ? nowLang ? "扫码成功" : "Scan code successfully" : _j, _k = tips.retry, retry = _k === void 0 ? nowLang ? "重试" : "Retry" : _k, _l = tips.middleTitle, middleTitle = _l === void 0 ? nowLang ? "确认登录" : "Confirm login" : _l, _m = tips.referText, referText = _m === void 0 ? nowLang ? "重新扫码" : "Scan the code" : _m;
@@ -43753,7 +43753,7 @@ var QrCodeAuthenticationClient = (
                   case 1:
                     _b3.trys.push([1, 3, , 4]);
                     return [4, this.geneCode({
-                      context: context2,
+                      context,
                       customData,
                       extIdpConnId,
                       withCustomData
@@ -43908,11 +43908,11 @@ var QrCodeAuthenticationClient = (
     };
     QrCodeAuthenticationClient2.prototype.geneCode = function(options2) {
       return __awaiter$7(this, void 0, void 0, function() {
-        var _a3, context2, customData, extIdpConnId, withCustomData, api2, data2;
+        var _a3, context, customData, extIdpConnId, withCustomData, api2, data2;
         return __generator$7(this, function(_b2) {
           switch (_b2.label) {
             case 0:
-              _a3 = options2 || {}, context2 = _a3.context, customData = _a3.customData, extIdpConnId = _a3.extIdpConnId, withCustomData = _a3.withCustomData;
+              _a3 = options2 || {}, context = _a3.context, customData = _a3.customData, extIdpConnId = _a3.extIdpConnId, withCustomData = _a3.withCustomData;
               api2 = "".concat(this.baseClient.appHost, "/api/v2/qrcode/gene");
               return [4, this.httpClient.request({
                 method: "POST",
@@ -43920,7 +43920,7 @@ var QrCodeAuthenticationClient = (
                 data: {
                   autoMergeQrCode: false,
                   scene: this.scene,
-                  context: context2,
+                  context,
                   params: customData,
                   extIdpConnId,
                   withCustomData
@@ -44942,7 +44942,7 @@ var SocialAuthenticationClient = (
     SocialAuthenticationClient2.prototype.authorize = function(provider, options2) {
       var _this = this;
       options2 = options2 || {};
-      var position = options2.position, _a3 = options2.popup, popup = _a3 === void 0 ? true : _a3, onSuccess = options2.onSuccess, onError = options2.onError, authorization_params = options2.authorization_params, authorizationParams = options2.authorizationParams, context2 = options2.context, customData = options2.customData, _b2 = options2.withIdentities, withIdentities = _b2 === void 0 ? false : _b2, _c = options2.protocol, protocol = _c === void 0 ? "oidc" : _c, uuid = options2.uuid, _d = options2.withCustomData, withCustomData = _d === void 0 ? false : _d, targetUrl = options2.targetUrl, relayMethod = options2.relayMethod, guardVersion = options2.guardVersion;
+      var position = options2.position, _a3 = options2.popup, popup = _a3 === void 0 ? true : _a3, onSuccess = options2.onSuccess, onError = options2.onError, authorization_params = options2.authorization_params, authorizationParams = options2.authorizationParams, context = options2.context, customData = options2.customData, _b2 = options2.withIdentities, withIdentities = _b2 === void 0 ? false : _b2, _c = options2.protocol, protocol = _c === void 0 ? "oidc" : _c, uuid = options2.uuid, _d = options2.withCustomData, withCustomData = _d === void 0 ? false : _d, targetUrl = options2.targetUrl, relayMethod = options2.relayMethod, guardVersion = options2.guardVersion;
       if (!uuid) {
         uuid = generateRandomString(20);
       }
@@ -44958,8 +44958,8 @@ var SocialAuthenticationClient = (
         relay_method: relayMethod,
         guard_version: guardVersion
       };
-      if (context2) {
-        query.context = JSON.stringify(context2);
+      if (context) {
+        query.context = JSON.stringify(context);
       }
       if (this.options.tenantId) {
         query.tenant_id = this.options.tenantId;
@@ -45910,13 +45910,13 @@ var AuthenticationClient = (
     };
     AuthenticationClient2.prototype.registerByEmail = function(email, password, profile, options2) {
       return __awaiter(this, void 0, void 0, function() {
-        var _a3, forceLogin, _b2, generateToken, clientIp, params, context2, customData, phoneToken, _c, _d, _e, extraParams, extraContext, user2;
+        var _a3, forceLogin, _b2, generateToken, clientIp, params, context, customData, phoneToken, _c, _d, _e, extraParams, extraContext, user2;
         return __generator(this, function(_f) {
           switch (_f.label) {
             case 0:
               options2 = options2 || {};
               profile = profile || {};
-              _a3 = options2.forceLogin, forceLogin = _a3 === void 0 ? false : _a3, _b2 = options2.generateToken, generateToken = _b2 === void 0 ? false : _b2, clientIp = options2.clientIp, params = options2.params, context2 = options2.context, customData = options2.customData, phoneToken = options2.phoneToken;
+              _a3 = options2.forceLogin, forceLogin = _a3 === void 0 ? false : _a3, _b2 = options2.generateToken, generateToken = _b2 === void 0 ? false : _b2, clientIp = options2.clientIp, params = options2.params, context = options2.context, customData = options2.customData, phoneToken = options2.phoneToken;
               _d = (_c = this.options).encryptFunction;
               _e = [password];
               return [4, this.publicKeyManager.getPublicKey()];
@@ -45931,8 +45931,8 @@ var AuthenticationClient = (
                 extraParams = JSON.stringify(params);
               }
               extraContext = null;
-              if (context2) {
-                extraContext = JSON.stringify(context2);
+              if (context) {
+                extraContext = JSON.stringify(context);
               }
               return [4, registerByEmail(this.graphqlClient, this.tokenProvider, {
                 input: {
@@ -45977,13 +45977,13 @@ var AuthenticationClient = (
     };
     AuthenticationClient2.prototype.registerByUsername = function(username, password, profile, options2) {
       return __awaiter(this, void 0, void 0, function() {
-        var _a3, forceLogin, _b2, generateToken, clientIp, params, context2, customData, phoneToken, emailToken, _c, _d, _e, extraParams, extraContext, user2;
+        var _a3, forceLogin, _b2, generateToken, clientIp, params, context, customData, phoneToken, emailToken, _c, _d, _e, extraParams, extraContext, user2;
         return __generator(this, function(_f) {
           switch (_f.label) {
             case 0:
               options2 = options2 || {};
               profile = profile || {};
-              _a3 = options2.forceLogin, forceLogin = _a3 === void 0 ? false : _a3, _b2 = options2.generateToken, generateToken = _b2 === void 0 ? false : _b2, clientIp = options2.clientIp, params = options2.params, context2 = options2.context, customData = options2.customData, phoneToken = options2.phoneToken, emailToken = options2.emailToken;
+              _a3 = options2.forceLogin, forceLogin = _a3 === void 0 ? false : _a3, _b2 = options2.generateToken, generateToken = _b2 === void 0 ? false : _b2, clientIp = options2.clientIp, params = options2.params, context = options2.context, customData = options2.customData, phoneToken = options2.phoneToken, emailToken = options2.emailToken;
               _d = (_c = this.options).encryptFunction;
               _e = [password];
               return [4, this.publicKeyManager.getPublicKey()];
@@ -45998,8 +45998,8 @@ var AuthenticationClient = (
                 extraParams = JSON.stringify(params);
               }
               extraContext = null;
-              if (context2) {
-                extraContext = JSON.stringify(context2);
+              if (context) {
+                extraContext = JSON.stringify(context);
               }
               return [4, registerByUsername(this.graphqlClient, this.tokenProvider, {
                 input: {
@@ -46025,13 +46025,13 @@ var AuthenticationClient = (
     };
     AuthenticationClient2.prototype.registerByPhoneCode = function(phone, code, password, profile, options2) {
       return __awaiter(this, void 0, void 0, function() {
-        var _a3, forceLogin, _b2, generateToken, clientIp, params, context2, customData, phoneCountryCode, emailToken, _c, _d, _e, extraParams, extraContext, user2;
+        var _a3, forceLogin, _b2, generateToken, clientIp, params, context, customData, phoneCountryCode, emailToken, _c, _d, _e, extraParams, extraContext, user2;
         return __generator(this, function(_f) {
           switch (_f.label) {
             case 0:
               options2 = options2 || {};
               profile = profile || {};
-              _a3 = options2.forceLogin, forceLogin = _a3 === void 0 ? false : _a3, _b2 = options2.generateToken, generateToken = _b2 === void 0 ? false : _b2, clientIp = options2.clientIp, params = options2.params, context2 = options2.context, customData = options2.customData, phoneCountryCode = options2.phoneCountryCode, emailToken = options2.emailToken;
+              _a3 = options2.forceLogin, forceLogin = _a3 === void 0 ? false : _a3, _b2 = options2.generateToken, generateToken = _b2 === void 0 ? false : _b2, clientIp = options2.clientIp, params = options2.params, context = options2.context, customData = options2.customData, phoneCountryCode = options2.phoneCountryCode, emailToken = options2.emailToken;
               if (!password) return [3, 3];
               _d = (_c = this.options).encryptFunction;
               _e = [password];
@@ -46049,8 +46049,8 @@ var AuthenticationClient = (
                 extraParams = JSON.stringify(params);
               }
               extraContext = null;
-              if (context2) {
-                extraContext = JSON.stringify(context2);
+              if (context) {
+                extraContext = JSON.stringify(context);
               }
               return [4, registerByPhoneCode(this.graphqlClient, this.tokenProvider, {
                 input: {
@@ -46117,12 +46117,12 @@ var AuthenticationClient = (
     };
     AuthenticationClient2.prototype.loginByEmail = function(email, password, options2) {
       return __awaiter(this, void 0, void 0, function() {
-        var _a3, autoRegister, captchaCode, clientIp, params, context2, customData, _b2, _c, _d, extraParams, extraContext, user2;
+        var _a3, autoRegister, captchaCode, clientIp, params, context, customData, _b2, _c, _d, extraParams, extraContext, user2;
         return __generator(this, function(_e) {
           switch (_e.label) {
             case 0:
               options2 = options2 || {};
-              _a3 = options2.autoRegister, autoRegister = _a3 === void 0 ? false : _a3, captchaCode = options2.captchaCode, clientIp = options2.clientIp, params = options2.params, context2 = options2.context, customData = options2.customData;
+              _a3 = options2.autoRegister, autoRegister = _a3 === void 0 ? false : _a3, captchaCode = options2.captchaCode, clientIp = options2.clientIp, params = options2.params, context = options2.context, customData = options2.customData;
               _c = (_b2 = this.options).encryptFunction;
               _d = [password];
               return [4, this.publicKeyManager.getPublicKey()];
@@ -46137,8 +46137,8 @@ var AuthenticationClient = (
                 extraParams = JSON.stringify(params);
               }
               extraContext = null;
-              if (context2) {
-                extraContext = JSON.stringify(context2);
+              if (context) {
+                extraContext = JSON.stringify(context);
               }
               return [4, loginByEmail(this.graphqlClient, this.tokenProvider, {
                 input: {
@@ -46164,12 +46164,12 @@ var AuthenticationClient = (
     };
     AuthenticationClient2.prototype.loginByUsername = function(username, password, options2) {
       return __awaiter(this, void 0, void 0, function() {
-        var _a3, autoRegister, captchaCode, clientIp, params, context2, customData, _b2, _c, _d, extraParams, extraContext, user2;
+        var _a3, autoRegister, captchaCode, clientIp, params, context, customData, _b2, _c, _d, extraParams, extraContext, user2;
         return __generator(this, function(_e) {
           switch (_e.label) {
             case 0:
               options2 = options2 || {};
-              _a3 = options2.autoRegister, autoRegister = _a3 === void 0 ? false : _a3, captchaCode = options2.captchaCode, clientIp = options2.clientIp, params = options2.params, context2 = options2.context, customData = options2.customData;
+              _a3 = options2.autoRegister, autoRegister = _a3 === void 0 ? false : _a3, captchaCode = options2.captchaCode, clientIp = options2.clientIp, params = options2.params, context = options2.context, customData = options2.customData;
               _c = (_b2 = this.options).encryptFunction;
               _d = [password];
               return [4, this.publicKeyManager.getPublicKey()];
@@ -46184,8 +46184,8 @@ var AuthenticationClient = (
                 extraParams = JSON.stringify(params);
               }
               extraContext = null;
-              if (context2) {
-                extraContext = JSON.stringify(context2);
+              if (context) {
+                extraContext = JSON.stringify(context);
               }
               return [4, loginByUsername(this.graphqlClient, this.tokenProvider, {
                 input: {
@@ -46211,12 +46211,12 @@ var AuthenticationClient = (
     };
     AuthenticationClient2.prototype.loginByPhoneCode = function(phone, code, options2) {
       return __awaiter(this, void 0, void 0, function() {
-        var clientIp, params, context2, customData, phoneCountryCode, extraParams, extraContext, user2;
+        var clientIp, params, context, customData, phoneCountryCode, extraParams, extraContext, user2;
         return __generator(this, function(_a3) {
           switch (_a3.label) {
             case 0:
               options2 = options2 || {};
-              clientIp = options2.clientIp, params = options2.params, context2 = options2.context, customData = options2.customData, phoneCountryCode = options2.phoneCountryCode;
+              clientIp = options2.clientIp, params = options2.params, context = options2.context, customData = options2.customData, phoneCountryCode = options2.phoneCountryCode;
               extraParams = null;
               if (customData) {
                 extraParams = JSON.stringify(convertObjectToKeyValueList(customData));
@@ -46224,8 +46224,8 @@ var AuthenticationClient = (
                 extraParams = JSON.stringify(params);
               }
               extraContext = null;
-              if (context2) {
-                extraContext = JSON.stringify(context2);
+              if (context) {
+                extraContext = JSON.stringify(context);
               }
               return [4, loginByPhoneCode(this.graphqlClient, this.tokenProvider, {
                 input: {
@@ -46251,12 +46251,12 @@ var AuthenticationClient = (
     AuthenticationClient2.prototype.loginByEmailCode = function(email, code, options2) {
       var _a3;
       return __awaiter(this, void 0, void 0, function() {
-        var clientIp, params, context2, customData, phoneCountryCode, extraParams, extraContext, url, user2;
+        var clientIp, params, context, customData, phoneCountryCode, extraParams, extraContext, url, user2;
         return __generator(this, function(_b2) {
           switch (_b2.label) {
             case 0:
               options2 = options2 || {};
-              clientIp = options2.clientIp, params = options2.params, context2 = options2.context, customData = options2.customData, phoneCountryCode = options2.phoneCountryCode;
+              clientIp = options2.clientIp, params = options2.params, context = options2.context, customData = options2.customData, phoneCountryCode = options2.phoneCountryCode;
               extraParams = null;
               if (customData) {
                 extraParams = JSON.stringify(convertObjectToKeyValueList(customData));
@@ -46264,8 +46264,8 @@ var AuthenticationClient = (
                 extraParams = JSON.stringify(params);
               }
               extraContext = null;
-              if (context2) {
-                extraContext = JSON.stringify(context2);
+              if (context) {
+                extraContext = JSON.stringify(context);
               }
               url = "".concat((_a3 = this.options.appHost) !== null && _a3 !== void 0 ? _a3 : "", "/api/v2/login/email-code");
               return [4, this.httpClient.request({
@@ -46294,12 +46294,12 @@ var AuthenticationClient = (
     };
     AuthenticationClient2.prototype.loginByPhonePassword = function(phone, password, options2) {
       return __awaiter(this, void 0, void 0, function() {
-        var captchaCode, _a3, autoRegister, clientIp, params, context2, customData, _b2, _c, _d, extraParams, extraContext, user2;
+        var captchaCode, _a3, autoRegister, clientIp, params, context, customData, _b2, _c, _d, extraParams, extraContext, user2;
         return __generator(this, function(_e) {
           switch (_e.label) {
             case 0:
               options2 = options2 || {};
-              captchaCode = options2.captchaCode, _a3 = options2.autoRegister, autoRegister = _a3 === void 0 ? false : _a3, clientIp = options2.clientIp, params = options2.params, context2 = options2.context, customData = options2.customData;
+              captchaCode = options2.captchaCode, _a3 = options2.autoRegister, autoRegister = _a3 === void 0 ? false : _a3, clientIp = options2.clientIp, params = options2.params, context = options2.context, customData = options2.customData;
               _c = (_b2 = this.options).encryptFunction;
               _d = [password];
               return [4, this.publicKeyManager.getPublicKey()];
@@ -46314,8 +46314,8 @@ var AuthenticationClient = (
                 extraParams = JSON.stringify(params);
               }
               extraContext = null;
-              if (context2) {
-                extraContext = JSON.stringify(context2);
+              if (context) {
+                extraContext = JSON.stringify(context);
               }
               return [4, loginByPhonePassword(this.graphqlClient, this.tokenProvider, {
                 input: {
@@ -48508,7 +48508,7 @@ class DefaultLoginProvider {
     };
   }
 }
-const createStoreImpl$1 = (createState) => {
+const createStoreImpl = (createState) => {
   let state;
   const listeners = /* @__PURE__ */ new Set();
   const setState = (partial, replace) => {
@@ -48529,7 +48529,7 @@ const createStoreImpl$1 = (createState) => {
   const initialState = state = createState(setState, getState, api2);
   return api2;
 };
-const createStore$1 = (createState) => createState ? createStoreImpl$1(createState) : createStoreImpl$1;
+const createStore = (createState) => createState ? createStoreImpl(createState) : createStoreImpl;
 var react = { exports: {} };
 var react_development = { exports: {} };
 react_development.exports;
@@ -48755,9 +48755,9 @@ function requireReact_development() {
         {
           Object.freeze(emptyObject);
         }
-        function Component(props, context2, updater) {
+        function Component(props, context, updater) {
           this.props = props;
-          this.context = context2;
+          this.context = context;
           this.refs = emptyObject;
           this.updater = updater || ReactNoopUpdateQueue;
         }
@@ -48793,9 +48793,9 @@ function requireReact_development() {
         function ComponentDummy() {
         }
         ComponentDummy.prototype = Component.prototype;
-        function PureComponent(props, context2, updater) {
+        function PureComponent(props, context, updater) {
           this.props = props;
-          this.context = context2;
+          this.context = context;
           this.refs = emptyObject;
           this.updater = updater || ReactNoopUpdateQueue;
         }
@@ -48887,8 +48887,8 @@ function requireReact_development() {
           if (typeof type2 === "object") {
             switch (type2.$$typeof) {
               case REACT_CONTEXT_TYPE:
-                var context2 = type2;
-                return getContextName(context2) + ".Consumer";
+                var context = type2;
+                return getContextName(context) + ".Consumer";
               case REACT_PROVIDER_TYPE:
                 var provider = type2;
                 return getContextName(provider._context) + ".Provider";
@@ -49267,14 +49267,14 @@ function requireReact_development() {
           }
           return subtreeCount;
         }
-        function mapChildren(children, func, context2) {
+        function mapChildren(children, func, context) {
           if (children == null) {
             return children;
           }
           var result = [];
           var count = 0;
           mapIntoArray(children, result, "", "", function(child) {
-            return func.call(context2, child, count++);
+            return func.call(context, child, count++);
           });
           return result;
         }
@@ -49302,7 +49302,7 @@ function requireReact_development() {
           return children;
         }
         function createContext(defaultValue) {
-          var context2 = {
+          var context = {
             $$typeof: REACT_CONTEXT_TYPE,
             // As a workaround to support multiple concurrent renderers, we categorize
             // some renderers as primary and others as secondary. We only expect
@@ -49321,9 +49321,9 @@ function requireReact_development() {
             _defaultValue: null,
             _globalName: null
           };
-          context2.Provider = {
+          context.Provider = {
             $$typeof: REACT_PROVIDER_TYPE,
-            _context: context2
+            _context: context
           };
           var hasWarnedAboutUsingNestedContextConsumers = false;
           var hasWarnedAboutUsingConsumerProvider = false;
@@ -49331,7 +49331,7 @@ function requireReact_development() {
           {
             var Consumer = {
               $$typeof: REACT_CONTEXT_TYPE,
-              _context: context2
+              _context: context
             };
             Object.defineProperties(Consumer, {
               Provider: {
@@ -49340,34 +49340,34 @@ function requireReact_development() {
                     hasWarnedAboutUsingConsumerProvider = true;
                     error("Rendering <Context.Consumer.Provider> is not supported and will be removed in a future major release. Did you mean to render <Context.Provider> instead?");
                   }
-                  return context2.Provider;
+                  return context.Provider;
                 },
                 set: function(_Provider) {
-                  context2.Provider = _Provider;
+                  context.Provider = _Provider;
                 }
               },
               _currentValue: {
                 get: function() {
-                  return context2._currentValue;
+                  return context._currentValue;
                 },
                 set: function(_currentValue) {
-                  context2._currentValue = _currentValue;
+                  context._currentValue = _currentValue;
                 }
               },
               _currentValue2: {
                 get: function() {
-                  return context2._currentValue2;
+                  return context._currentValue2;
                 },
                 set: function(_currentValue2) {
-                  context2._currentValue2 = _currentValue2;
+                  context._currentValue2 = _currentValue2;
                 }
               },
               _threadCount: {
                 get: function() {
-                  return context2._threadCount;
+                  return context._threadCount;
                 },
                 set: function(_threadCount) {
-                  context2._threadCount = _threadCount;
+                  context._threadCount = _threadCount;
                 }
               },
               Consumer: {
@@ -49376,12 +49376,12 @@ function requireReact_development() {
                     hasWarnedAboutUsingNestedContextConsumers = true;
                     error("Rendering <Context.Consumer.Consumer> is not supported and will be removed in a future major release. Did you mean to render <Context.Consumer> instead?");
                   }
-                  return context2.Consumer;
+                  return context.Consumer;
                 }
               },
               displayName: {
                 get: function() {
-                  return context2.displayName;
+                  return context.displayName;
                 },
                 set: function(displayName) {
                   if (!hasWarnedAboutDisplayNameOnConsumer) {
@@ -49391,13 +49391,13 @@ function requireReact_development() {
                 }
               }
             });
-            context2.Consumer = Consumer;
+            context.Consumer = Consumer;
           }
           {
-            context2._currentRenderer = null;
-            context2._currentRenderer2 = null;
+            context._currentRenderer = null;
+            context._currentRenderer2 = null;
           }
-          return context2;
+          return context;
         }
         var Uninitialized = -1;
         var Pending = 0;
@@ -50438,14 +50438,14 @@ function useStore(api2, selector = identity) {
   return slice;
 }
 const createImpl = (createState) => {
-  const api2 = createStore$1(createState);
+  const api2 = createStore(createState);
   const useBoundStore = (selector) => useStore(api2, selector);
   Object.assign(useBoundStore, api2);
   return useBoundStore;
 };
 const create = (createState) => createState ? createImpl(createState) : createImpl;
 const APP_NAME = "SD-PPP";
-const PSUXPInternalStore = createStore$1((set, get2) => ({
+const PSUXPInternalStore = createStore((set, get2) => ({
   headerTitle: APP_NAME,
   manifestVersion: "",
   loginProvider: new DefaultLoginProvider(),
@@ -52314,8 +52314,8 @@ function requireReactDom_development() {
         if (typeof type2 === "object") {
           switch (type2.$$typeof) {
             case REACT_CONTEXT_TYPE:
-              var context2 = type2;
-              return getContextName(context2) + ".Consumer";
+              var context = type2;
+              return getContextName(context) + ".Consumer";
             case REACT_PROVIDER_TYPE:
               var provider = type2;
               return getContextName(provider._context) + ".Provider";
@@ -52354,8 +52354,8 @@ function requireReactDom_development() {
           case CacheComponent:
             return "Cache";
           case ContextConsumer:
-            var context2 = type2;
-            return getContextName$1(context2) + ".Consumer";
+            var context = type2;
+            return getContextName$1(context) + ".Consumer";
           case ContextProvider:
             var provider = type2;
             return getContextName$1(provider._context) + ".Provider";
@@ -54324,10 +54324,10 @@ function requireReactDom_development() {
           passiveBrowserEventsSupported = false;
         }
       }
-      function invokeGuardedCallbackProd(name, func, context2, a2, b2, c2, d, e4, f2) {
+      function invokeGuardedCallbackProd(name, func, context, a2, b2, c2, d, e4, f2) {
         var funcArgs = Array.prototype.slice.call(arguments, 3);
         try {
-          func.apply(context2, funcArgs);
+          func.apply(context, funcArgs);
         } catch (error2) {
           this.onError(error2);
         }
@@ -54336,7 +54336,7 @@ function requireReactDom_development() {
       {
         if (typeof window !== "undefined" && typeof window.dispatchEvent === "function" && typeof document !== "undefined" && typeof document.createEvent === "function") {
           var fakeNode = document.createElement("react");
-          invokeGuardedCallbackImpl = function invokeGuardedCallbackDev(name, func, context2, a2, b2, c2, d, e4, f2) {
+          invokeGuardedCallbackImpl = function invokeGuardedCallbackDev(name, func, context, a2, b2, c2, d, e4, f2) {
             if (typeof document === "undefined" || document === null) {
               throw new Error("The `document` global was defined when React was initialized, but is not defined anymore. This can happen in a test environment if a component schedules an update from an asynchronous callback, but the test has already finished running. To solve this, you can either unmount the component at the end of your test (and ensure that any asynchronous operations get canceled in `componentWillUnmount`), or you can change the test itself to be asynchronous.");
             }
@@ -54355,7 +54355,7 @@ function requireReactDom_development() {
             function callCallback2() {
               didCall = true;
               restoreAfterDispatch();
-              func.apply(context2, funcArgs);
+              func.apply(context, funcArgs);
               didError = false;
             }
             var error2;
@@ -54411,12 +54411,12 @@ function requireReactDom_development() {
           caughtError = error2;
         }
       };
-      function invokeGuardedCallback(name, func, context2, a2, b2, c2, d, e4, f2) {
+      function invokeGuardedCallback(name, func, context, a2, b2, c2, d, e4, f2) {
         hasError = false;
         caughtError = null;
         invokeGuardedCallbackImpl$1.apply(reporter2, arguments);
       }
-      function invokeGuardedCallbackAndCatchFirstError(name, func, context2, a2, b2, c2, d, e4, f2) {
+      function invokeGuardedCallbackAndCatchFirstError(name, func, context, a2, b2, c2, d, e4, f2) {
         invokeGuardedCallback.apply(this, arguments);
         if (hasError) {
           var error2 = clearCaughtError();
@@ -59692,18 +59692,18 @@ function requireReactDom_development() {
           if (instance2 && instance2.__reactInternalMemoizedUnmaskedChildContext === unmaskedContext) {
             return instance2.__reactInternalMemoizedMaskedChildContext;
           }
-          var context2 = {};
+          var context = {};
           for (var key2 in contextTypes) {
-            context2[key2] = unmaskedContext[key2];
+            context[key2] = unmaskedContext[key2];
           }
           {
             var name = getComponentNameFromFiber(workInProgress2) || "Unknown";
-            checkPropTypes(contextTypes, context2, "context", name);
+            checkPropTypes(contextTypes, context, "context", name);
           }
           if (instance2) {
-            cacheContext(workInProgress2, unmaskedContext, context2);
+            cacheContext(workInProgress2, unmaskedContext, context);
           }
-          return context2;
+          return context;
         }
       }
       function hasContextChanged() {
@@ -59729,12 +59729,12 @@ function requireReactDom_development() {
           pop(contextStackCursor, fiber);
         }
       }
-      function pushTopLevelContextObject(fiber, context2, didChange) {
+      function pushTopLevelContextObject(fiber, context, didChange) {
         {
           if (contextStackCursor.current !== emptyContextObject) {
             throw new Error("Unexpected context found on stack. This error is likely caused by a bug in React. Please file an issue.");
           }
-          push(contextStackCursor, context2, fiber);
+          push(contextStackCursor, context, fiber);
           push(didPerformWorkStackCursor, didChange, fiber);
         }
       }
@@ -61363,24 +61363,24 @@ function requireReactDom_development() {
           isDisallowedContextReadInDEV = false;
         }
       }
-      function pushProvider(providerFiber, context2, nextValue) {
+      function pushProvider(providerFiber, context, nextValue) {
         {
-          push(valueCursor, context2._currentValue, providerFiber);
-          context2._currentValue = nextValue;
+          push(valueCursor, context._currentValue, providerFiber);
+          context._currentValue = nextValue;
           {
-            if (context2._currentRenderer !== void 0 && context2._currentRenderer !== null && context2._currentRenderer !== rendererSigil) {
+            if (context._currentRenderer !== void 0 && context._currentRenderer !== null && context._currentRenderer !== rendererSigil) {
               error("Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.");
             }
-            context2._currentRenderer = rendererSigil;
+            context._currentRenderer = rendererSigil;
           }
         }
       }
-      function popProvider(context2, providerFiber) {
+      function popProvider(context, providerFiber) {
         var currentValue = valueCursor.current;
         pop(valueCursor, providerFiber);
         {
           {
-            context2._currentValue = currentValue;
+            context._currentValue = currentValue;
           }
         }
       }
@@ -61407,12 +61407,12 @@ function requireReactDom_development() {
           }
         }
       }
-      function propagateContextChange(workInProgress2, context2, renderLanes2) {
+      function propagateContextChange(workInProgress2, context, renderLanes2) {
         {
-          propagateContextChange_eager(workInProgress2, context2, renderLanes2);
+          propagateContextChange_eager(workInProgress2, context, renderLanes2);
         }
       }
-      function propagateContextChange_eager(workInProgress2, context2, renderLanes2) {
+      function propagateContextChange_eager(workInProgress2, context, renderLanes2) {
         var fiber = workInProgress2.child;
         if (fiber !== null) {
           fiber.return = workInProgress2;
@@ -61424,7 +61424,7 @@ function requireReactDom_development() {
             nextFiber = fiber.child;
             var dependency = list.firstContext;
             while (dependency !== null) {
-              if (dependency.context === context2) {
+              if (dependency.context === context) {
                 if (fiber.tag === ClassComponent) {
                   var lane = pickArbitraryLane(renderLanes2);
                   var update = createUpdate(NoTimestamp, lane);
@@ -61509,17 +61509,17 @@ function requireReactDom_development() {
           }
         }
       }
-      function readContext(context2) {
+      function readContext(context) {
         {
           if (isDisallowedContextReadInDEV) {
             error("Context can only be read while React is rendering. In classes, you can read it in the render method or getDerivedStateFromProps. In function components, you can read it directly in the function body, but not inside Hooks like useReducer() or useMemo().");
           }
         }
-        var value = context2._currentValue;
-        if (lastFullyObservedContext === context2) ;
+        var value = context._currentValue;
+        if (lastFullyObservedContext === context) ;
         else {
           var contextItem = {
-            context: context2,
+            context,
             memoizedValue: value,
             next: null
           };
@@ -61976,11 +61976,11 @@ function requireReactDom_development() {
           currentlyProcessingQueue = null;
         }
       }
-      function callCallback(callback, context2) {
+      function callCallback(callback, context) {
         if (typeof callback !== "function") {
           throw new Error("Invalid argument passed as callback. Expected a function. Instead " + ("received: " + callback));
         }
-        callback.call(context2);
+        callback.call(context);
       }
       function resetHasForceUpdateBeforeProcessing() {
         hasForceUpdate = false;
@@ -62030,14 +62030,14 @@ function requireReactDom_development() {
         pop(rootInstanceStackCursor, fiber);
       }
       function getHostContext() {
-        var context2 = requiredContext(contextStackCursor$1.current);
-        return context2;
+        var context = requiredContext(contextStackCursor$1.current);
+        return context;
       }
       function pushHostContext(fiber) {
         requiredContext(rootInstanceStackCursor.current);
-        var context2 = requiredContext(contextStackCursor$1.current);
-        var nextContext = getChildHostContext(context2, fiber.type);
-        if (context2 === nextContext) {
+        var context = requiredContext(contextStackCursor$1.current);
+        var nextContext = getChildHostContext(context, fiber.type);
+        if (context === nextContext) {
           return;
         }
         push(contextFiberStackCursor, fiber, fiber);
@@ -63205,8 +63205,8 @@ function requireReactDom_development() {
           error("Do not call Hooks inside useEffect(...), useMemo(...), or other built-in Hooks. You can only call Hooks at the top level of your React function. For more information, see https://reactjs.org/link/rules-of-hooks");
         };
         HooksDispatcherOnMountInDEV = {
-          readContext: function(context2) {
-            return readContext(context2);
+          readContext: function(context) {
+            return readContext(context);
           },
           useCallback: function(callback, deps) {
             currentHookNameInDev = "useCallback";
@@ -63214,10 +63214,10 @@ function requireReactDom_development() {
             checkDepsAreArrayDev(deps);
             return mountCallback(callback, deps);
           },
-          useContext: function(context2) {
+          useContext: function(context) {
             currentHookNameInDev = "useContext";
             mountHookTypesDev();
-            return readContext(context2);
+            return readContext(context);
           },
           useEffect: function(create2, deps) {
             currentHookNameInDev = "useEffect";
@@ -63315,18 +63315,18 @@ function requireReactDom_development() {
           unstable_isNewReconciler: enableNewReconciler
         };
         HooksDispatcherOnMountWithHookTypesInDEV = {
-          readContext: function(context2) {
-            return readContext(context2);
+          readContext: function(context) {
+            return readContext(context);
           },
           useCallback: function(callback, deps) {
             currentHookNameInDev = "useCallback";
             updateHookTypesDev();
             return mountCallback(callback, deps);
           },
-          useContext: function(context2) {
+          useContext: function(context) {
             currentHookNameInDev = "useContext";
             updateHookTypesDev();
-            return readContext(context2);
+            return readContext(context);
           },
           useEffect: function(create2, deps) {
             currentHookNameInDev = "useEffect";
@@ -63419,18 +63419,18 @@ function requireReactDom_development() {
           unstable_isNewReconciler: enableNewReconciler
         };
         HooksDispatcherOnUpdateInDEV = {
-          readContext: function(context2) {
-            return readContext(context2);
+          readContext: function(context) {
+            return readContext(context);
           },
           useCallback: function(callback, deps) {
             currentHookNameInDev = "useCallback";
             updateHookTypesDev();
             return updateCallback(callback, deps);
           },
-          useContext: function(context2) {
+          useContext: function(context) {
             currentHookNameInDev = "useContext";
             updateHookTypesDev();
-            return readContext(context2);
+            return readContext(context);
           },
           useEffect: function(create2, deps) {
             currentHookNameInDev = "useEffect";
@@ -63523,18 +63523,18 @@ function requireReactDom_development() {
           unstable_isNewReconciler: enableNewReconciler
         };
         HooksDispatcherOnRerenderInDEV = {
-          readContext: function(context2) {
-            return readContext(context2);
+          readContext: function(context) {
+            return readContext(context);
           },
           useCallback: function(callback, deps) {
             currentHookNameInDev = "useCallback";
             updateHookTypesDev();
             return updateCallback(callback, deps);
           },
-          useContext: function(context2) {
+          useContext: function(context) {
             currentHookNameInDev = "useContext";
             updateHookTypesDev();
-            return readContext(context2);
+            return readContext(context);
           },
           useEffect: function(create2, deps) {
             currentHookNameInDev = "useEffect";
@@ -63627,9 +63627,9 @@ function requireReactDom_development() {
           unstable_isNewReconciler: enableNewReconciler
         };
         InvalidNestedHooksDispatcherOnMountInDEV = {
-          readContext: function(context2) {
+          readContext: function(context) {
             warnInvalidContextAccess();
-            return readContext(context2);
+            return readContext(context);
           },
           useCallback: function(callback, deps) {
             currentHookNameInDev = "useCallback";
@@ -63637,11 +63637,11 @@ function requireReactDom_development() {
             mountHookTypesDev();
             return mountCallback(callback, deps);
           },
-          useContext: function(context2) {
+          useContext: function(context) {
             currentHookNameInDev = "useContext";
             warnInvalidHookAccess();
             mountHookTypesDev();
-            return readContext(context2);
+            return readContext(context);
           },
           useEffect: function(create2, deps) {
             currentHookNameInDev = "useEffect";
@@ -63748,9 +63748,9 @@ function requireReactDom_development() {
           unstable_isNewReconciler: enableNewReconciler
         };
         InvalidNestedHooksDispatcherOnUpdateInDEV = {
-          readContext: function(context2) {
+          readContext: function(context) {
             warnInvalidContextAccess();
-            return readContext(context2);
+            return readContext(context);
           },
           useCallback: function(callback, deps) {
             currentHookNameInDev = "useCallback";
@@ -63758,11 +63758,11 @@ function requireReactDom_development() {
             updateHookTypesDev();
             return updateCallback(callback, deps);
           },
-          useContext: function(context2) {
+          useContext: function(context) {
             currentHookNameInDev = "useContext";
             warnInvalidHookAccess();
             updateHookTypesDev();
-            return readContext(context2);
+            return readContext(context);
           },
           useEffect: function(create2, deps) {
             currentHookNameInDev = "useEffect";
@@ -63869,9 +63869,9 @@ function requireReactDom_development() {
           unstable_isNewReconciler: enableNewReconciler
         };
         InvalidNestedHooksDispatcherOnRerenderInDEV = {
-          readContext: function(context2) {
+          readContext: function(context) {
             warnInvalidContextAccess();
-            return readContext(context2);
+            return readContext(context);
           },
           useCallback: function(callback, deps) {
             currentHookNameInDev = "useCallback";
@@ -63879,11 +63879,11 @@ function requireReactDom_development() {
             updateHookTypesDev();
             return updateCallback(callback, deps);
           },
-          useContext: function(context2) {
+          useContext: function(context) {
             currentHookNameInDev = "useContext";
             warnInvalidHookAccess();
             updateHookTypesDev();
-            return readContext(context2);
+            return readContext(context);
           },
           useEffect: function(create2, deps) {
             currentHookNameInDev = "useEffect";
@@ -64377,7 +64377,7 @@ function requireReactDom_development() {
       function constructClassInstance(workInProgress2, ctor, props) {
         var isLegacyContextConsumer = false;
         var unmaskedContext = emptyContextObject;
-        var context2 = emptyContextObject;
+        var context = emptyContextObject;
         var contextType = ctor.contextType;
         {
           if ("contextType" in ctor) {
@@ -64404,19 +64404,19 @@ function requireReactDom_development() {
           }
         }
         if (typeof contextType === "object" && contextType !== null) {
-          context2 = readContext(contextType);
+          context = readContext(contextType);
         } else {
           unmaskedContext = getUnmaskedContext(workInProgress2, ctor, true);
           var contextTypes = ctor.contextTypes;
           isLegacyContextConsumer = contextTypes !== null && contextTypes !== void 0;
-          context2 = isLegacyContextConsumer ? getMaskedContext(workInProgress2, unmaskedContext) : emptyContextObject;
+          context = isLegacyContextConsumer ? getMaskedContext(workInProgress2, unmaskedContext) : emptyContextObject;
         }
-        var instance2 = new ctor(props, context2);
+        var instance2 = new ctor(props, context);
         {
           if (workInProgress2.mode & StrictLegacyMode) {
             setIsStrictModeForDevtools(true);
             try {
-              instance2 = new ctor(props, context2);
+              instance2 = new ctor(props, context);
             } finally {
               setIsStrictModeForDevtools(false);
             }
@@ -64462,7 +64462,7 @@ function requireReactDom_development() {
           }
         }
         if (isLegacyContextConsumer) {
-          cacheContext(workInProgress2, unmaskedContext, context2);
+          cacheContext(workInProgress2, unmaskedContext, context);
         }
         return instance2;
       }
@@ -65298,10 +65298,10 @@ function requireReactDom_development() {
             }
           }
         }
-        var context2;
+        var context;
         {
           var unmaskedContext = getUnmaskedContext(workInProgress2, Component, true);
-          context2 = getMaskedContext(workInProgress2, unmaskedContext);
+          context = getMaskedContext(workInProgress2, unmaskedContext);
         }
         var nextChildren;
         var hasId;
@@ -65312,12 +65312,12 @@ function requireReactDom_development() {
         {
           ReactCurrentOwner$1.current = workInProgress2;
           setIsRendering(true);
-          nextChildren = renderWithHooks(current2, workInProgress2, Component, nextProps, context2, renderLanes2);
+          nextChildren = renderWithHooks(current2, workInProgress2, Component, nextProps, context, renderLanes2);
           hasId = checkDidRenderIdHook();
           if (workInProgress2.mode & StrictLegacyMode) {
             setIsStrictModeForDevtools(true);
             try {
-              nextChildren = renderWithHooks(current2, workInProgress2, Component, nextProps, context2, renderLanes2);
+              nextChildren = renderWithHooks(current2, workInProgress2, Component, nextProps, context, renderLanes2);
               hasId = checkDidRenderIdHook();
             } finally {
               setIsStrictModeForDevtools(false);
@@ -65632,10 +65632,10 @@ function requireReactDom_development() {
       function mountIndeterminateComponent(_current, workInProgress2, Component, renderLanes2) {
         resetSuspendedCurrentOnMountInLegacyMode(_current, workInProgress2);
         var props = workInProgress2.pendingProps;
-        var context2;
+        var context;
         {
           var unmaskedContext = getUnmaskedContext(workInProgress2, Component, false);
-          context2 = getMaskedContext(workInProgress2, unmaskedContext);
+          context = getMaskedContext(workInProgress2, unmaskedContext);
         }
         prepareToReadContext(workInProgress2, renderLanes2);
         var value;
@@ -65656,7 +65656,7 @@ function requireReactDom_development() {
           }
           setIsRendering(true);
           ReactCurrentOwner$1.current = workInProgress2;
-          value = renderWithHooks(null, workInProgress2, Component, props, context2, renderLanes2);
+          value = renderWithHooks(null, workInProgress2, Component, props, context, renderLanes2);
           hasId = checkDidRenderIdHook();
           setIsRendering(false);
         }
@@ -65706,7 +65706,7 @@ function requireReactDom_development() {
             if (workInProgress2.mode & StrictLegacyMode) {
               setIsStrictModeForDevtools(true);
               try {
-                value = renderWithHooks(null, workInProgress2, Component, props, context2, renderLanes2);
+                value = renderWithHooks(null, workInProgress2, Component, props, context, renderLanes2);
                 hasId = checkDidRenderIdHook();
               } finally {
                 setIsStrictModeForDevtools(false);
@@ -66365,7 +66365,7 @@ function requireReactDom_development() {
       var hasWarnedAboutUsingNoValuePropOnContextProvider = false;
       function updateContextProvider(current2, workInProgress2, renderLanes2) {
         var providerType = workInProgress2.type;
-        var context2 = providerType._context;
+        var context = providerType._context;
         var newProps = workInProgress2.pendingProps;
         var oldProps = workInProgress2.memoizedProps;
         var newValue = newProps.value;
@@ -66381,7 +66381,7 @@ function requireReactDom_development() {
             checkPropTypes(providerPropTypes, newProps, "prop", "Context.Provider");
           }
         }
-        pushProvider(workInProgress2, context2, newValue);
+        pushProvider(workInProgress2, context, newValue);
         {
           if (oldProps !== null) {
             var oldValue = oldProps.value;
@@ -66390,7 +66390,7 @@ function requireReactDom_development() {
                 return bailoutOnAlreadyFinishedWork(current2, workInProgress2, renderLanes2);
               }
             } else {
-              propagateContextChange(workInProgress2, context2, renderLanes2);
+              propagateContextChange(workInProgress2, context, renderLanes2);
             }
           }
         }
@@ -66400,17 +66400,17 @@ function requireReactDom_development() {
       }
       var hasWarnedAboutUsingContextAsConsumer = false;
       function updateContextConsumer(current2, workInProgress2, renderLanes2) {
-        var context2 = workInProgress2.type;
+        var context = workInProgress2.type;
         {
-          if (context2._context === void 0) {
-            if (context2 !== context2.Consumer) {
+          if (context._context === void 0) {
+            if (context !== context.Consumer) {
               if (!hasWarnedAboutUsingContextAsConsumer) {
                 hasWarnedAboutUsingContextAsConsumer = true;
                 error("Rendering <Context> directly is not supported and will be removed in a future major release. Did you mean to render <Context.Consumer> instead?");
               }
             }
           } else {
-            context2 = context2._context;
+            context = context._context;
           }
         }
         var newProps = workInProgress2.pendingProps;
@@ -66421,7 +66421,7 @@ function requireReactDom_development() {
           }
         }
         prepareToReadContext(workInProgress2, renderLanes2);
-        var newValue = readContext(context2);
+        var newValue = readContext(context);
         {
           markComponentRenderStarted(workInProgress2);
         }
@@ -66534,8 +66534,8 @@ function requireReactDom_development() {
             break;
           case ContextProvider: {
             var newValue = workInProgress2.memoizedProps.value;
-            var context2 = workInProgress2.type._context;
-            pushProvider(workInProgress2, context2, newValue);
+            var context = workInProgress2.type._context;
+            pushProvider(workInProgress2, context, newValue);
             break;
           }
           case Profiler:
@@ -67121,8 +67121,8 @@ function requireReactDom_development() {
             bubbleProperties(workInProgress2);
             return null;
           case ContextProvider:
-            var context2 = workInProgress2.type._context;
-            popProvider(context2, workInProgress2);
+            var context = workInProgress2.type._context;
+            popProvider(context, workInProgress2);
             bubbleProperties(workInProgress2);
             return null;
           case IncompleteClassComponent: {
@@ -67334,8 +67334,8 @@ function requireReactDom_development() {
             popHostContainer(workInProgress2);
             return null;
           case ContextProvider:
-            var context2 = workInProgress2.type._context;
-            popProvider(context2, workInProgress2);
+            var context = workInProgress2.type._context;
+            popProvider(context, workInProgress2);
             return null;
           case OffscreenComponent:
           case LegacyHiddenComponent:
@@ -67378,8 +67378,8 @@ function requireReactDom_development() {
             popSuspenseContext(interruptedWork);
             break;
           case ContextProvider:
-            var context2 = interruptedWork.type._context;
-            popProvider(context2, interruptedWork);
+            var context = interruptedWork.type._context;
+            popProvider(context, interruptedWork);
             break;
           case OffscreenComponent:
           case LegacyHiddenComponent:
@@ -71480,11 +71480,11 @@ function requireReactDom_development() {
         {
           markRenderScheduled(lane);
         }
-        var context2 = getContextForSubtree(parentComponent);
+        var context = getContextForSubtree(parentComponent);
         if (container.context === null) {
-          container.context = context2;
+          container.context = context;
         } else {
-          container.pendingContext = context2;
+          container.pendingContext = context;
         }
         {
           if (isRendering && current !== null && !didWarnAboutNestedUpdates) {
@@ -72480,8 +72480,8 @@ function requireReactJsxDevRuntime_development() {
         if (typeof type2 === "object") {
           switch (type2.$$typeof) {
             case REACT_CONTEXT_TYPE:
-              var context2 = type2;
-              return getContextName(context2) + ".Consumer";
+              var context = type2;
+              return getContextName(context) + ".Consumer";
             case REACT_PROVIDER_TYPE:
               var provider = type2;
               return getContextName(provider._context) + ".Provider";
@@ -73450,28 +73450,6 @@ class GraphDefinitionClass {
     return { ...this.definition };
   }
 }
-const createStoreImpl = (createState) => {
-  let state;
-  const listeners = /* @__PURE__ */ new Set();
-  const setState = (partial, replace) => {
-    const nextState = typeof partial === "function" ? partial(state) : partial;
-    if (!Object.is(nextState, state)) {
-      const previousState = state;
-      state = (replace != null ? replace : typeof nextState !== "object" || nextState === null) ? nextState : Object.assign({}, state, nextState);
-      listeners.forEach((listener) => listener(state, previousState));
-    }
-  };
-  const getState = () => state;
-  const getInitialState = () => initialState;
-  const subscribe = (listener) => {
-    listeners.add(listener);
-    return () => listeners.delete(listener);
-  };
-  const api2 = { setState, getState, getInitialState, subscribe };
-  const initialState = state = createState(setState, getState, api2);
-  return api2;
-};
-const createStore = (createState) => createState ? createStoreImpl(createState) : createStoreImpl;
 var util$3;
 (function(util2) {
   util2.assertEqual = (_2) => {
@@ -88956,6 +88934,232 @@ mcpMesh.implementAction("logout", async () => {
   });
   return {};
 });
+const byteToHex = [];
+for (let i2 = 0; i2 < 256; ++i2) {
+  byteToHex.push((i2 + 256).toString(16).slice(1));
+}
+function unsafeStringify(arr, offset = 0) {
+  return (byteToHex[arr[offset + 0]] + byteToHex[arr[offset + 1]] + byteToHex[arr[offset + 2]] + byteToHex[arr[offset + 3]] + "-" + byteToHex[arr[offset + 4]] + byteToHex[arr[offset + 5]] + "-" + byteToHex[arr[offset + 6]] + byteToHex[arr[offset + 7]] + "-" + byteToHex[arr[offset + 8]] + byteToHex[arr[offset + 9]] + "-" + byteToHex[arr[offset + 10]] + byteToHex[arr[offset + 11]] + byteToHex[arr[offset + 12]] + byteToHex[arr[offset + 13]] + byteToHex[arr[offset + 14]] + byteToHex[arr[offset + 15]]).toLowerCase();
+}
+let getRandomValues;
+const rnds8 = new Uint8Array(16);
+function rng() {
+  if (!getRandomValues) {
+    if (typeof crypto === "undefined" || !crypto.getRandomValues) {
+      throw new Error("crypto.getRandomValues() not supported. See https://github.com/uuidjs/uuid#getrandomvalues-not-supported");
+    }
+    getRandomValues = crypto.getRandomValues.bind(crypto);
+  }
+  return getRandomValues(rnds8);
+}
+const randomUUID = typeof crypto !== "undefined" && crypto.randomUUID && crypto.randomUUID.bind(crypto);
+const native = { randomUUID };
+function v4(options2, buf, offset) {
+  var _a3;
+  if (native.randomUUID && true && !options2) {
+    return native.randomUUID();
+  }
+  options2 = options2 || {};
+  const rnds = options2.random ?? ((_a3 = options2.rng) == null ? void 0 : _a3.call(options2)) ?? rng();
+  if (rnds.length < 16) {
+    throw new Error("Random bytes length must be >= 16");
+  }
+  rnds[6] = rnds[6] & 15 | 64;
+  rnds[8] = rnds[8] & 63 | 128;
+  return unsafeStringify(rnds);
+}
+const RESOURCE_SCHEME = "uxp://";
+function createResourceId(type2, suffix) {
+  const idSegment = v4();
+  return `${RESOURCE_SCHEME}${type2}/${idSegment}`;
+}
+function isResourceId(value) {
+  return typeof value === "string" && value.startsWith(RESOURCE_SCHEME);
+}
+const resourceMap = /* @__PURE__ */ new Map();
+const legacyPromiseMap = /* @__PURE__ */ new Map();
+function toUint8Array$1(data2) {
+  if (data2 instanceof Uint8Array) {
+    return data2;
+  }
+  if (ArrayBuffer.isView(data2)) {
+    const view = data2;
+    return new Uint8Array(view.buffer.slice(view.byteOffset, view.byteOffset + view.byteLength));
+  }
+  if (data2 instanceof ArrayBuffer) {
+    return new Uint8Array(data2);
+  }
+  if (Array.isArray(data2)) {
+    return Uint8Array.from(data2);
+  }
+  if (typeof data2 === "string") {
+    return new Uint8Array(bufferExports.Buffer.from(data2, "base64"));
+  }
+  throw new Error("Unsupported buffer data");
+}
+function createResource(entry) {
+  const id = createResourceId(entry.type);
+  resourceMap.set(id, entry);
+  return id;
+}
+function resolveResource(resourceId) {
+  return resourceMap.get(resourceId);
+}
+function updateResource(resourceId, entry) {
+  const existing = resourceMap.get(resourceId);
+  if (!existing) return;
+  resourceMap.set(resourceId, {
+    ...existing,
+    ...entry,
+    data: {
+      ...existing.data,
+      ...entry.data ?? {}
+    },
+    originalMeta: entry.originalMeta ?? existing.originalMeta,
+    thumbnailCache: entry.thumbnailCache ?? existing.thumbnailCache
+  });
+}
+function deleteResource(resourceId) {
+  resourceMap.delete(resourceId);
+  legacyPromiseMap.delete(resourceId);
+}
+async function getImageHolder(fileToken) {
+  if (legacyPromiseMap.has(fileToken)) {
+    return legacyPromiseMap.get(fileToken);
+  }
+  if (!isResourceId(fileToken)) {
+    return void 0;
+  }
+  const entry = resolveResource(fileToken);
+  if (!entry) return void 0;
+  if (entry.data.buffer && entry.data.mime) {
+    return {
+      file_buffer: entry.data.buffer,
+      file_mimetype: entry.data.mime
+    };
+  }
+  return void 0;
+}
+async function readNativePath(nativePath) {
+  const localFileSystem = uxp.storage.localFileSystem;
+  const tempFolder = await localFileSystem.getTemporaryFolder();
+  try {
+    if (nativePath.includes(tempFolder.nativePath)) {
+      const relativePath = nativePath.replace(tempFolder.nativePath, "").replace(/^[\\/\\]/, "");
+      const tempEntry = await tempFolder.getEntry(relativePath);
+      const arrayBuffer2 = await (tempEntry == null ? void 0 : tempEntry.read({ format: uxp.storage.formats.binary }));
+      return arrayBuffer2 ? new Uint8Array(arrayBuffer2) : void 0;
+    }
+    const url = nativePath.startsWith("file://") ? nativePath : `file://${nativePath}`;
+    const fileEntry = await localFileSystem.getEntryWithUrl(url);
+    const arrayBuffer = await (fileEntry == null ? void 0 : fileEntry.read({ format: uxp.storage.formats.binary }));
+    return arrayBuffer ? new Uint8Array(arrayBuffer) : void 0;
+  } catch {
+    return void 0;
+  }
+}
+async function resolveResourceBuffer(resourceOrToken) {
+  const loadLegacy = async () => {
+    const legacy2 = await getImageHolder(resourceOrToken);
+    if (!legacy2) {
+      throw new Error("Resource not found");
+    }
+    return {
+      buffer: toUint8Array$1(legacy2.file_buffer),
+      mime: legacy2.file_mimetype
+    };
+  };
+  if (!isResourceId(resourceOrToken)) {
+    return loadLegacy();
+  }
+  const entry = resolveResource(resourceOrToken);
+  if (!entry) {
+    return loadLegacy();
+  }
+  if (entry.data.buffer) {
+    const buffer2 = toUint8Array$1(entry.data.buffer);
+    updateResource(resourceOrToken, {
+      data: {
+        ...entry.data,
+        buffer: buffer2
+      }
+    });
+    return {
+      buffer: buffer2,
+      mime: entry.data.mime
+    };
+  }
+  if (entry.data.path) {
+    const buffer2 = await readNativePath(String(entry.data.path));
+    if (buffer2) {
+      updateResource(resourceOrToken, {
+        data: {
+          ...entry.data,
+          buffer: buffer2
+        }
+      });
+      return {
+        buffer: buffer2,
+        mime: entry.data.mime
+      };
+    }
+  }
+  return loadLegacy();
+}
+async function ensureResourceTempFile(resourceOrToken, options2) {
+  if (!isResourceId(resourceOrToken)) {
+    throw new Error("ensureResourceTempFile expects a resource id");
+  }
+  const entry = resolveResource(resourceOrToken);
+  if (!entry) {
+    throw new Error("Resource not found");
+  }
+  if (entry.data.path) {
+    return entry.data.path;
+  }
+  const { buffer: buffer2, mime: mime2 } = await resolveResourceBuffer(resourceOrToken);
+  const localFileSystem = uxp.storage.localFileSystem;
+  const tempFolder = await localFileSystem.getTemporaryFolder();
+  const ext = (() => {
+    var _a3;
+    if ((_a3 = entry.originalMeta) == null ? void 0 : _a3.fileName) {
+      const name = String(entry.originalMeta.fileName);
+      const idx = name.lastIndexOf(".");
+      if (idx >= 0) {
+        return name.substring(idx);
+      }
+    }
+    if (options2 == null ? void 0 : options2.extensionHint) {
+      return options2.extensionHint.startsWith(".") ? options2.extensionHint : `.${options2.extensionHint}`;
+    }
+    if (mime2) {
+      const map = {
+        "image/png": ".png",
+        "image/jpeg": ".jpg",
+        "image/jpg": ".jpg",
+        "image/webp": ".webp",
+        "image/gif": ".gif",
+        "image/bmp": ".bmp",
+        "image/tiff": ".tif",
+        "image/heic": ".heic"
+      };
+      if (map[mime2]) {
+        return map[mime2];
+      }
+    }
+    return ".bin";
+  })();
+  const fileName = `resource_${Date.now()}_${Math.random().toString(36).slice(2, 8)}${ext}`;
+  const tempFile = await tempFolder.createFile(fileName, { overwrite: true });
+  await tempFile.write(new Uint8Array(buffer2), { format: uxp.storage.formats.binary });
+  updateResource(resourceOrToken, {
+    data: {
+      ...entry.data,
+      path: tempFile.nativePath
+    }
+  });
+  return tempFile.nativePath;
+}
 objectType$1({
   getImageParams: objectType$1({
     boundary: enumType$1(["canvas", "curlayer", "selection"]),
@@ -89020,228 +89224,6 @@ const DialogManagerStore = create((set) => ({
   setSendImageLoading: (loading) => set({ sendImageLoading: loading }),
   keyboardHandlers: []
 }));
-const byteToHex = [];
-for (let i2 = 0; i2 < 256; ++i2) {
-  byteToHex.push((i2 + 256).toString(16).slice(1));
-}
-function unsafeStringify(arr, offset = 0) {
-  return (byteToHex[arr[offset + 0]] + byteToHex[arr[offset + 1]] + byteToHex[arr[offset + 2]] + byteToHex[arr[offset + 3]] + "-" + byteToHex[arr[offset + 4]] + byteToHex[arr[offset + 5]] + "-" + byteToHex[arr[offset + 6]] + byteToHex[arr[offset + 7]] + "-" + byteToHex[arr[offset + 8]] + byteToHex[arr[offset + 9]] + "-" + byteToHex[arr[offset + 10]] + byteToHex[arr[offset + 11]] + byteToHex[arr[offset + 12]] + byteToHex[arr[offset + 13]] + byteToHex[arr[offset + 14]] + byteToHex[arr[offset + 15]]).toLowerCase();
-}
-let getRandomValues;
-const rnds8 = new Uint8Array(16);
-function rng() {
-  if (!getRandomValues) {
-    if (typeof crypto === "undefined" || !crypto.getRandomValues) {
-      throw new Error("crypto.getRandomValues() not supported. See https://github.com/uuidjs/uuid#getrandomvalues-not-supported");
-    }
-    getRandomValues = crypto.getRandomValues.bind(crypto);
-  }
-  return getRandomValues(rnds8);
-}
-const randomUUID = typeof crypto !== "undefined" && crypto.randomUUID && crypto.randomUUID.bind(crypto);
-const native = { randomUUID };
-function v4(options2, buf, offset) {
-  var _a3;
-  if (native.randomUUID && true && !options2) {
-    return native.randomUUID();
-  }
-  options2 = options2 || {};
-  const rnds = options2.random ?? ((_a3 = options2.rng) == null ? void 0 : _a3.call(options2)) ?? rng();
-  if (rnds.length < 16) {
-    throw new Error("Random bytes length must be >= 16");
-  }
-  rnds[6] = rnds[6] & 15 | 64;
-  rnds[8] = rnds[8] & 63 | 128;
-  return unsafeStringify(rnds);
-}
-const RESOURCE_PREFIX = "uxp://";
-const resourceMap$1 = /* @__PURE__ */ new Map();
-const legacyPromiseMap$1 = /* @__PURE__ */ new Map();
-function toUint8Array$2(data2) {
-  if (data2 instanceof Uint8Array) {
-    return data2;
-  }
-  if (ArrayBuffer.isView(data2)) {
-    const view = data2;
-    return new Uint8Array(view.buffer.slice(view.byteOffset, view.byteOffset + view.byteLength));
-  }
-  if (data2 instanceof ArrayBuffer) {
-    return new Uint8Array(data2);
-  }
-  if (Array.isArray(data2)) {
-    return Uint8Array.from(data2);
-  }
-  if (typeof data2 === "string") {
-    return new Uint8Array(bufferExports.Buffer.from(data2, "base64"));
-  }
-  throw new Error("Unsupported buffer data");
-}
-function buildResourceId(type2) {
-  return `${RESOURCE_PREFIX}${type2}/${v4()}`;
-}
-function isResourceId$1(value) {
-  return typeof value === "string" && value.startsWith(RESOURCE_PREFIX);
-}
-function createResource$1(entry) {
-  const id = buildResourceId(entry.type);
-  resourceMap$1.set(id, entry);
-  return id;
-}
-function resolveResource$1(resourceId) {
-  return resourceMap$1.get(resourceId);
-}
-function updateResource$1(resourceId, entry) {
-  const existing = resourceMap$1.get(resourceId);
-  if (!existing) return;
-  resourceMap$1.set(resourceId, {
-    ...existing,
-    ...entry,
-    data: {
-      ...existing.data,
-      ...entry.data ?? {}
-    },
-    originalMeta: entry.originalMeta ?? existing.originalMeta,
-    thumbnailCache: entry.thumbnailCache ?? existing.thumbnailCache
-  });
-}
-function deleteResource$1(resourceId) {
-  resourceMap$1.delete(resourceId);
-  legacyPromiseMap$1.delete(resourceId);
-}
-async function getImageHolder$1(file_token) {
-  if (legacyPromiseMap$1.has(file_token)) {
-    return legacyPromiseMap$1.get(file_token);
-  }
-  const entry = resolveResource$1(file_token);
-  if (!entry) return void 0;
-  if (entry.data.buffer && entry.data.mime) {
-    return {
-      file_buffer: entry.data.buffer,
-      file_mimetype: entry.data.mime
-    };
-  }
-  return void 0;
-}
-async function readNativePath$1(nativePath) {
-  const localFileSystem = uxp.storage.localFileSystem;
-  const tempFolder = await localFileSystem.getTemporaryFolder();
-  try {
-    if (nativePath.includes(tempFolder.nativePath)) {
-      const relativePath = nativePath.replace(tempFolder.nativePath, "").replace(/^[\/\\]/, "");
-      const tempEntry = await tempFolder.getEntry(relativePath);
-      const arrayBuffer2 = await (tempEntry == null ? void 0 : tempEntry.read({ format: uxp.storage.formats.binary }));
-      return arrayBuffer2 ? new Uint8Array(arrayBuffer2) : void 0;
-    }
-    const url = nativePath.startsWith("file://") ? nativePath : `file://${nativePath}`;
-    const fileEntry = await localFileSystem.getEntryWithUrl(url);
-    const arrayBuffer = await (fileEntry == null ? void 0 : fileEntry.read({ format: uxp.storage.formats.binary }));
-    return arrayBuffer ? new Uint8Array(arrayBuffer) : void 0;
-  } catch {
-    return void 0;
-  }
-}
-async function resolveResourceBuffer$1(resourceOrToken) {
-  const loadLegacy = async () => {
-    const legacy2 = await getImageHolder$1(resourceOrToken);
-    if (!legacy2) {
-      throw new Error("Resource not found");
-    }
-    return {
-      buffer: toUint8Array$2(legacy2.file_buffer),
-      mime: legacy2.file_mimetype
-    };
-  };
-  if (!isResourceId$1(resourceOrToken)) {
-    return loadLegacy();
-  }
-  const entry = resolveResource$1(resourceOrToken);
-  if (!entry) {
-    return loadLegacy();
-  }
-  if (entry.data.buffer) {
-    const buffer2 = toUint8Array$2(entry.data.buffer);
-    updateResource$1(resourceOrToken, {
-      data: {
-        ...entry.data,
-        buffer: buffer2
-      }
-    });
-    return {
-      buffer: buffer2,
-      mime: entry.data.mime
-    };
-  }
-  if (entry.data.path) {
-    const buffer2 = await readNativePath$1(String(entry.data.path));
-    if (buffer2) {
-      updateResource$1(resourceOrToken, {
-        data: {
-          ...entry.data,
-          buffer: buffer2
-        }
-      });
-      return {
-        buffer: buffer2,
-        mime: entry.data.mime
-      };
-    }
-  }
-  return loadLegacy();
-}
-async function ensureResourceTempFile$1(resourceOrToken, options2) {
-  if (!isResourceId$1(resourceOrToken)) {
-    throw new Error("ensureResourceTempFile expects a resource id");
-  }
-  const entry = resolveResource$1(resourceOrToken);
-  if (!entry) {
-    throw new Error("Resource not found");
-  }
-  if (entry.data.path) {
-    return entry.data.path;
-  }
-  const { buffer: buffer2, mime: mime2 } = await resolveResourceBuffer$1(resourceOrToken);
-  const localFileSystem = uxp.storage.localFileSystem;
-  const tempFolder = await localFileSystem.getTemporaryFolder();
-  const ext = (() => {
-    var _a3;
-    if ((_a3 = entry.originalMeta) == null ? void 0 : _a3.fileName) {
-      const name = String(entry.originalMeta.fileName);
-      const idx = name.lastIndexOf(".");
-      if (idx >= 0) {
-        return name.substring(idx);
-      }
-    }
-    if (options2 == null ? void 0 : options2.extensionHint) {
-      return options2.extensionHint.startsWith(".") ? options2.extensionHint : `.${options2.extensionHint}`;
-    }
-    if (mime2) {
-      const map = {
-        "image/png": ".png",
-        "image/jpeg": ".jpg",
-        "image/jpg": ".jpg",
-        "image/webp": ".webp",
-        "image/gif": ".gif",
-        "image/bmp": ".bmp",
-        "image/tiff": ".tif",
-        "image/heic": ".heic"
-      };
-      if (map[mime2]) {
-        return map[mime2];
-      }
-    }
-    return ".bin";
-  })();
-  const fileName = `resource_${Date.now()}_${Math.random().toString(36).slice(2, 8)}${ext}`;
-  const tempFile = await tempFolder.createFile(fileName, { overwrite: true });
-  await tempFile.write(new Uint8Array(buffer2), { format: uxp.storage.formats.binary });
-  updateResource$1(resourceOrToken, {
-    data: {
-      ...entry.data,
-      path: tempFile.nativePath
-    }
-  });
-  return tempFile.nativePath;
-}
 /**
  * @license
  * Copyright 2025 Google LLC
@@ -106871,12 +106853,12 @@ globalThis.fetch = async (input, init2) => {
 mcpMesh.implementAction("getImageBase64", async (params) => {
   try {
     try {
-      const { buffer: buffer2, mime: mime2 } = await resolveResourceBuffer$1(params.token);
+      const { buffer: buffer2, mime: mime2 } = await resolveResourceBuffer(params.token);
       const data64 = "data:" + (mime2 || "application/octet-stream") + ";base64," + Buffer.from(buffer2).toString("base64");
       return { base64: data64, mimeType: mime2 || "application/octet-stream" };
     } catch {
     }
-    const imageHolderResult = await getImageHolder$1(params.token);
+    const imageHolderResult = await getImageHolder(params.token);
     if (!imageHolderResult) {
       return { error: "Invalid image token" };
     }
@@ -106905,10 +106887,10 @@ mcpMesh.implementAction("proxiedFetch", async (params) => {
               const fileData = value;
               if (fileData.data) {
                 if (value.mimeType == "image/uxp") {
-                  const fileToken = Buffer.from(fileData.data, "base64").toString();
-                  const imageHolderResult = await getImageHolder$1(fileToken);
+                  const resourceUri = Buffer.from(fileData.data, "base64").toString();
+                  const imageHolderResult = await getImageHolder(resourceUri);
                   if (!imageHolderResult) {
-                    throw new Error("Invalid file token");
+                    throw new Error("Invalid resource uri");
                   }
                   const { file_buffer, file_mimetype } = imageHolderResult;
                   const file = new Blob([file_buffer], {
@@ -107053,7 +107035,7 @@ mcpMesh.implementAction("pickLocalFile", async (params) => {
       mimeType = "application/octet-stream";
     }
     const resourceType = mimeType.startsWith("image/") ? "image" : "file";
-    const resourceId = createResource$1({
+    const resourceId = createResource({
       type: resourceType,
       data: {
         buffer: buffer2,
@@ -107097,8 +107079,8 @@ mcpMesh.implementAction("uploadComfyImage", async (request, extra, signal) => {
     if (data2 == null || isEmptyObject(data2)) {
       const token = typeof uploadInput.resource === "string" ? uploadInput.resource : uploadInput.resourceId ?? uploadInput.resource;
       if (token && typeof token === "string") {
-        const resolved = await resolveResourceBuffer$1(token).catch(async () => {
-          const legacy2 = await getImageHolder$1(token);
+        const resolved = await resolveResourceBuffer(token).catch(async () => {
+          const legacy2 = await getImageHolder(token);
           if (!legacy2) {
             return void 0;
           }
@@ -107143,13 +107125,13 @@ mcpMesh.implementAction("uploadComfyImage", async (request, extra, signal) => {
       throw new Error("Upload resource token missing");
     }
     try {
-      const resolved = await resolveResourceBuffer$1(token);
+      const resolved = await resolveResourceBuffer(token);
       uint8Array = new Uint8Array(resolved.buffer);
       if (resolved.mime) {
         mimeType = uploadInput.mimeType || resolved.mime;
       }
     } catch {
-      const legacy2 = await getImageHolder$1(token);
+      const legacy2 = await getImageHolder(token);
       if (!legacy2) {
         throw new Error("Image not found: " + token);
       }
@@ -107179,7 +107161,7 @@ mcpMesh.implementAction("openaiImageEdit", async (params, _extra, signal) => {
     if (signal == null ? void 0 : signal.aborted) {
       throw new DOMException("Request aborted", "AbortError");
     }
-    const imageHolderResult = await getImageHolder$1(params.imageToken);
+    const imageHolderResult = await getImageHolder(params.imageToken);
     if (!imageHolderResult) {
       return {
         success: false,
@@ -107254,7 +107236,7 @@ mcpMesh.implementAction("geminiImageGenerate", async (params, _extra, signal) =>
     for (const input of inputsArray) {
       let imageBuffer;
       if (params.imageInputType === "token") {
-        const imageHolderResult = await getImageHolder$1(input);
+        const imageHolderResult = await getImageHolder(input);
         if (!imageHolderResult) {
           return {
             success: false,
@@ -124716,7 +124698,7 @@ mcpMesh.implementAction("downloadImage", async (params) => {
             `);
     }
     const resourceType = "file";
-    const resourceId = createResource$1({
+    const resourceId = createResource({
       type: resourceType,
       data: {
         buffer: new Uint8Array(buffer2),
@@ -124732,7 +124714,7 @@ mcpMesh.implementAction("downloadImage", async (params) => {
       }
     });
     if (thumbnailBase64) {
-      updateResource$1(resourceId, {
+      updateResource(resourceId, {
         thumbnailCache: {
           base64: thumbnailBase64,
           width: imgWidth,
@@ -124760,7 +124742,7 @@ mcpMesh.implementAction("deleteDownloadedImage", async (params) => {
     const tempFolder = await localFileSystem.getTemporaryFolder();
     for (const resourceId of resources) {
       if (typeof resourceId !== "string") continue;
-      const entry = resolveResource$1(resourceId);
+      const entry = resolveResource(resourceId);
       if (entry == null ? void 0 : entry.data.path) {
         try {
           const nativePath = String(entry.data.path);
@@ -124773,7 +124755,7 @@ mcpMesh.implementAction("deleteDownloadedImage", async (params) => {
           console.warn("[deleteDownloadedImage] failed to delete temp file for resource", resourceId, error);
         }
       }
-      deleteResource$1(resourceId);
+      deleteResource(resourceId);
     }
     return {};
   } catch (error) {
@@ -124788,7 +124770,7 @@ mcpMesh.implementAction("getThumbnail", async (params) => {
     if (typeof resource !== "string" || !resource.length) {
       throw new Error("getThumbnail: resource is required");
     }
-    const entry = resolveResource$1(resource);
+    const entry = resolveResource(resource);
     if (!entry) {
       throw new Error("getThumbnail: resource not found");
     }
@@ -124800,14 +124782,14 @@ mcpMesh.implementAction("getThumbnail", async (params) => {
         height: cached.height
       };
     }
-    const { buffer: buffer2 } = await resolveResourceBuffer$1(resource);
+    const { buffer: buffer2 } = await resolveResourceBuffer(resource);
     const image = await Jimp.read(bufferExports.Buffer.from(buffer2));
     const origW = image.width;
     const origH = image.height;
     image.scaleToFit({ w: maxSize, h: maxSize });
     const thumbnailBuffer = await image.getBuffer(JimpMime.png);
     const base64 = "data:image/png;base64," + thumbnailBuffer.toString("base64");
-    updateResource$1(resource, {
+    updateResource(resource, {
       thumbnailCache: {
         base64,
         width: image.width,
@@ -124844,7 +124826,7 @@ mcpMesh.implementAction("requestAndDoSaveImage", async (params) => {
     for (const resourceId of resources) {
       if (typeof resourceId !== "string") continue;
       try {
-        const ensuredPath = await ensureResourceTempFile$1(resourceId).catch(() => void 0);
+        const ensuredPath = await ensureResourceTempFile(resourceId).catch(() => void 0);
         if (!ensuredPath) {
           console.warn("[requestAndDoSaveImage] failed to ensure path for resource", resourceId);
           continue;
@@ -124869,7 +124851,7 @@ mcpMesh.implementAction("requestAndDoSaveImage", async (params) => {
           console.warn(`[requestAndDoSaveImage] file entry not found for resource`, resourceId, nativePath);
           continue;
         }
-        const resourceEntry = resolveResource$1(resourceId);
+        const resourceEntry = resolveResource(resourceId);
         const fallbackName = typeof ((_a3 = resourceEntry == null ? void 0 : resourceEntry.originalMeta) == null ? void 0 : _a3.fileName) === "string" ? String(resourceEntry.originalMeta.fileName) : fileEntry.name || `resource-${Date.now()}`;
         const arrayBuffer = await fileEntry.read({ format: uxp.storage.formats.binary });
         const saveFile = await saveFolder.createFile(fallbackName, { overwrite: true });
@@ -124885,195 +124867,6 @@ mcpMesh.implementAction("requestAndDoSaveImage", async (params) => {
     };
   }
 });
-const RESOURCE_SCHEME = "uxp://";
-function createResourceId(type2, suffix) {
-  const idSegment = v4();
-  return `${RESOURCE_SCHEME}${type2}/${idSegment}`;
-}
-function isResourceId(value) {
-  return typeof value === "string" && value.startsWith(RESOURCE_SCHEME);
-}
-const resourceMap = /* @__PURE__ */ new Map();
-const legacyPromiseMap = /* @__PURE__ */ new Map();
-function toUint8Array$1(data2) {
-  if (data2 instanceof Uint8Array) {
-    return data2;
-  }
-  if (ArrayBuffer.isView(data2)) {
-    const view = data2;
-    return new Uint8Array(view.buffer.slice(view.byteOffset, view.byteOffset + view.byteLength));
-  }
-  if (data2 instanceof ArrayBuffer) {
-    return new Uint8Array(data2);
-  }
-  if (Array.isArray(data2)) {
-    return Uint8Array.from(data2);
-  }
-  if (typeof data2 === "string") {
-    return new Uint8Array(bufferExports.Buffer.from(data2, "base64"));
-  }
-  throw new Error("Unsupported buffer data");
-}
-function createResource(entry) {
-  const id = createResourceId(entry.type);
-  resourceMap.set(id, entry);
-  return id;
-}
-function resolveResource(resourceId) {
-  return resourceMap.get(resourceId);
-}
-function updateResource(resourceId, entry) {
-  const existing = resourceMap.get(resourceId);
-  if (!existing) return;
-  resourceMap.set(resourceId, {
-    ...existing,
-    ...entry,
-    data: {
-      ...existing.data,
-      ...entry.data ?? {}
-    },
-    originalMeta: entry.originalMeta ?? existing.originalMeta,
-    thumbnailCache: entry.thumbnailCache ?? existing.thumbnailCache
-  });
-}
-function deleteResource(resourceId) {
-  resourceMap.delete(resourceId);
-  legacyPromiseMap.delete(resourceId);
-}
-async function getImageHolder(fileToken) {
-  if (legacyPromiseMap.has(fileToken)) {
-    return legacyPromiseMap.get(fileToken);
-  }
-  if (!isResourceId(fileToken)) {
-    return void 0;
-  }
-  const entry = resolveResource(fileToken);
-  if (!entry) return void 0;
-  if (entry.data.buffer && entry.data.mime) {
-    return {
-      file_buffer: entry.data.buffer,
-      file_mimetype: entry.data.mime
-    };
-  }
-  return void 0;
-}
-async function readNativePath(nativePath) {
-  const localFileSystem = uxp.storage.localFileSystem;
-  const tempFolder = await localFileSystem.getTemporaryFolder();
-  try {
-    if (nativePath.includes(tempFolder.nativePath)) {
-      const relativePath = nativePath.replace(tempFolder.nativePath, "").replace(/^[\\/\\]/, "");
-      const tempEntry = await tempFolder.getEntry(relativePath);
-      const arrayBuffer2 = await (tempEntry == null ? void 0 : tempEntry.read({ format: uxp.storage.formats.binary }));
-      return arrayBuffer2 ? new Uint8Array(arrayBuffer2) : void 0;
-    }
-    const url = nativePath.startsWith("file://") ? nativePath : `file://${nativePath}`;
-    const fileEntry = await localFileSystem.getEntryWithUrl(url);
-    const arrayBuffer = await (fileEntry == null ? void 0 : fileEntry.read({ format: uxp.storage.formats.binary }));
-    return arrayBuffer ? new Uint8Array(arrayBuffer) : void 0;
-  } catch {
-    return void 0;
-  }
-}
-async function resolveResourceBuffer(resourceOrToken) {
-  const loadLegacy = async () => {
-    const legacy2 = await getImageHolder(resourceOrToken);
-    if (!legacy2) {
-      throw new Error("Resource not found");
-    }
-    return {
-      buffer: toUint8Array$1(legacy2.file_buffer),
-      mime: legacy2.file_mimetype
-    };
-  };
-  if (!isResourceId(resourceOrToken)) {
-    return loadLegacy();
-  }
-  const entry = resolveResource(resourceOrToken);
-  if (!entry) {
-    return loadLegacy();
-  }
-  if (entry.data.buffer) {
-    const buffer2 = toUint8Array$1(entry.data.buffer);
-    updateResource(resourceOrToken, {
-      data: {
-        ...entry.data,
-        buffer: buffer2
-      }
-    });
-    return {
-      buffer: buffer2,
-      mime: entry.data.mime
-    };
-  }
-  if (entry.data.path) {
-    const buffer2 = await readNativePath(String(entry.data.path));
-    if (buffer2) {
-      updateResource(resourceOrToken, {
-        data: {
-          ...entry.data,
-          buffer: buffer2
-        }
-      });
-      return {
-        buffer: buffer2,
-        mime: entry.data.mime
-      };
-    }
-  }
-  return loadLegacy();
-}
-async function ensureResourceTempFile(resourceOrToken, options2) {
-  if (!isResourceId(resourceOrToken)) {
-    throw new Error("ensureResourceTempFile expects a resource id");
-  }
-  const entry = resolveResource(resourceOrToken);
-  if (!entry) {
-    throw new Error("Resource not found");
-  }
-  if (entry.data.path) {
-    return entry.data.path;
-  }
-  const { buffer: buffer2, mime: mime2 } = await resolveResourceBuffer(resourceOrToken);
-  const localFileSystem = uxp.storage.localFileSystem;
-  const tempFolder = await localFileSystem.getTemporaryFolder();
-  const ext = (() => {
-    var _a3;
-    if ((_a3 = entry.originalMeta) == null ? void 0 : _a3.fileName) {
-      const name = String(entry.originalMeta.fileName);
-      const idx = name.lastIndexOf(".");
-      if (idx >= 0) {
-        return name.substring(idx);
-      }
-    }
-    if (mime2) {
-      const map = {
-        "image/png": ".png",
-        "image/jpeg": ".jpg",
-        "image/jpg": ".jpg",
-        "image/webp": ".webp",
-        "image/gif": ".gif",
-        "image/bmp": ".bmp",
-        "image/tiff": ".tif",
-        "image/heic": ".heic"
-      };
-      if (map[mime2]) {
-        return map[mime2];
-      }
-    }
-    return ".bin";
-  })();
-  const fileName = `resource_${Date.now()}_${Math.random().toString(36).slice(2, 8)}${ext}`;
-  const tempFile = await tempFolder.createFile(fileName, { overwrite: true });
-  await tempFile.write(new Uint8Array(buffer2), { format: uxp.storage.formats.binary });
-  updateResource(resourceOrToken, {
-    data: {
-      ...entry.data,
-      path: tempFile.nativePath
-    }
-  });
-  return tempFile.nativePath;
-}
 const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp"];
 const VIDEO_EXTENSIONS = [".mp4", ".avi", ".mov", ".mkv", ".webm", ".flv", ".wmv"];
 const EXTENSION_TO_MIME = {
@@ -125151,8 +124944,8 @@ function extensionFromMime(mime2) {
   if (!mime2) return void 0;
   return MIME_TO_EXTENSION[mime2.toLowerCase()] ?? void 0;
 }
-function registerCreateFromExternalAction(context2) {
-  const { mcpMesh: mcpMesh2 } = context2;
+function registerCreateFromExternalAction(context) {
+  const { mcpMesh: mcpMesh2 } = context;
   mcpMesh2.implementAction("fileResource.createFromExternal", async (params) => {
     try {
       const { url } = params;
@@ -125260,8 +125053,8 @@ function registerCreateFromExternalAction(context2) {
     }
   });
 }
-function registerDeleteDownloadedImageAction(context2) {
-  const { mcpMesh: mcpMesh2 } = context2;
+function registerDeleteDownloadedImageAction(context) {
+  const { mcpMesh: mcpMesh2 } = context;
   mcpMesh2.implementAction("fileResource.delete", async (params) => {
     try {
       const { resources } = params;
@@ -125293,8 +125086,8 @@ function registerDeleteDownloadedImageAction(context2) {
     }
   });
 }
-function registerThumbnailAction(context2) {
-  const { mcpMesh: mcpMesh2 } = context2;
+function registerThumbnailAction(context) {
+  const { mcpMesh: mcpMesh2 } = context;
   mcpMesh2.implementAction("fileResource.thumbnail", async (params) => {
     try {
       const { resource, maxSize = 192 } = params;
@@ -125342,8 +125135,8 @@ function registerThumbnailAction(context2) {
     }
   });
 }
-function registerSaveAsAction(context2) {
-  const { mcpMesh: mcpMesh2 } = context2;
+function registerSaveAsAction(context) {
+  const { mcpMesh: mcpMesh2 } = context;
   mcpMesh2.implementAction("fileResource.saveAs", async (params) => {
     var _a3;
     try {
@@ -125416,90 +125209,125 @@ function extensionFromName(name) {
   return normaliseExtension(name.slice(dot));
 }
 async function materializeViaSystemDialog(params) {
-  const options2 = (params == null ? void 0 : params.types) ? { types: params.types } : void 0;
-  const file = await uxp.storage.localFileSystem.getFileForOpening(options2).catch(() => void 0);
-  if (!file) {
+  const pickerOptions = {
+    allowMultiple: (params == null ? void 0 : params.multiple) ?? false
+  };
+  if (params == null ? void 0 : params.types) {
+    pickerOptions.types = params.types;
+  }
+  const entries = await uxp.storage.localFileSystem.getFileForOpening(pickerOptions);
+  if (!entries) {
     throw new Error("cancelled");
   }
-  const name = file.name ?? "local-file";
-  const extension = extensionFromName(name);
-  const mime2 = mimeFromExtension(extension);
-  const arrayBuffer = await file.read({ format: uxp.storage.formats.binary });
-  return {
-    buffer: toUint8Array(arrayBuffer),
-    mime: mime2,
-    name,
-    meta: {
-      nativePath: file.nativePath
-    }
-  };
+  const files = Array.isArray(entries) ? entries : [entries];
+  if (!files.length) {
+    throw new Error("cancelled");
+  }
+  return Promise.all(
+    files.map(async (file) => {
+      const name = file.name ?? "local-file";
+      const extension = extensionFromName(name);
+      const mime2 = mimeFromExtension(extension);
+      const arrayBuffer = await file.read({ format: uxp.storage.formats.binary });
+      return {
+        buffer: toUint8Array(arrayBuffer),
+        mime: mime2,
+        name,
+        meta: {
+          nativePath: file.nativePath
+        }
+      };
+    })
+  );
 }
-function registerCreateFromLocalAction(context2) {
-  const { mcpMesh: mcpMesh2 } = context2;
+function registerCreateFromLocalAction(context) {
+  const { mcpMesh: mcpMesh2 } = context;
   mcpMesh2.implementAction(
     "fileResource.createFromLocal",
     async (params = {}) => {
-      var _a3, _b2;
+      var _a3;
       try {
-        const payload = ((_a3 = context2.materializers) == null ? void 0 : _a3.fromLocalFile) ? await context2.materializers.fromLocalFile(params) : await materializeViaSystemDialog(params);
-        const buffer2 = toUint8Array(payload.buffer);
-        let extension = extensionFromName(payload.name);
-        if (!extension && payload.mime) {
-          extension = extensionFromMime(payload.mime);
-        }
-        const mime2 = payload.mime ?? mimeFromExtension(extension);
-        let thumbnailBase64 = payload.thumbnail;
-        let imgWidth = payload.width;
-        let imgHeight = payload.height;
-        if (!thumbnailBase64) {
-          if (isImageExtension(extension)) {
-            try {
-              const image = await Jimp.read(bufferExports.Buffer.from(buffer2));
-              imgWidth = imgWidth ?? image.width;
-              imgHeight = imgHeight ?? image.height;
-              image.scaleToFit({ w: 320, h: 320 });
-              const thumbnailBuffer = await image.getBuffer(JimpMime.png);
-              thumbnailBase64 = "data:image/png;base64," + thumbnailBuffer.toString("base64");
-            } catch {
-              thumbnailBase64 = buildGenericFileThumbnail(extension ?? "");
+        const payloads = await materializeViaSystemDialog(params);
+        const results = [];
+        for (const payload of payloads) {
+          try {
+            const buffer2 = toUint8Array(payload.buffer);
+            let extension = extensionFromName(payload.name);
+            if (!extension && payload.mime) {
+              extension = extensionFromMime(payload.mime);
             }
-          } else if (isVideoExtension(extension)) {
-            thumbnailBase64 = buildVideoThumbnail();
-          } else {
-            thumbnailBase64 = buildGenericFileThumbnail(extension ?? "");
-          }
-        }
-        const resourceId = createResource({
-          type: "file",
-          data: {
-            buffer: buffer2,
-            mime: mime2,
-            path: (_b2 = payload.meta) == null ? void 0 : _b2.nativePath
-          },
-          originalMeta: {
-            fileName: payload.name,
-            width: imgWidth,
-            height: imgHeight,
-            ...payload.meta
-          }
-        });
-        if (thumbnailBase64) {
-          updateResource(resourceId, {
-            thumbnailCache: {
-              base64: thumbnailBase64,
+            const mime2 = payload.mime ?? mimeFromExtension(extension);
+            let thumbnailBase64 = payload.thumbnail;
+            let imgWidth = payload.width;
+            let imgHeight = payload.height;
+            if (!thumbnailBase64) {
+              if (isImageExtension(extension)) {
+                try {
+                  const image = await Jimp.read(bufferExports.Buffer.from(buffer2));
+                  imgWidth = imgWidth ?? image.width;
+                  imgHeight = imgHeight ?? image.height;
+                  image.scaleToFit({ w: 320, h: 320 });
+                  const thumbnailBuffer = await image.getBuffer(JimpMime.png);
+                  thumbnailBase64 = "data:image/png;base64," + thumbnailBuffer.toString("base64");
+                } catch {
+                  thumbnailBase64 = buildGenericFileThumbnail(extension ?? "");
+                }
+              } else if (isVideoExtension(extension)) {
+                thumbnailBase64 = buildVideoThumbnail();
+              } else {
+                thumbnailBase64 = buildGenericFileThumbnail(extension ?? "");
+              }
+            }
+            const resourceId = createResource({
+              type: "file",
+              data: {
+                buffer: buffer2,
+                mime: mime2,
+                path: (_a3 = payload.meta) == null ? void 0 : _a3.nativePath
+              },
+              originalMeta: {
+                fileName: payload.name,
+                width: imgWidth,
+                height: imgHeight,
+                ...payload.meta
+              }
+            });
+            if (thumbnailBase64) {
+              updateResource(resourceId, {
+                thumbnailCache: {
+                  base64: thumbnailBase64,
+                  width: imgWidth,
+                  height: imgHeight,
+                  mime: "image/png",
+                  generatedAt: Date.now()
+                }
+              });
+            }
+            results.push({
+              resource: resourceId,
+              thumbnail: thumbnailBase64,
               width: imgWidth,
               height: imgHeight,
-              mime: "image/png",
-              generatedAt: Date.now()
-            }
-          });
+              mime: mime2
+            });
+          } catch (fileError) {
+            results.push({
+              resource: null,
+              error: (fileError == null ? void 0 : fileError.message) || String(fileError)
+            });
+          }
+        }
+        const successful = results.filter((entry) => entry.resource && !entry.error);
+        if (!successful.length) {
+          return results[0] ?? { resource: null, error: "no-successful-resource" };
+        }
+        const [primary, ...rest] = successful;
+        if (!rest.length) {
+          return primary;
         }
         return {
-          resource: resourceId,
-          thumbnail: thumbnailBase64,
-          width: imgWidth,
-          height: imgHeight,
-          mime: mime2
+          ...primary,
+          batch: successful
         };
       } catch (error) {
         const message = ((error == null ? void 0 : error.message) || String(error)).toLowerCase();
@@ -125510,393 +125338,6 @@ function registerCreateFromLocalAction(context2) {
       }
     }
   );
-}
-const PNG_MIME$1 = "image/png";
-async function buildThumbnail(image) {
-  const clone2 = image.clone();
-  clone2.scaleToFit({ w: 320, h: 320 });
-  const buffer2 = await clone2.getBuffer(JimpMime.png);
-  return "data:image/png;base64," + bufferExports.Buffer.from(buffer2).toString("base64");
-}
-function ensureParams(params) {
-  if (!params) {
-    return {};
-  }
-  return params;
-}
-function registerCreateFromCBMAction(context2) {
-  const { mcpMesh: mcpMesh2 } = context2;
-  mcpMesh2.implementAction(
-    "fileResource.createFromCBM",
-    async (rawParams) => {
-      var _a3;
-      try {
-        try {
-          console.log("[createFromCBM] invoke", JSON.stringify(rawParams));
-        } catch {
-          console.log("[createFromCBM] invoke", rawParams);
-        }
-        const materializer = (_a3 = context2.materializers) == null ? void 0 : _a3.fromCBM;
-        if (!materializer) {
-          return { error: "materializers.fromCBM is not provided" };
-        }
-        const params = ensureParams(rawParams);
-        const materialized = await materializer(params);
-        if (!(materialized == null ? void 0 : materialized.image)) {
-          throw new Error("fromCBM returned empty image payload");
-        }
-        const image = materialized.image;
-        const width = image.bitmap.width;
-        const height = image.bitmap.height;
-        const mime2 = materialized.mime ?? PNG_MIME$1;
-        const pngBuffer = await image.getBuffer(JimpMime.png);
-        const resourceId = createResource({
-          type: "file",
-          data: {
-            buffer: new Uint8Array(pngBuffer),
-            mime: mime2
-          },
-          originalMeta: {
-            width,
-            height,
-            ...materialized.meta ?? {}
-          }
-        });
-        const thumbnail = typeof materialized.thumbnail === "string" ? materialized.thumbnail : await buildThumbnail(image);
-        updateResource(resourceId, {
-          thumbnailCache: {
-            base64: thumbnail,
-            width,
-            height,
-            mime: PNG_MIME$1,
-            generatedAt: Date.now()
-          }
-        });
-        const response = {
-          resource: resourceId,
-          thumbnail,
-          width,
-          height,
-          mime: mime2
-        };
-        try {
-          console.log(
-            "[createFromCBM] response",
-            JSON.stringify({
-              resource: resourceId,
-              width,
-              height,
-              hasThumbnail: typeof thumbnail === "string"
-            })
-          );
-        } catch {
-          console.log("[createFromCBM] response", {
-            resource: resourceId,
-            width,
-            height,
-            hasThumbnail: typeof thumbnail === "string"
-          });
-        }
-        return response;
-      } catch (error) {
-        try {
-          console.error("[createFromCBM] error", error);
-        } catch {
-        }
-        return {
-          error: (error == null ? void 0 : error.message) || String(error)
-        };
-      }
-    }
-  );
-}
-function registerBoundaryNormalizeAction(context2) {
-  const { mcpMesh: mcpMesh2 } = context2;
-  mcpMesh2.implementAction("boundary.normalize", async (params) => {
-    var _a3;
-    try {
-      const resolver = (_a3 = context2.resolvers) == null ? void 0 : _a3.boundaryToRect;
-      if (!resolver) {
-        return { error: "resolvers.boundaryToRect is not provided" };
-      }
-      if (!(params == null ? void 0 : params.boundary)) {
-        throw new Error("boundary parameter is required");
-      }
-      const rectUri = await resolver(params.boundary);
-      return { boundary: rectUri };
-    } catch (error) {
-      return { error: (error == null ? void 0 : error.stack) || (error == null ? void 0 : error.message) || String(error) };
-    }
-  });
-}
-function registerLayerResolveAction(context2) {
-  const { mcpMesh: mcpMesh2 } = context2;
-  mcpMesh2.implementAction("layer.resolve", async (params) => {
-    var _a3, _b2;
-    try {
-      if (!(params == null ? void 0 : params.uri)) {
-        throw new Error("uri parameter is required");
-      }
-      if (!(params == null ? void 0 : params.type)) {
-        throw new Error("type parameter is required");
-      }
-      if (params.type === "content") {
-        const resolver = (_a3 = context2.resolvers) == null ? void 0 : _a3.contentToLayer;
-        if (!resolver) {
-          return { error: "resolvers.contentToLayer is not provided" };
-        }
-        const resolved = await resolver(params.uri);
-        return { uri: resolved };
-      }
-      if (params.type === "mask") {
-        const resolver = (_b2 = context2.resolvers) == null ? void 0 : _b2.maskToLayer;
-        if (!resolver) {
-          return { error: "resolvers.maskToLayer is not provided" };
-        }
-        const resolved = await resolver(params.uri);
-        return { uri: resolved };
-      }
-      throw new Error(`Unsupported type: ${params.type}`);
-    } catch (error) {
-      return { error: (error == null ? void 0 : error.stack) || (error == null ? void 0 : error.message) || String(error) };
-    }
-  });
-}
-function registerImagingActions(context2) {
-  registerCreateFromExternalAction(context2);
-  registerCreateFromLocalAction(context2);
-  registerCreateFromCBMAction(context2);
-  registerDeleteDownloadedImageAction(context2);
-  registerThumbnailAction(context2);
-  registerSaveAsAction(context2);
-  registerBoundaryNormalizeAction(context2);
-  registerLayerResolveAction(context2);
-}
-const UXP_PROTOCOL = "uxp:";
-const BOUNDARY_HOST$1 = "boundary";
-const CONTENT_HOST$1 = "content";
-const MASK_HOST$1 = "mask";
-const BOUNDARY_SCHEME$1 = `uxp://${BOUNDARY_HOST$1}`;
-const CONTENT_SCHEME$1 = `uxp://${CONTENT_HOST$1}`;
-const MASK_SCHEME = `uxp://${MASK_HOST$1}`;
-const RECT_QUERY_KEYS = [
-  "leftDistance",
-  "topDistance",
-  "rightDistance",
-  "bottomDistance",
-  "width",
-  "height"
-];
-function normalizeDocId$1(docId) {
-  const numeric = Number(docId);
-  if (!Number.isFinite(numeric)) return 0;
-  const normalized = Math.floor(numeric);
-  return normalized < 0 ? 0 : normalized;
-}
-function appendQuery$1(base2, params) {
-  const searchParams = new URLSearchParams();
-  for (const [key2, value] of Object.entries(params)) {
-    if (value === void 0 || value === null || value === "") continue;
-    searchParams.set(key2, String(value));
-  }
-  const query = searchParams.toString();
-  return query ? `${base2}?${query}` : base2;
-}
-function ensureFiniteNumber$1(value, label) {
-  if (!Number.isFinite(value)) {
-    throw new Error(`${label} must be a finite number`);
-  }
-}
-function parseNumberQuery$1(url, key2) {
-  const raw = url.searchParams.get(key2);
-  if (raw == null || raw === "") return void 0;
-  const num = Number(raw);
-  ensureFiniteNumber$1(num, key2);
-  return num;
-}
-function serializeBoundaryRect(rect) {
-  const serialized = {};
-  for (const key2 of RECT_QUERY_KEYS) {
-    serialized[key2] = Number(rect[key2]);
-  }
-  return serialized;
-}
-function deserializeBoundaryRect(url) {
-  const rect = {};
-  for (const key2 of RECT_QUERY_KEYS) {
-    const value = parseNumberQuery$1(url, key2);
-    if (value === void 0) {
-      throw new Error(`boundary rect missing query parameter "${key2}"`);
-    }
-    rect[key2] = value;
-  }
-  return rect;
-}
-function ensureUxpUrl(uri2, expectedHost) {
-  let parsed;
-  try {
-    parsed = new URL(uri2);
-  } catch {
-    throw new Error(`Invalid ${expectedHost} uri: ${uri2}`);
-  }
-  if (parsed.protocol !== UXP_PROTOCOL) {
-    throw new Error(`${expectedHost} uri must use uxp:// scheme`);
-  }
-  if (parsed.hostname !== expectedHost) {
-    throw new Error(`${expectedHost} uri host must be "${expectedHost}"`);
-  }
-  const [docSegment, ...rest] = parsed.pathname.split("/").filter(Boolean);
-  if (!docSegment) {
-    throw new Error(`${expectedHost} uri is missing required segments`);
-  }
-  const docId = Number(docSegment);
-  ensureFiniteNumber$1(docId, "docId");
-  if (!Number.isInteger(docId) || docId < 0) {
-    throw new Error("docId must be a non-negative integer");
-  }
-  return { parsed, docId, segments: rest };
-}
-function parseBoundaryResource$1(resource) {
-  const { parsed, docId, segments } = ensureUxpUrl(resource, BOUNDARY_HOST$1);
-  const boundaryType = segments[0];
-  if (!boundaryType || boundaryType === "canvas" || boundaryType === "curlayer" || boundaryType === "selection") {
-    return {
-      docId,
-      boundary: boundaryType ?? "canvas",
-      imageSize: parseNumberQuery$1(parsed, "imageSize"),
-      imageQuality: parseNumberQuery$1(parsed, "imageQuality")
-    };
-  }
-  if (boundaryType !== "rect") {
-    throw new Error(`Unsupported boundary type "${boundaryType}"`);
-  }
-  return {
-    docId,
-    boundary: deserializeBoundaryRect(parsed),
-    imageSize: parseNumberQuery$1(parsed, "imageSize"),
-    imageQuality: parseNumberQuery$1(parsed, "imageQuality")
-  };
-}
-function parseContentResource$1(resource) {
-  const { parsed, docId, segments } = ensureUxpUrl(resource, CONTENT_HOST$1);
-  const contentType = segments[0];
-  if (!contentType) {
-    throw new Error("content uri is missing required segments");
-  }
-  if (contentType === "canvas" || contentType === "selection") {
-    return {
-      docId,
-      content: contentType
-    };
-  }
-  if (contentType === "curlayer") {
-    return {
-      docId,
-      content: "curlayer",
-      layerIdentify: parsed.searchParams.get("layerId") ?? void 0
-    };
-  }
-  if (contentType === "layer") {
-    const layerIdentify = parsed.searchParams.get("layerId");
-    if (!layerIdentify) {
-      throw new Error("content uri with /layer requires layerId query parameter");
-    }
-    return {
-      docId,
-      content: "curlayer",
-      layerIdentify
-    };
-  }
-  throw new Error(`Unsupported content type "${contentType}"`);
-}
-function parseMaskResource(resource) {
-  const { parsed, docId, segments } = ensureUxpUrl(resource, MASK_HOST$1);
-  const contentType = segments[0];
-  if (!contentType) {
-    throw new Error("mask content uri is missing required segments");
-  }
-  const reverseParam = parsed.searchParams.get("reverse");
-  const reverse = reverseParam === "1" || (reverseParam == null ? void 0 : reverseParam.toLowerCase()) === "true";
-  if (contentType === "canvas" || contentType === "selection") {
-    return { docId, content: contentType, reverse };
-  }
-  if (contentType === "curlayer") {
-    return {
-      docId,
-      content: "curlayer",
-      reverse,
-      layerIdentify: parsed.searchParams.get("layerId") ?? void 0
-    };
-  }
-  if (contentType === "layer") {
-    const layerIdentify = parsed.searchParams.get("layerId");
-    if (!layerIdentify) {
-      throw new Error("mask content uri with /layer requires layerId query parameter");
-    }
-    return {
-      docId,
-      content: "curlayer",
-      layerIdentify,
-      reverse
-    };
-  }
-  throw new Error(`Unsupported mask content type "${contentType}"`);
-}
-function buildBoundaryUri$1(docId, boundary, options2) {
-  const docSegment = normalizeDocId$1(docId);
-  if (!boundary || boundary === "canvas" || boundary === "curlayer" || boundary === "selection") {
-    return appendQuery$1(`${BOUNDARY_SCHEME$1}/${docSegment}/${boundary ?? "canvas"}`, {
-      imageSize: options2 == null ? void 0 : options2.imageSize,
-      imageQuality: options2 == null ? void 0 : options2.imageQuality
-    });
-  }
-  return appendQuery$1(`${BOUNDARY_SCHEME$1}/${docSegment}/rect`, {
-    ...serializeBoundaryRect(boundary),
-    imageSize: options2 == null ? void 0 : options2.imageSize,
-    imageQuality: options2 == null ? void 0 : options2.imageQuality
-  });
-}
-function buildContentUri$1(docId, content, layerIdentify) {
-  const docSegment = normalizeDocId$1(docId);
-  if (content === "curlayer") {
-    if (layerIdentify && layerIdentify !== "") {
-      return appendQuery$1(`${CONTENT_SCHEME$1}/${docSegment}/layer`, { layerId: layerIdentify });
-    }
-    return `${CONTENT_SCHEME$1}/${docSegment}/curlayer`;
-  }
-  return `${CONTENT_SCHEME$1}/${docSegment}/${content}`;
-}
-function buildMaskContentUri(docId, content, layerIdentify, reverse) {
-  const docSegment = normalizeDocId$1(docId);
-  if (content === "curlayer") {
-    return appendQuery$1(`${MASK_SCHEME}/${docSegment}/layer`, {
-      layerId: layerIdentify ?? void 0,
-      reverse: reverse ? 1 : void 0
-    });
-  }
-  return appendQuery$1(`${MASK_SCHEME}/${docSegment}/${content}`, {
-    reverse: reverse ? 1 : void 0
-  });
-}
-function extractDocIdFromUris(uris) {
-  for (const uri2 of uris) {
-    if (!uri2) continue;
-    try {
-      const parsed = new URL(uri2);
-      if (parsed.protocol !== UXP_PROTOCOL) continue;
-      const docSegment = parsed.pathname.split("/").filter(Boolean)[0];
-      if (!docSegment) continue;
-      const numeric = Number(docSegment);
-      if (!Number.isFinite(numeric)) continue;
-      const normalized = Math.floor(numeric);
-      if (normalized >= 0) {
-        return normalized;
-      }
-    } catch {
-      continue;
-    }
-  }
-  return null;
 }
 const _SpeicialIDManager = class _SpeicialIDManager {
   static is_SPECIAL_DOCUMENT_CURRENT(str) {
@@ -129631,107 +129072,24 @@ async function getSelection(params) {
     height: bounds.scaledDesire.height
   };
 }
-async function getBoundaryImpl(params) {
-  var _a3, _b2;
-  if (!photoshop.app.activeDocument) {
-    throw new Error(t("photoshop.no_active_document"));
-  }
-  const document2 = photoshop.app.activeDocument;
-  let boundaryRect;
-  switch (params.type) {
-    case "curlayer":
-      const activeLayer = (_a3 = document2.activeLayers) == null ? void 0 : _a3[0];
-      if (!activeLayer) {
-        throw new Error(t("photoshop.no_active_layer"));
-      }
-      const layerBounds = activeLayer.bounds;
-      if (!layerBounds) {
-        boundaryRect = BoundaryRectUtils.fromPositionAndSize(0, 0, document2.width, document2.height, document2.width, document2.height);
-      } else {
-        boundaryRect = BoundaryRectUtils.fromPhotoshopBounds(layerBounds, document2.width, document2.height);
-      }
-      break;
-    case "selection":
-      const selectionBounds = (_b2 = document2.selection) == null ? void 0 : _b2.bounds;
-      if (!selectionBounds) {
-        boundaryRect = BoundaryRectUtils.fromPositionAndSize(0, 0, document2.width, document2.height, document2.width, document2.height);
-      } else {
-        boundaryRect = BoundaryRectUtils.fromPhotoshopBounds(selectionBounds, document2.width, document2.height);
-      }
-      break;
-    default:
-      throw new Error(t("photoshop.invalid_boundary_type", { type: params.type }));
-  }
-  const thumbnail = await generateBoundaryThumbnail(document2, boundaryRect);
-  return {
-    boundary: boundaryRect,
-    thumbnail
-  };
-}
-async function generateBoundaryThumbnail(document2, boundaryRect) {
-  try {
-    const documentInfo = await getDocumentInfo({
-      document_identify: SpeicialIDManager.get_SPECIAL_DOCUMENT_CURRENT()
-    });
-    const canvasImage = await getImage.getJimpImage({
-      document_identify: SpeicialIDManager.get_SPECIAL_DOCUMENT_CURRENT(),
-      layer_identify: SpeicialIDManager.get_SPECIAL_LAYER_USE_CANVAS(),
-      boundary: documentInfo.document_boundary,
-      max_wh: 192,
-      quality: 8
-    });
-    const thumbWidth = canvasImage.width;
-    const thumbHeight = canvasImage.height;
-    const docWidth = document2.width;
-    const docHeight = document2.height;
-    const scaleX = thumbWidth / docWidth;
-    const scaleY = thumbHeight / docHeight;
-    const boundaryLeft = Math.round(boundaryRect.leftDistance * scaleX);
-    const boundaryTop = Math.round(boundaryRect.topDistance * scaleY);
-    const boundaryRight = Math.round((docWidth - boundaryRect.rightDistance) * scaleX);
-    const boundaryBottom = Math.round((docHeight - boundaryRect.bottomDistance) * scaleY);
-    canvasImage.scan(0, 0, thumbWidth, thumbHeight, function(x2, y2, idx) {
-      const isOutsideBoundary = x2 < boundaryLeft || x2 >= boundaryRight || y2 < boundaryTop || y2 >= boundaryBottom;
-      if (isOutsideBoundary) {
-        canvasImage.bitmap.data[idx + 3] = Math.round(canvasImage.bitmap.data[idx + 3] * 0.3);
-      }
-    });
-    const thumbnailBuffer = await canvasImage.getBuffer(JimpMime.png);
-    return "data:image/png;base64," + thumbnailBuffer.toString("base64");
-  } catch (error) {
-    console.error("Error generating boundary thumbnail:", error);
-    return "";
-  }
-}
-async function getCurrentLayerIdentify() {
-  if (!photoshop.app.activeDocument) {
-    throw new Error(t("photoshop.no_active_document"));
-  }
-  const activeLayer = photoshop.app.activeDocument.activeLayers && photoshop.app.activeDocument.activeLayers.length > 0 ? photoshop.app.activeDocument.activeLayers[0] : null;
-  if (!activeLayer) {
-    return { layer_identify: null };
-  }
-  const identify = makeLayerIdentify(activeLayer.id, activeLayer.name);
-  return { layer_identify: identify };
-}
-const BOUNDARY_HOST = "boundary";
-const CONTENT_HOST = "content";
-const MASK_HOST = "mask";
-function ensureFiniteNumber(value, label) {
+const BOUNDARY_HOST$1 = "boundary";
+const CONTENT_HOST$1 = "content";
+const MASK_HOST$1 = "mask";
+function ensureFiniteNumber$1(value, label) {
   if (!Number.isFinite(value)) {
     throw new Error(`${label} must be a finite number`);
   }
 }
-function parseNumberQuery(url, key2) {
+function parseNumberQuery$1(url, key2) {
   const raw = url.searchParams.get(key2);
   if (raw == null || raw === "") {
     return void 0;
   }
   const num = Number(raw);
-  ensureFiniteNumber(num, key2);
+  ensureFiniteNumber$1(num, key2);
   return num;
 }
-function parseBoundaryResource(resource) {
+function parseBoundaryResource$1(resource) {
   if (typeof resource !== "string" || resource.trim() === "") {
     throw new Error("boundary must be a non-empty string");
   }
@@ -129744,8 +129102,8 @@ function parseBoundaryResource(resource) {
   if (url.protocol !== "uxp:") {
     throw new Error("boundary uri must use uxp:// scheme");
   }
-  if (url.hostname !== BOUNDARY_HOST) {
-    throw new Error(`boundary uri host must be "${BOUNDARY_HOST}"`);
+  if (url.hostname !== BOUNDARY_HOST$1) {
+    throw new Error(`boundary uri host must be "${BOUNDARY_HOST$1}"`);
   }
   const segments = url.pathname.split("/").filter(Boolean);
   if (segments.length < 2) {
@@ -129753,7 +129111,7 @@ function parseBoundaryResource(resource) {
   }
   const docIdRaw = segments[0];
   const docId = Number(docIdRaw);
-  ensureFiniteNumber(docId, "docId");
+  ensureFiniteNumber$1(docId, "docId");
   if (!Number.isInteger(docId) || docId < 0) {
     throw new Error("docId must be a non-negative integer");
   }
@@ -129769,7 +129127,7 @@ function parseBoundaryResource(resource) {
     ];
     const rect = {};
     for (const key2 of rectKeys) {
-      const value = parseNumberQuery(url, key2);
+      const value = parseNumberQuery$1(url, key2);
       if (value === void 0) {
         throw new Error(`boundary rect missing query parameter "${key2}"`);
       }
@@ -129778,8 +129136,8 @@ function parseBoundaryResource(resource) {
     return {
       docId,
       boundary: rect,
-      imageSize: parseNumberQuery(url, "imageSize"),
-      imageQuality: parseNumberQuery(url, "imageQuality")
+      imageSize: parseNumberQuery$1(url, "imageSize"),
+      imageQuality: parseNumberQuery$1(url, "imageQuality")
     };
   }
   if (boundaryType !== "canvas" && boundaryType !== "curlayer" && boundaryType !== "selection") {
@@ -129788,11 +129146,11 @@ function parseBoundaryResource(resource) {
   return {
     docId,
     boundary: boundaryType,
-    imageSize: parseNumberQuery(url, "imageSize"),
-    imageQuality: parseNumberQuery(url, "imageQuality")
+    imageSize: parseNumberQuery$1(url, "imageSize"),
+    imageQuality: parseNumberQuery$1(url, "imageQuality")
   };
 }
-function parseContentResource(resource) {
+function parseContentResource$1(resource) {
   if (typeof resource !== "string" || resource.trim() === "") {
     throw new Error("content must be a non-empty string");
   }
@@ -129805,8 +129163,8 @@ function parseContentResource(resource) {
   if (url.protocol !== "uxp:") {
     throw new Error("content uri must use uxp:// scheme");
   }
-  if (url.hostname !== CONTENT_HOST) {
-    throw new Error(`content uri host must be "${CONTENT_HOST}"`);
+  if (url.hostname !== CONTENT_HOST$1) {
+    throw new Error(`content uri host must be "${CONTENT_HOST$1}"`);
   }
   const segments = url.pathname.split("/").filter(Boolean);
   if (segments.length < 2) {
@@ -129814,12 +129172,12 @@ function parseContentResource(resource) {
   }
   const docIdRaw = segments[0];
   const docId = Number(docIdRaw);
-  ensureFiniteNumber(docId, "docId");
+  ensureFiniteNumber$1(docId, "docId");
   if (!Number.isInteger(docId) || docId < 0) {
     throw new Error("docId must be a non-negative integer");
   }
   const contentType = segments[1];
-  const layerIdParam = url.searchParams.get("layerId");
+  const layerIdParam = url.searchParams.get("layerid");
   switch (contentType) {
     case "canvas":
       return { docId, content: "canvas" };
@@ -129834,7 +129192,7 @@ function parseContentResource(resource) {
     case "layer": {
       const layerId = layerIdParam;
       if (!layerId) {
-        throw new Error("content uri with /layer requires layerId query parameter");
+        throw new Error("content uri with /layer requires layerid query parameter");
       }
       return {
         docId,
@@ -129860,8 +129218,8 @@ function parseMaskContentResource(resource) {
   if (url.protocol !== "uxp:") {
     throw new Error("mask content uri must use uxp:// scheme");
   }
-  if (url.hostname !== MASK_HOST) {
-    throw new Error(`mask content uri host must be "${MASK_HOST}"`);
+  if (url.hostname !== MASK_HOST$1) {
+    throw new Error(`mask content uri host must be "${MASK_HOST$1}"`);
   }
   const segments = url.pathname.split("/").filter(Boolean);
   if (segments.length < 2) {
@@ -129869,12 +129227,12 @@ function parseMaskContentResource(resource) {
   }
   const docIdRaw = segments[0];
   const docId = Number(docIdRaw);
-  ensureFiniteNumber(docId, "docId");
+  ensureFiniteNumber$1(docId, "docId");
   if (!Number.isInteger(docId) || docId < 0) {
     throw new Error("docId must be a non-negative integer");
   }
   const contentType = segments[1];
-  const layerIdParam = url.searchParams.get("layerId");
+  const layerIdParam = url.searchParams.get("layerid");
   const reverseParam = url.searchParams.get("reverse");
   const reverse = reverseParam === "1" || ((_a3 = reverseParam == null ? void 0 : reverseParam.toLowerCase) == null ? void 0 : _a3.call(reverseParam)) === "true";
   switch (contentType) {
@@ -129892,7 +129250,7 @@ function parseMaskContentResource(resource) {
     case "layer": {
       const layerId = layerIdParam;
       if (!layerId) {
-        throw new Error("mask content uri with /layer requires layerId query parameter");
+        throw new Error("mask content uri with /layer requires layerid query parameter");
       }
       return {
         docId,
@@ -129906,8 +129264,8 @@ function parseMaskContentResource(resource) {
   }
 }
 function buildGetImageParamsFromResources(boundaryResource, contentResource) {
-  const boundary = parseBoundaryResource(boundaryResource);
-  const content = parseContentResource(contentResource);
+  const boundary = parseBoundaryResource$1(boundaryResource);
+  const content = parseContentResource$1(contentResource);
   if (boundary.docId !== content.docId) {
     throw new Error("boundary and content must target the same document");
   }
@@ -129920,7 +129278,7 @@ function buildGetImageParamsFromResources(boundaryResource, contentResource) {
   };
 }
 function buildGetMaskParamsFromResources(boundaryResource, maskContentResource) {
-  const boundary = parseBoundaryResource(boundaryResource);
+  const boundary = parseBoundaryResource$1(boundaryResource);
   const content = parseMaskContentResource(maskContentResource);
   if (boundary.docId !== content.docId) {
     throw new Error("boundary and mask content must target the same document");
@@ -129933,15 +129291,257 @@ function buildGetMaskParamsFromResources(boundaryResource, maskContentResource) 
     layer_identify: content.layerIdentify ?? null
   };
 }
-const PNG_MIME = "image/png";
-const DATA_URL_REGEX = /^data:([^;,]+)?(;base64)?,(.*)$/i;
-function logMaterializer(event, payload = {}) {
-  try {
-    console.log("[materializeFromCBM]", event, JSON.stringify(payload));
-  } catch {
-    console.log("[materializeFromCBM]", event, payload);
+const UXP_PROTOCOL = "uxp:";
+const BOUNDARY_HOST = "boundary";
+const CONTENT_HOST = "content";
+const MASK_HOST = "mask";
+const BOUNDARY_SCHEME$1 = `uxp://${BOUNDARY_HOST}`;
+const CONTENT_SCHEME$1 = `uxp://${CONTENT_HOST}`;
+const MASK_SCHEME = `uxp://${MASK_HOST}`;
+const RECT_QUERY_KEYS = [
+  "leftDistance",
+  "topDistance",
+  "rightDistance",
+  "bottomDistance",
+  "width",
+  "height"
+];
+function normalizeDocId$1(docId) {
+  const numeric = Number(docId);
+  if (!Number.isFinite(numeric)) return 0;
+  const normalized = Math.floor(numeric);
+  return normalized < 0 ? 0 : normalized;
+}
+function appendQuery$1(base2, params) {
+  const searchParams = new URLSearchParams();
+  for (const [key2, value] of Object.entries(params)) {
+    if (value === void 0 || value === null || value === "") continue;
+    searchParams.set(key2, String(value));
+  }
+  const query = searchParams.toString();
+  return query ? `${base2}?${query}` : base2;
+}
+function ensureFiniteNumber(value, label) {
+  if (!Number.isFinite(value)) {
+    throw new Error(`${label} must be a finite number`);
   }
 }
+function parseNumberQuery(url, key2) {
+  const raw = url.searchParams.get(key2);
+  if (raw == null || raw === "") return void 0;
+  const num = Number(raw);
+  ensureFiniteNumber(num, key2);
+  return num;
+}
+function serializeBoundaryRect(rect) {
+  const serialized = {};
+  for (const key2 of RECT_QUERY_KEYS) {
+    serialized[key2] = Number(rect[key2]);
+  }
+  return serialized;
+}
+function deserializeBoundaryRect(url) {
+  const rect = {};
+  for (const key2 of RECT_QUERY_KEYS) {
+    const value = parseNumberQuery(url, key2);
+    if (value === void 0) {
+      throw new Error(`boundary rect missing query parameter "${key2}"`);
+    }
+    rect[key2] = value;
+  }
+  return rect;
+}
+function extractLayerParams(layerIdentify) {
+  if (!layerIdentify) return {};
+  const trimmed = String(layerIdentify).trim();
+  if (!trimmed) return {};
+  const match = /(.*)\(id:(\d+)\)\s*$/.exec(trimmed);
+  let layerId;
+  let layerName;
+  if (match) {
+    layerName = match[1].trim().replace(/^-+/, "").trim() || void 0;
+    layerId = match[2];
+  } else if (/^\d+$/.test(trimmed)) {
+    layerId = trimmed;
+  } else {
+    layerName = trimmed.replace(/^-+/, "").trim() || void 0;
+  }
+  return { layerId, layerName };
+}
+function ensureUxpUrl(uri2, expectedHost) {
+  let parsed;
+  try {
+    parsed = new URL(uri2);
+  } catch {
+    throw new Error(`Invalid ${expectedHost} uri: ${uri2}`);
+  }
+  if (parsed.protocol !== UXP_PROTOCOL) {
+    throw new Error(`${expectedHost} uri must use uxp:// scheme`);
+  }
+  if (parsed.hostname !== expectedHost) {
+    throw new Error(`${expectedHost} uri host must be "${expectedHost}"`);
+  }
+  const [docSegment, ...rest] = parsed.pathname.split("/").filter(Boolean);
+  if (!docSegment) {
+    throw new Error(`${expectedHost} uri is missing required segments`);
+  }
+  const docId = Number(docSegment);
+  ensureFiniteNumber(docId, "docId");
+  if (!Number.isInteger(docId) || docId < 0) {
+    throw new Error("docId must be a non-negative integer");
+  }
+  return { parsed, docId, segments: rest };
+}
+function parseBoundaryResource(resource) {
+  const { parsed, docId, segments } = ensureUxpUrl(resource, BOUNDARY_HOST);
+  const boundaryType = segments[0];
+  if (!boundaryType || boundaryType === "canvas" || boundaryType === "curlayer" || boundaryType === "selection") {
+    return {
+      docId,
+      boundary: boundaryType ?? "canvas",
+      imageSize: parseNumberQuery(parsed, "imageSize"),
+      imageQuality: parseNumberQuery(parsed, "imageQuality")
+    };
+  }
+  if (boundaryType !== "rect") {
+    throw new Error(`Unsupported boundary type "${boundaryType}"`);
+  }
+  return {
+    docId,
+    boundary: deserializeBoundaryRect(parsed),
+    imageSize: parseNumberQuery(parsed, "imageSize"),
+    imageQuality: parseNumberQuery(parsed, "imageQuality")
+  };
+}
+function parseContentResource(resource) {
+  const { parsed, docId, segments } = ensureUxpUrl(resource, CONTENT_HOST);
+  const contentType = segments[0];
+  if (!contentType) {
+    throw new Error("content uri is missing required segments");
+  }
+  if (contentType === "canvas" || contentType === "selection") {
+    return {
+      docId,
+      content: contentType
+    };
+  }
+  if (contentType === "curlayer") {
+    return {
+      docId,
+      content: "curlayer",
+      layerIdentify: parsed.searchParams.get("layerid") ?? void 0
+    };
+  }
+  if (contentType === "layer") {
+    const layerIdentify = parsed.searchParams.get("layerid");
+    if (!layerIdentify) {
+      throw new Error("content uri with /layer requires layerid query parameter");
+    }
+    return {
+      docId,
+      content: "curlayer",
+      layerIdentify
+    };
+  }
+  throw new Error(`Unsupported content type "${contentType}"`);
+}
+function parseMaskResource(resource) {
+  const { parsed, docId, segments } = ensureUxpUrl(resource, MASK_HOST);
+  const contentType = segments[0];
+  if (!contentType) {
+    throw new Error("mask content uri is missing required segments");
+  }
+  const reverseParam = parsed.searchParams.get("reverse");
+  const reverse = reverseParam === "1" || (reverseParam == null ? void 0 : reverseParam.toLowerCase()) === "true";
+  if (contentType === "canvas" || contentType === "selection") {
+    return { docId, content: contentType, reverse };
+  }
+  if (contentType === "curlayer") {
+    return {
+      docId,
+      content: "curlayer",
+      reverse,
+      layerIdentify: parsed.searchParams.get("layerid") ?? void 0
+    };
+  }
+  if (contentType === "layer") {
+    const layerIdentify = parsed.searchParams.get("layerid");
+    if (!layerIdentify) {
+      throw new Error("mask content uri with /layer requires layerid query parameter");
+    }
+    return {
+      docId,
+      content: "curlayer",
+      layerIdentify,
+      reverse
+    };
+  }
+  throw new Error(`Unsupported mask content type "${contentType}"`);
+}
+function buildBoundaryUri$1(docId, boundary, options2) {
+  const docSegment = normalizeDocId$1(docId);
+  if (!boundary || boundary === "canvas" || boundary === "curlayer" || boundary === "selection") {
+    return appendQuery$1(`${BOUNDARY_SCHEME$1}/${docSegment}/${boundary ?? "canvas"}`, {
+      imageSize: options2 == null ? void 0 : options2.imageSize,
+      imageQuality: options2 == null ? void 0 : options2.imageQuality
+    });
+  }
+  return appendQuery$1(`${BOUNDARY_SCHEME$1}/${docSegment}/rect`, {
+    ...serializeBoundaryRect(boundary),
+    imageSize: options2 == null ? void 0 : options2.imageSize,
+    imageQuality: options2 == null ? void 0 : options2.imageQuality
+  });
+}
+function buildContentUri$1(docId, content, layerIdentify) {
+  const docSegment = normalizeDocId$1(docId);
+  if (content === "curlayer") {
+    if (layerIdentify && layerIdentify !== "") {
+      const { layerId, layerName } = extractLayerParams(layerIdentify);
+      return appendQuery$1(`${CONTENT_SCHEME$1}/${docSegment}/layer`, {
+        layerid: layerId ?? layerIdentify.trim(),
+        layername: layerName ?? void 0
+      });
+    }
+    return `${CONTENT_SCHEME$1}/${docSegment}/curlayer`;
+  }
+  return `${CONTENT_SCHEME$1}/${docSegment}/${content}`;
+}
+function buildMaskContentUri(docId, content, layerIdentify, reverse) {
+  const docSegment = normalizeDocId$1(docId);
+  if (content === "curlayer") {
+    const { layerId, layerName } = extractLayerParams(layerIdentify ?? void 0);
+    return appendQuery$1(`${MASK_SCHEME}/${docSegment}/layer`, {
+      layerid: layerId ?? (layerIdentify == null ? void 0 : layerIdentify.trim()) ?? void 0,
+      layername: layerName ?? void 0,
+      reverse: reverse ? 1 : void 0
+    });
+  }
+  return appendQuery$1(`${MASK_SCHEME}/${docSegment}/${content}`, {
+    reverse: reverse ? 1 : void 0
+  });
+}
+function extractDocIdFromUris(uris) {
+  for (const uri2 of uris) {
+    if (!uri2) continue;
+    try {
+      const parsed = new URL(uri2);
+      if (parsed.protocol !== UXP_PROTOCOL) continue;
+      const docSegment = parsed.pathname.split("/").filter(Boolean)[0];
+      if (!docSegment) continue;
+      const numeric = Number(docSegment);
+      if (!Number.isFinite(numeric)) continue;
+      const normalized = Math.floor(numeric);
+      if (normalized >= 0) {
+        return normalized;
+      }
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+const PNG_MIME = "image/png";
+const DATA_URL_REGEX = /^data:([^;,]+)?(;base64)?,(.*)$/i;
 function normalizeUri(value) {
   if (typeof value !== "string") return void 0;
   const trimmed = value.trim();
@@ -129960,15 +129560,29 @@ function decodeDataUrl(dataUrl) {
   }
   return { buffer: bufferExports.Buffer.from(decodeURIComponent(payload), "utf8"), mime: mime2 };
 }
+async function isPhotoshopSelectionEmpty() {
+  try {
+    const doc = photoshop.app.activeDocument;
+    if (!doc) return true;
+    const selection = doc.selection;
+    if (!selection) return true;
+    const bounds = selection.bounds;
+    if (!bounds) {
+      return true;
+    }
+    return false;
+  } catch (error) {
+    return true;
+  }
+}
 async function resolveEffectiveBoundaryUri(params) {
   const boundaryCandidate = normalizeUri(params.boundaryUri);
   if (boundaryCandidate) {
-    logMaterializer("boundaryProvided", { boundaryUri: boundaryCandidate });
     return boundaryCandidate;
   }
   const contentUri = normalizeUri(params.contentUri);
   if (contentUri) {
-    const parsed = parseContentResource$1(contentUri);
+    const parsed = parseContentResource(contentUri);
     const primitive = parsed.content === "selection" ? "selection" : parsed.content === "curlayer" ? "curlayer" : "canvas";
     return buildBoundaryUri$1(parsed.docId, primitive);
   }
@@ -129982,202 +129596,13 @@ async function resolveEffectiveBoundaryUri(params) {
   if (docId != null) {
     return buildBoundaryUri$1(docId, "canvas");
   }
-  logMaterializer("boundaryResolutionFailed", {
-    contentUri,
-    maskUri
-  });
   throw new Error("Unable to resolve boundary for CBM materialization");
 }
-function applyMaskToImage(image, mask) {
-  if (mask.bitmap.width !== image.bitmap.width || mask.bitmap.height !== image.bitmap.height) {
-    mask = mask.clone().resize(image.bitmap.width, image.bitmap.height);
-  }
-  const baseData = image.bitmap.data;
-  const maskData = mask.bitmap.data;
-  const width = Math.min(image.bitmap.width, mask.bitmap.width);
-  const height = Math.min(image.bitmap.height, mask.bitmap.height);
-  for (let y2 = 0; y2 < height; y2 += 1) {
-    for (let x2 = 0; x2 < width; x2 += 1) {
-      const baseIdx = (y2 * image.bitmap.width + x2) * 4;
-      const maskIdx = (y2 * mask.bitmap.width + x2) * 4;
-      const alpha = maskData[maskIdx + 3];
-      if (alpha <= 0) continue;
-      const factor = Math.max(0, 1 - Math.min(1, alpha / 255));
-      baseData[baseIdx + 3] = Math.round(baseData[baseIdx + 3] * factor);
-    }
-  }
-}
-async function loadMaskSnapshotForMaterializer(boundaryUri, maskUri) {
-  if (maskUri.startsWith("uxp://mask/")) {
-    logMaterializer("maskSnapshot.layer", { maskUri, boundaryUri });
-    return await loadMaskSnapshotJimp(boundaryUri, maskUri);
-  }
-  if (maskUri.startsWith("uxp://file/")) {
-    logMaterializer("maskSnapshot.resource", { maskUri });
-    const { buffer: buffer2 } = await resolveResourceBuffer(maskUri);
-    const jimpImage = await Jimp.read(bufferExports.Buffer.from(buffer2));
-    return {
-      jimp: jimpImage,
-      thumbnail: await buildThumbnailBase64(jimpImage)
-    };
-  }
-  if (DATA_URL_REGEX.test(maskUri)) {
-    logMaterializer("maskSnapshot.dataUrl", { maskUriLength: maskUri.length });
-    const decoded = decodeDataUrl(maskUri);
-    const jimpImage = await Jimp.read(decoded.buffer);
-    return {
-      jimp: jimpImage,
-      thumbnail: await buildThumbnailBase64(jimpImage)
-    };
-  }
-  logMaterializer("maskSnapshot.unsupported", { maskUri });
-  return null;
-}
-async function materializeFromCBM(params) {
-  logMaterializer("start", {
-    hasContent: !!params.contentUri,
-    hasMask: !!params.maskUri,
-    boundaryUri: params.boundaryUri
-  });
-  const contentUri = normalizeUri(params.contentUri);
-  const maskUri = normalizeUri(params.maskUri);
-  if (!contentUri && !maskUri) {
-    logMaterializer("errorMissingUris", {});
-    throw new Error("contentUri or maskUri must be provided");
-  }
-  const boundaryUri = await resolveEffectiveBoundaryUri(params);
-  logMaterializer("boundaryResolved", { boundaryUri });
-  if (!contentUri && maskUri) {
-    const maskSnapshot = await loadMaskSnapshotForMaterializer(boundaryUri, maskUri);
-    if (!maskSnapshot) {
-      logMaterializer("maskSnapshotMissing", { maskUri });
-      throw new Error("Unable to resolve mask snapshot");
-    }
-    logMaterializer("materializeMask", {
-      width: maskSnapshot.jimp.bitmap.width,
-      height: maskSnapshot.jimp.bitmap.height
-    });
-    return {
-      type: "mask",
-      image: maskSnapshot.jimp,
-      thumbnail: maskSnapshot.thumbnail,
-      mime: PNG_MIME,
-      meta: {
-        boundaryUri,
-        sourceMaskUri: maskUri
-      }
-    };
-  }
-  if (!contentUri) {
-    logMaterializer("errorMissingContent", { maskUri });
-    throw new Error("contentUri is required when maskUri is not provided");
-  }
-  const contentSnapshot = await loadContentSnapshotJimp(boundaryUri, contentUri);
-  logMaterializer("contentSnapshot", {
-    width: contentSnapshot.jimp.bitmap.width,
-    height: contentSnapshot.jimp.bitmap.height,
-    boundaryUri,
-    contentUri
-  });
-  const image = contentSnapshot.jimp;
-  let thumbnail = contentSnapshot.thumbnail;
-  const meta = {
-    boundaryUri,
-    contentUri
-  };
-  if (maskUri) {
-    const maskSnapshot = await loadMaskSnapshotForMaterializer(boundaryUri, maskUri);
-    if (!maskSnapshot) {
-      logMaterializer("maskSnapshotMissing", { maskUri });
-      throw new Error("Unable to resolve mask snapshot");
-    }
-    logMaterializer("applyMask", {
-      maskWidth: maskSnapshot.jimp.bitmap.width,
-      maskHeight: maskSnapshot.jimp.bitmap.height
-    });
-    applyMaskToImage(image, maskSnapshot.jimp);
-    thumbnail = await buildThumbnailBase64(image);
-    meta.maskApplied = maskUri;
-  }
-  const result = {
-    type: "image",
-    image,
-    thumbnail,
-    mime: PNG_MIME,
-    meta
-  };
-  logMaterializer("success", {
-    width: image.bitmap.width,
-    height: image.bitmap.height,
-    hasMask: !!maskUri
-  });
-  return result;
-}
-async function resolveBoundaryToRect(boundaryUri) {
-  const parsed = parseBoundaryResource$1(boundaryUri);
-  const { docId, boundary, imageSize, imageQuality } = parsed;
-  if (typeof boundary === "object") {
-    return buildBoundaryUri$1(docId, boundary, { imageSize, imageQuality });
-  }
-  if (!photoshop.app.activeDocument) {
-    throw new Error("No active document to resolve boundary.");
-  }
-  let resolved = boundary;
-  switch (boundary) {
-    case "canvas": {
-      const doc = photoshop.app.activeDocument;
-      const width = Number(doc.width);
-      const height = Number(doc.height);
-      resolved = BoundaryRectUtils.fromPositionAndSize(0, 0, width, height, width, height);
-      break;
-    }
-    case "curlayer": {
-      const { boundary: computed } = await getBoundaryImpl({ type: "curlayer" });
-      resolved = computed;
-      break;
-    }
-    case "selection": {
-      const { boundary: computed } = await getBoundaryImpl({ type: "selection" });
-      resolved = computed;
-      break;
-    }
-    default: {
-      throw new Error(`Unsupported boundary type "${boundary}"`);
-    }
-  }
-  return buildBoundaryUri$1(docId, resolved, { imageSize, imageQuality });
-}
-async function resolveContentToLayer(contentUri) {
-  const parsed = parseContentResource$1(contentUri);
-  const { docId, content, layerIdentify } = parsed;
-  if (content !== "curlayer") {
-    return buildContentUri$1(docId, content, layerIdentify);
-  }
-  if (layerIdentify && layerIdentify.length > 0) {
-    return buildContentUri$1(docId, content, layerIdentify);
-  }
-  const { layer_identify } = await getCurrentLayerIdentify();
-  if (!layer_identify) {
-    throw new Error("No active layer available to resolve content.");
-  }
-  return buildContentUri$1(docId, content, layer_identify);
-}
-async function resolveMaskToLayer(maskUri) {
-  const parsed = parseMaskResource(maskUri);
-  const { docId, content, reverse, layerIdentify } = parsed;
-  if (content !== "curlayer") {
-    return buildMaskContentUri(docId, content, void 0, reverse);
-  }
-  const existing = layerIdentify && layerIdentify.length > 0 ? layerIdentify : (await getCurrentLayerIdentify()).layer_identify;
-  if (!existing) {
-    throw new Error("No active layer available to resolve mask.");
-  }
-  return buildMaskContentUri(docId, content, existing, reverse);
-}
-function getEffectiveImageSize(requested) {
-  const activeNodeState = mcpMesh.getNode("uxp").store.getState();
+function getEffectiveImageSize(mesh, requested) {
+  var _a3, _b2, _c, _d, _e, _f;
+  const activeNodeState = (_d = (_c = (_b2 = (_a3 = mesh == null ? void 0 : mesh.getNode) == null ? void 0 : _a3.call(mesh, "uxp")) == null ? void 0 : _b2.store) == null ? void 0 : _c.getState) == null ? void 0 : _d.call(_c);
   const activeDocumentID = activeNodeState == null ? void 0 : activeNodeState.activeDocumentID;
-  const meshState = mcpMesh.store.getState();
+  const meshState = ((_f = (_e = mesh == null ? void 0 : mesh.store) == null ? void 0 : _e.getState) == null ? void 0 : _f.call(_e)) ?? {};
   const workBoundaryMaxSizes = (meshState == null ? void 0 : meshState.workBoundaryMaxSizes) ?? {};
   const defaultSize = sdpppX["settings.imaging.defaultImagesSizeLimit"];
   if (requested && requested > 0) {
@@ -130255,9 +129680,80 @@ async function buildThumbnailBase64(image) {
   const buffer2 = await clone2.getBuffer(JimpMime.png);
   return "data:image/png;base64," + buffer2.toString("base64");
 }
-async function loadContentSnapshotJimp(boundaryUri, contentUri) {
+function applyMaskToImage(image, mask) {
+  if (mask.bitmap.width !== image.bitmap.width || mask.bitmap.height !== image.bitmap.height) {
+    mask = mask.clone().resize({
+      w: image.bitmap.width,
+      h: image.bitmap.height
+    });
+  }
+  const baseData = image.bitmap.data;
+  const maskData = mask.bitmap.data;
+  const width = Math.min(image.bitmap.width, mask.bitmap.width);
+  const height = Math.min(image.bitmap.height, mask.bitmap.height);
+  for (let y2 = 0; y2 < height; y2 += 1) {
+    for (let x2 = 0; x2 < width; x2 += 1) {
+      const baseIdx = (y2 * image.bitmap.width + x2) * 4;
+      const maskIdx = (y2 * mask.bitmap.width + x2) * 4;
+      const rgbAverage = Math.round(
+        (maskData[maskIdx + 0] + maskData[maskIdx + 1] + maskData[maskIdx + 2]) / 3
+      );
+      if (rgbAverage <= 0) continue;
+      const factor = Math.max(0, 1 - Math.min(1, rgbAverage / 255));
+      baseData[baseIdx + 3] = Math.round(baseData[baseIdx + 3] * factor);
+    }
+  }
+}
+async function loadMaskSnapshotForMaterializer(mesh, boundaryUri, maskUri) {
+  const normalizedMaskUri = normalizeUri(maskUri);
+  if (!normalizedMaskUri) {
+    return null;
+  }
+  if (normalizedMaskUri.startsWith("uxp://mask/")) {
+    const parsedMask = parseMaskResource(normalizedMaskUri);
+    const selectionEmpty = parsedMask.content === "selection" ? await isPhotoshopSelectionEmpty() : false;
+    const layerSnapshot = await loadMaskSnapshotJimp(mesh, boundaryUri, normalizedMaskUri);
+    const width = layerSnapshot.jimp.bitmap.width;
+    const height = layerSnapshot.jimp.bitmap.height;
+    if (selectionEmpty) {
+      const fallback = await createSolidMask(width, height);
+      return {
+        jimp: fallback,
+        thumbnail: await buildThumbnailBase64(fallback)
+      };
+    }
+    return layerSnapshot;
+  }
+  if (normalizedMaskUri.startsWith("uxp://file/")) {
+    const { buffer: buffer2 } = await resolveResourceBuffer(normalizedMaskUri);
+    const jimpImage = await Jimp.read(bufferExports.Buffer.from(buffer2));
+    return {
+      jimp: jimpImage,
+      thumbnail: await buildThumbnailBase64(jimpImage)
+    };
+  }
+  if (DATA_URL_REGEX.test(normalizedMaskUri)) {
+    const decoded = decodeDataUrl(normalizedMaskUri);
+    const jimpImage = await Jimp.read(decoded.buffer);
+    return {
+      jimp: jimpImage,
+      thumbnail: await buildThumbnailBase64(jimpImage)
+    };
+  }
+  return null;
+}
+async function createSolidMask(width, height) {
+  const safeWidth = Math.max(1, width);
+  const safeHeight = Math.max(1, height);
+  return new Jimp({
+    width: safeWidth,
+    height: safeHeight,
+    color: 0
+  });
+}
+async function loadContentSnapshotJimp(mesh, boundaryUri, contentUri) {
   const built = buildGetImageParamsFromResources(boundaryUri, contentUri);
-  const effectiveImageSize = getEffectiveImageSize(built.imageSize);
+  const effectiveImageSize = getEffectiveImageSize(mesh, built.imageSize);
   const boundaryParam = await resolveBoundaryParam(built.boundary, built.layer_identify ?? null);
   const layerIdentify = resolveLayerIdentifyForContent(built.content, built.layer_identify ?? null);
   const documentIdentify = SpeicialIDManager.get_SPECIAL_DOCUMENT_CURRENT();
@@ -130285,8 +129781,7 @@ async function loadContentSnapshotJimp(boundaryUri, contentUri) {
           }
         }
       }
-    } catch (error) {
-      console.warn("[renderContentSnapshot] Failed to apply selection alpha", error);
+    } catch {
     }
   }
   return {
@@ -130294,9 +129789,9 @@ async function loadContentSnapshotJimp(boundaryUri, contentUri) {
     thumbnail: await buildThumbnailBase64(jimpImage)
   };
 }
-async function loadMaskSnapshotJimp(boundaryUri, maskUri) {
+async function loadMaskSnapshotJimp(mesh, boundaryUri, maskUri) {
   const built = buildGetMaskParamsFromResources(boundaryUri, maskUri);
-  const effectiveImageSize = getEffectiveImageSize(built.imageSize);
+  const effectiveImageSize = getEffectiveImageSize(mesh, built.imageSize);
   const boundaryParam = await resolveBoundaryParam(built.boundary, built.layer_identify ?? null);
   const layerIdentify = resolveLayerIdentifyForMask(built.content, built.layer_identify ?? null);
   const documentIdentify = SpeicialIDManager.get_SPECIAL_DOCUMENT_CURRENT();
@@ -130323,8 +129818,7 @@ async function loadMaskSnapshotJimp(boundaryUri, maskUri) {
           }
         }
       }
-    } catch (error) {
-      console.warn("[renderMaskSnapshot] Failed to apply selection alpha", error);
+    } catch {
     }
   }
   jimpImage.scan(0, 0, jimpImage.bitmap.width, jimpImage.bitmap.height, (_x, _y, idx) => {
@@ -130340,18 +129834,308 @@ async function loadMaskSnapshotJimp(boundaryUri, maskUri) {
     thumbnail: await buildThumbnailBase64(jimpImage)
   };
 }
-const context = {
-  mcpMesh,
-  materializers: {
-    fromCBM: materializeFromCBM
-  },
-  resolvers: {
-    boundaryToRect: resolveBoundaryToRect,
-    contentToLayer: resolveContentToLayer,
-    maskToLayer: resolveMaskToLayer
+async function materializeFromCBM(mesh, params) {
+  console.log("materializeFromCBM", params);
+  const contentUri = normalizeUri(params.contentUri);
+  const maskUri = normalizeUri(params.maskUri);
+  if (!contentUri && !maskUri) {
+    throw new Error("contentUri or maskUri must be provided");
   }
-};
-registerImagingActions(context);
+  const boundaryUri = await resolveEffectiveBoundaryUri(params);
+  if (!contentUri && maskUri) {
+    const maskSnapshot = await loadMaskSnapshotForMaterializer(mesh, boundaryUri, maskUri);
+    if (!maskSnapshot) {
+      throw new Error("Unable to resolve mask snapshot");
+    }
+    return {
+      type: "mask",
+      image: maskSnapshot.jimp,
+      thumbnail: maskSnapshot.thumbnail,
+      mime: PNG_MIME,
+      meta: {
+        boundaryUri,
+        sourceMaskUri: maskUri
+      }
+    };
+  }
+  if (!contentUri) {
+    throw new Error("contentUri is required when maskUri is not provided");
+  }
+  const contentSnapshot = await loadContentSnapshotJimp(mesh, boundaryUri, contentUri);
+  const image = contentSnapshot.jimp;
+  let thumbnail = contentSnapshot.thumbnail;
+  const meta = {
+    boundaryUri,
+    contentUri
+  };
+  if (maskUri) {
+    const maskSnapshot = await loadMaskSnapshotForMaterializer(mesh, boundaryUri, maskUri);
+    if (!maskSnapshot) {
+      throw new Error("Unable to resolve mask snapshot");
+    }
+    applyMaskToImage(image, maskSnapshot.jimp);
+    thumbnail = await buildThumbnailBase64(image);
+    meta.maskApplied = maskUri;
+  }
+  return {
+    type: "image",
+    image,
+    thumbnail,
+    mime: PNG_MIME,
+    meta
+  };
+}
+function ensureParams(params) {
+  if (!params) {
+    return {};
+  }
+  return params;
+}
+function registerCreateFromCBMAction(context) {
+  const { mcpMesh: mcpMesh2 } = context;
+  const mesh = mcpMesh2;
+  mcpMesh2.implementAction("fileResource.createFromCBM", async (rawParams = {}) => {
+    try {
+      const params = ensureParams(rawParams);
+      const materialized = await materializeFromCBM(mesh, params);
+      if (!(materialized == null ? void 0 : materialized.image)) {
+        throw new Error("fromCBM returned empty image payload");
+      }
+      const image = materialized.image;
+      const width = image.bitmap.width;
+      const height = image.bitmap.height;
+      const mime2 = materialized.mime ?? PNG_MIME;
+      const pngBuffer = await image.getBuffer(JimpMime.png);
+      const resourceId = createResource({
+        type: "file",
+        data: {
+          buffer: new Uint8Array(pngBuffer),
+          mime: mime2
+        },
+        originalMeta: {
+          width,
+          height,
+          ...materialized.meta ?? {}
+        }
+      });
+      const thumbnail = typeof materialized.thumbnail === "string" ? materialized.thumbnail : await buildThumbnailBase64(image);
+      updateResource(resourceId, {
+        thumbnailCache: {
+          base64: thumbnail,
+          width,
+          height,
+          mime: PNG_MIME,
+          generatedAt: Date.now()
+        }
+      });
+      const response = {
+        resource: resourceId,
+        thumbnail,
+        width,
+        height,
+        mime: mime2
+      };
+      return response;
+    } catch (error) {
+      return {
+        error: (error == null ? void 0 : error.message) || String(error)
+      };
+    }
+  });
+}
+async function getBoundaryImpl(params) {
+  var _a3, _b2;
+  if (!photoshop.app.activeDocument) {
+    throw new Error(t("photoshop.no_active_document"));
+  }
+  const document2 = photoshop.app.activeDocument;
+  let boundaryRect;
+  switch (params.type) {
+    case "curlayer":
+      const activeLayer = (_a3 = document2.activeLayers) == null ? void 0 : _a3[0];
+      if (!activeLayer) {
+        throw new Error(t("photoshop.no_active_layer"));
+      }
+      const layerBounds = activeLayer.bounds;
+      if (!layerBounds) {
+        boundaryRect = BoundaryRectUtils.fromPositionAndSize(0, 0, document2.width, document2.height, document2.width, document2.height);
+      } else {
+        boundaryRect = BoundaryRectUtils.fromPhotoshopBounds(layerBounds, document2.width, document2.height);
+      }
+      break;
+    case "selection":
+      const selectionBounds = (_b2 = document2.selection) == null ? void 0 : _b2.bounds;
+      if (!selectionBounds) {
+        boundaryRect = BoundaryRectUtils.fromPositionAndSize(0, 0, document2.width, document2.height, document2.width, document2.height);
+      } else {
+        boundaryRect = BoundaryRectUtils.fromPhotoshopBounds(selectionBounds, document2.width, document2.height);
+      }
+      break;
+    default:
+      throw new Error(t("photoshop.invalid_boundary_type", { type: params.type }));
+  }
+  const thumbnail = await generateBoundaryThumbnail(document2, boundaryRect);
+  return {
+    boundary: boundaryRect,
+    thumbnail
+  };
+}
+async function generateBoundaryThumbnail(document2, boundaryRect) {
+  try {
+    const documentInfo = await getDocumentInfo({
+      document_identify: SpeicialIDManager.get_SPECIAL_DOCUMENT_CURRENT()
+    });
+    const canvasImage = await getImage.getJimpImage({
+      document_identify: SpeicialIDManager.get_SPECIAL_DOCUMENT_CURRENT(),
+      layer_identify: SpeicialIDManager.get_SPECIAL_LAYER_USE_CANVAS(),
+      boundary: documentInfo.document_boundary,
+      max_wh: 192,
+      quality: 8
+    });
+    const thumbWidth = canvasImage.width;
+    const thumbHeight = canvasImage.height;
+    const docWidth = document2.width;
+    const docHeight = document2.height;
+    const scaleX = thumbWidth / docWidth;
+    const scaleY = thumbHeight / docHeight;
+    const boundaryLeft = Math.round(boundaryRect.leftDistance * scaleX);
+    const boundaryTop = Math.round(boundaryRect.topDistance * scaleY);
+    const boundaryRight = Math.round((docWidth - boundaryRect.rightDistance) * scaleX);
+    const boundaryBottom = Math.round((docHeight - boundaryRect.bottomDistance) * scaleY);
+    canvasImage.scan(0, 0, thumbWidth, thumbHeight, function(x2, y2, idx) {
+      const isOutsideBoundary = x2 < boundaryLeft || x2 >= boundaryRight || y2 < boundaryTop || y2 >= boundaryBottom;
+      if (isOutsideBoundary) {
+        canvasImage.bitmap.data[idx + 3] = Math.round(canvasImage.bitmap.data[idx + 3] * 0.3);
+      }
+    });
+    const thumbnailBuffer = await canvasImage.getBuffer(JimpMime.png);
+    return "data:image/png;base64," + thumbnailBuffer.toString("base64");
+  } catch (error) {
+    console.error("Error generating boundary thumbnail:", error);
+    return "";
+  }
+}
+function registerBoundaryNormalizeAction(context) {
+  const { mcpMesh: mcpMesh2 } = context;
+  mcpMesh2.implementAction("boundary.normalize", async (params) => {
+    try {
+      if (!(params == null ? void 0 : params.boundary)) {
+        throw new Error("boundary parameter is required");
+      }
+      const rectUri = await resolveBoundaryToRect(params.boundary);
+      return { boundary: rectUri };
+    } catch (error) {
+      return { error: (error == null ? void 0 : error.stack) || (error == null ? void 0 : error.message) || String(error) };
+    }
+  });
+}
+async function resolveBoundaryToRect(boundaryUri) {
+  const parsed = parseBoundaryResource(boundaryUri);
+  const { docId, boundary, imageSize, imageQuality } = parsed;
+  if (typeof boundary === "object") {
+    return buildBoundaryUri$1(docId, boundary, { imageSize, imageQuality });
+  }
+  if (!photoshop.app.activeDocument) {
+    throw new Error("No active document to resolve boundary.");
+  }
+  let resolved = boundary;
+  switch (boundary) {
+    case "canvas": {
+      const doc = photoshop.app.activeDocument;
+      const width = Number(doc.width);
+      const height = Number(doc.height);
+      resolved = BoundaryRectUtils.fromPositionAndSize(0, 0, width, height, width, height);
+      break;
+    }
+    case "curlayer": {
+      const { boundary: computed } = await getBoundaryImpl({ type: "curlayer" });
+      resolved = computed;
+      break;
+    }
+    case "selection": {
+      const { boundary: computed } = await getBoundaryImpl({ type: "selection" });
+      resolved = computed;
+      break;
+    }
+    default: {
+      throw new Error(`Unsupported boundary type "${boundary}"`);
+    }
+  }
+  return buildBoundaryUri$1(docId, resolved, { imageSize, imageQuality });
+}
+async function getCurrentLayerIdentify() {
+  if (!photoshop.app.activeDocument) {
+    throw new Error(t("photoshop.no_active_document"));
+  }
+  const activeLayer = photoshop.app.activeDocument.activeLayers && photoshop.app.activeDocument.activeLayers.length > 0 ? photoshop.app.activeDocument.activeLayers[0] : null;
+  if (!activeLayer) {
+    return { layer_identify: null };
+  }
+  const identify = makeLayerIdentify(activeLayer.id, activeLayer.name);
+  return { layer_identify: identify };
+}
+function registerLayerResolveAction(context) {
+  const { mcpMesh: mcpMesh2 } = context;
+  mcpMesh2.implementAction("layer.resolve", async (params) => {
+    try {
+      if (!(params == null ? void 0 : params.uri)) {
+        throw new Error("uri parameter is required");
+      }
+      if (!(params == null ? void 0 : params.type)) {
+        throw new Error("type parameter is required");
+      }
+      if (params.type === "content") {
+        const resolved = await resolveContentToLayer(params.uri);
+        return { uri: resolved };
+      }
+      if (params.type === "mask") {
+        const resolved = await resolveMaskToLayer(params.uri);
+        return { uri: resolved };
+      }
+      throw new Error(`Unsupported type: ${params.type}`);
+    } catch (error) {
+      return { error: (error == null ? void 0 : error.stack) || (error == null ? void 0 : error.message) || String(error) };
+    }
+  });
+}
+async function resolveContentToLayer(contentUri) {
+  const parsed = parseContentResource(contentUri);
+  const { docId, content, layerIdentify } = parsed;
+  if (content !== "curlayer") {
+    return buildContentUri$1(docId, content, layerIdentify);
+  }
+  if (layerIdentify && layerIdentify.length > 0) {
+    return buildContentUri$1(docId, content, layerIdentify);
+  }
+  const { layer_identify } = await getCurrentLayerIdentify();
+  if (!layer_identify) {
+    throw new Error("No active layer available to resolve content.");
+  }
+  return buildContentUri$1(docId, content, layer_identify);
+}
+async function resolveMaskToLayer(maskUri) {
+  const parsed = parseMaskResource(maskUri);
+  const { docId, content, reverse, layerIdentify } = parsed;
+  if (content !== "curlayer") {
+    return buildMaskContentUri(docId, content, void 0, reverse);
+  }
+  const existing = layerIdentify && layerIdentify.length > 0 ? layerIdentify : (await getCurrentLayerIdentify()).layer_identify;
+  if (!existing) {
+    throw new Error("No active layer available to resolve mask.");
+  }
+  return buildMaskContentUri(docId, content, existing, reverse);
+}
+function registerImagingActions(context) {
+  registerCreateFromExternalAction(context);
+  registerCreateFromLocalAction(context);
+  registerCreateFromCBMAction(context);
+  registerDeleteDownloadedImageAction(context);
+  registerThumbnailAction(context);
+  registerSaveAsAction(context);
+  registerBoundaryNormalizeAction(context);
+  registerLayerResolveAction(context);
+}
+registerImagingActions({ mcpMesh });
 class TaskEventEmitter {
   constructor() {
     __publicField2(this, "taskListeners", []);
@@ -130558,6 +130342,27 @@ const appendQuery = (base2, params) => {
   const query = searchParams.toString();
   return query ? `${base2}?${query}` : base2;
 };
+const extractLayerMetadata = (identify) => {
+  const trimmed = typeof identify === "string" ? identify.trim() : "";
+  if (!trimmed) {
+    return {};
+  }
+  const explicitMatch = /(.*)\(id:(\d+)\)\s*$/.exec(trimmed);
+  if (explicitMatch) {
+    const baseName = explicitMatch[1].trim().replace(/^-+/, "").trim();
+    return {
+      layerId: explicitMatch[2],
+      layerName: baseName.length ? baseName : trimmed
+    };
+  }
+  if (/^\d+$/.test(trimmed)) {
+    return { layerId: trimmed, layerName: trimmed };
+  }
+  const inferredName = trimmed.replace(/^-+/, "").trim();
+  return {
+    layerName: inferredName.length ? inferredName : trimmed
+  };
+};
 const buildBoundaryUri = (docId, boundary) => {
   const docSegment = normalizeDocId(docId);
   if (typeof boundary === "string") {
@@ -130578,7 +130383,12 @@ const buildContentUri = (docId, content, layerIdentify) => {
   const docSegment = normalizeDocId(docId);
   if (content === "curlayer") {
     if (layerIdentify && layerIdentify !== "") {
-      return appendQuery(`${CONTENT_SCHEME}/${docSegment}/layer`, { layerId: layerIdentify });
+      const { layerId, layerName } = extractLayerMetadata(layerIdentify);
+      const fallbackId = layerIdentify.trim();
+      return appendQuery(`${CONTENT_SCHEME}/${docSegment}/layer`, {
+        layerid: layerId ?? fallbackId,
+        layername: layerName ?? void 0
+      });
     }
     return `${CONTENT_SCHEME}/${docSegment}/curlayer`;
   }
@@ -130894,10 +130704,10 @@ const contentSourceDialogConfig = {
         throw new Error(t("dialog.simple_source.pick_error", { defaultValue: "选择文件失败，请重试" }));
       }
       if (!resourceId.startsWith("uxp://file/")) {
-        const entry = resolveResource$1(resourceId);
+        const entry = resolveResource(resourceId);
         if (entry) {
           const originalResourceId = resourceId;
-          resourceId = createResource$1({
+          resourceId = createResource({
             type: "file",
             data: { ...entry.data ?? {} },
             originalMeta: {
@@ -130908,7 +130718,7 @@ const contentSourceDialogConfig = {
               convertedFrom: resourceId
             }
           });
-          deleteResource$1(originalResourceId);
+          deleteResource(originalResourceId);
         }
       }
       return {
@@ -131236,7 +131046,7 @@ async function getMaskImpl(params) {
     const thumbnailBuffer = await thumbnailImage.getBuffer(JimpMime.png);
     const thumbnail = "data:image/png;base64," + thumbnailBuffer.toString("base64");
     const imageBuffer = await jimpImage.getBuffer(JimpMime.png);
-    const resourceId = createResource$1({
+    const resourceId = createResource({
       type: "mask",
       data: {
         buffer: new Uint8Array(imageBuffer),
@@ -131248,7 +131058,7 @@ async function getMaskImpl(params) {
         params: JSON.stringify(params)
       }
     });
-    updateResource$1(resourceId, {
+    updateResource(resourceId, {
       thumbnailCache: {
         base64: thumbnail,
         width: thumbnailImage.bitmap.width,
@@ -131378,7 +131188,7 @@ async function getImageImpl(params) {
     const thumbnailBuffer = await thumbnailImage.getBuffer(JimpMime.png);
     const thumbnail = "data:image/png;base64," + thumbnailBuffer.toString("base64");
     const imageBuffer = await jimpImage.getBuffer(JimpMime.png);
-    const resourceId = createResource$1({
+    const resourceId = createResource({
       type: "image",
       data: {
         buffer: new Uint8Array(imageBuffer),
@@ -131390,7 +131200,7 @@ async function getImageImpl(params) {
         params: JSON.stringify(params)
       }
     });
-    updateResource$1(resourceId, {
+    updateResource(resourceId, {
       thumbnailCache: {
         base64: thumbnail,
         width: thumbnailImage.bitmap.width,
@@ -131457,10 +131267,10 @@ async function importImageImpl(params) {
   var _a3, _b2;
   try {
     const { resource, type: type2, boundary } = params;
-    const resourceEntry = resolveResource$1(resource);
+    const resourceEntry = resolveResource(resource);
     let nativePath;
     const extensionHint = typeof ((_a3 = resourceEntry == null ? void 0 : resourceEntry.originalMeta) == null ? void 0 : _a3.extension) === "string" ? String(resourceEntry.originalMeta.extension) : void 0;
-    nativePath = await ensureResourceTempFile$1(resource, { extensionHint }).catch(() => void 0);
+    nativePath = await ensureResourceTempFile(resource, { extensionHint }).catch(() => void 0);
     if (!nativePath) {
       throw new Error("Failed to materialize resource");
     }
@@ -131642,8 +131452,8 @@ async function applyMaskToImageImpl(params) {
     throw new Error("applyMaskToImage: maskResource is required");
   }
   const [{ buffer: imageBuffer }, { buffer: maskBuffer }] = await Promise.all([
-    resolveResourceBuffer$1(imageResource),
-    resolveResourceBuffer$1(maskResource)
+    resolveResourceBuffer(imageResource),
+    resolveResourceBuffer(maskResource)
   ]);
   if (!(imageBuffer == null ? void 0 : imageBuffer.byteLength)) {
     throw new Error("applyMaskToImage: failed to resolve image buffer");
@@ -131673,7 +131483,7 @@ async function applyMaskToImageImpl(params) {
     baseData[dataIndex + 3] = maskValue;
   }
   const outputBuffer = await baseImage.getBuffer(JimpMime.png);
-  const resourceId = createResource$1({
+  const resourceId = createResource({
     type: "image",
     data: {
       buffer: new Uint8Array(outputBuffer),
@@ -131693,7 +131503,7 @@ async function applyMaskToImageImpl(params) {
   thumbnailImage.scaleToFit({ w: 320, h: 320 });
   const thumbnailBuffer = await thumbnailImage.getBuffer(JimpMime.png);
   const thumbnailBase64 = `data:image/png;base64,${thumbnailBuffer.toString("base64")}`;
-  updateResource$1(resourceId, {
+  updateResource(resourceId, {
     thumbnailCache: {
       base64: thumbnailBase64,
       width,
@@ -132373,7 +132183,7 @@ async function updateThumbnails() {
     const resourceId = canvasRes == null ? void 0 : canvasRes.resource;
     if (resourceId) {
       try {
-        deleteResource$1(resourceId);
+        deleteResource(resourceId);
       } catch (err) {
         console.warn("[thumbnail-store-maintain] failed to release resource", err);
       }
@@ -132921,7 +132731,7 @@ function About() {
     columnNumber: 12
   }, this);
 }
-const AboutDialogStore = createStore$1((set) => ({
+const AboutDialogStore = createStore((set) => ({
   show: false
 }));
 function AboutDialog() {
@@ -133259,7 +133069,7 @@ function GenericImageCard(props) {
         }
         setThumbnail(thumb || null);
         if (resourceId) {
-          deleteResource$1(resourceId);
+          deleteResource(resourceId);
         }
       } catch (error) {
         console.warn("Failed to generate thumbnail for", props.option.id, error);

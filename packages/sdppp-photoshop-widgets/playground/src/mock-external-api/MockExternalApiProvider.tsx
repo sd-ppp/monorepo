@@ -12,6 +12,31 @@ import { readBlobAsDataUrl } from './upload-helpers';
 import { useProvideMockExternalApi } from './useProvideMockExternalApi';
 import type { UploadPassRunSummary } from './types';
 
+const extractLayerMetadata = (
+  identify: string | null | undefined,
+): { id: string | null; name: string | null } => {
+  const trimmed = typeof identify === 'string' ? identify.trim() : '';
+  if (!trimmed) {
+    return { id: null, name: null };
+  }
+  const explicitMatch = /(.*)\(id:(\d+)\)\s*$/.exec(trimmed);
+  if (explicitMatch) {
+    const baseName = explicitMatch[1].trim().replace(/^-+/, '').trim();
+    return {
+      id: explicitMatch[2],
+      name: baseName.length ? baseName : trimmed,
+    };
+  }
+  if (/^\d+$/.test(trimmed)) {
+    return { id: trimmed, name: trimmed };
+  }
+  const inferredName = trimmed.replace(/^-+/, '').trim();
+  return {
+    id: null,
+    name: inferredName.length ? inferredName : trimmed,
+  };
+};
+
 export interface MockExternalApiProviderProps {
   children: ReactNode;
   t: TranslateFn;
@@ -390,14 +415,18 @@ export const MockExternalApiProvider: React.FC<MockExternalApiProviderProps> = (
     const normalizedLayerId = typeof rawLayerId === 'string' ? rawLayerId.trim() : '';
     if (!normalizedLayerId) {
       try {
-        logger('MockExternalApi selectAdvancedContentSource missing layerId');
+        logger('MockExternalApi selectAdvancedContentSource missing layerid');
       } catch {
         // ignore logging failures
       }
       return null;
     }
-    const encoded = encodeURIComponent(normalizedLayerId);
-    return { contentUri: `uxp://content/0/layer?layerId=${encoded}` };
+    const { id, name } = extractLayerMetadata(normalizedLayerId);
+    const layerIdSeed = (id ?? normalizedLayerId).trim();
+    const layerNameSeed = name ?? normalizedLayerId;
+    const layerIdParam = encodeURIComponent(layerIdSeed);
+    const layerNameParam = encodeURIComponent(layerNameSeed);
+    return { contentUri: `uxp://content/0/layer?layerid=${layerIdParam}&layername=${layerNameParam}` };
   }, [getCurrentLayerId, logger]);
 
   return (

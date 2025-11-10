@@ -107,6 +107,27 @@ function deserializeBoundaryRect(url: URL): BoundaryRect {
   return rect as BoundaryRect;
 }
 
+function extractLayerParams(layerIdentify?: string | null): { layerId?: string; layerName?: string } {
+  if (!layerIdentify) return {};
+  const trimmed = String(layerIdentify).trim();
+  if (!trimmed) return {};
+
+  const match = /(.*)\(id:(\d+)\)\s*$/.exec(trimmed);
+  let layerId: string | undefined;
+  let layerName: string | undefined;
+
+  if (match) {
+    layerName = match[1].trim().replace(/^-+/, '').trim() || undefined;
+    layerId = match[2];
+  } else if (/^\d+$/.test(trimmed)) {
+    layerId = trimmed;
+  } else {
+    layerName = trimmed.replace(/^-+/, '').trim() || undefined;
+  }
+
+  return { layerId, layerName };
+}
+
 function ensureUxpUrl(uri: string, expectedHost: string) {
   let parsed: URL;
   try {
@@ -188,14 +209,14 @@ export function parseContentResource(resource: string): ParsedContentResource {
     return {
       docId,
       content: "curlayer",
-      layerIdentify: parsed.searchParams.get("layerId") ?? undefined
+      layerIdentify: parsed.searchParams.get("layerid") ?? undefined
     };
   }
 
   if (contentType === "layer") {
-    const layerIdentify = parsed.searchParams.get("layerId");
+    const layerIdentify = parsed.searchParams.get("layerid");
     if (!layerIdentify) {
-      throw new Error("content uri with /layer requires layerId query parameter");
+      throw new Error("content uri with /layer requires layerid query parameter");
     }
     return {
       docId,
@@ -227,14 +248,14 @@ export function parseMaskResource(resource: string): ParsedMaskResource {
       docId,
       content: "curlayer",
       reverse,
-      layerIdentify: parsed.searchParams.get("layerId") ?? undefined
+      layerIdentify: parsed.searchParams.get("layerid") ?? undefined
     };
   }
 
   if (contentType === "layer") {
-    const layerIdentify = parsed.searchParams.get("layerId");
+    const layerIdentify = parsed.searchParams.get("layerid");
     if (!layerIdentify) {
-      throw new Error("mask content uri with /layer requires layerId query parameter");
+      throw new Error("mask content uri with /layer requires layerid query parameter");
     }
     return {
       docId,
@@ -277,7 +298,11 @@ export function buildContentUri(
 
   if (content === "curlayer") {
     if (layerIdentify && layerIdentify !== "") {
-      return appendQuery(`${CONTENT_SCHEME}/${docSegment}/layer`, { layerId: layerIdentify });
+      const { layerId, layerName } = extractLayerParams(layerIdentify);
+      return appendQuery(`${CONTENT_SCHEME}/${docSegment}/layer`, {
+        layerid: layerId ?? layerIdentify.trim(),
+        layername: layerName ?? undefined
+      });
     }
     return `${CONTENT_SCHEME}/${docSegment}/curlayer`;
   }
@@ -294,8 +319,10 @@ export function buildMaskContentUri(
   const docSegment = normalizeDocId(docId);
 
   if (content === "curlayer") {
+    const { layerId, layerName } = extractLayerParams(layerIdentify ?? undefined);
     return appendQuery(`${MASK_SCHEME}/${docSegment}/layer`, {
-      layerId: layerIdentify ?? undefined,
+      layerid: layerId ?? layerIdentify?.trim() ?? undefined,
+      layername: layerName ?? undefined,
       reverse: reverse ? 1 : undefined
     });
   }

@@ -1,4 +1,3 @@
-import { QuestionCircleOutlined, StopOutlined } from '@ant-design/icons';
 import { sdpppSDK, useTranslation } from '@sdppp/common';
 import { WidgetableNode } from '@sdppp/common/schemas/schemas';
 import type { WorkflowStatusDescriptor } from '@sdppp/ui-library';
@@ -6,14 +5,14 @@ import { loadRemoteConfig } from '@sdppp/vite-remote-config-loader';
 import { WidgetableProvider, WorkflowEditApiFormat } from '@sdppp/widgetable-ui';
 import { Alert, Button, Flex, Input, Tooltip } from 'antd';
 import Link from 'antd/es/typography/Link';
+import { CircleStop, HelpCircle } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { SimpleWorkflowControlPanel } from '../../_comfy_frontend/renderer/components/workflow-detail/components/SimpleWorkflowControlPanel';
 import { ModelSelector } from '../../base/components/ModelSelector';
 import '../../base/styles/workflow-controls.less';
 import { UploadPassProvider } from '../../base/upload-pass-context';
 import { useTaskExecutor } from '../../base/useTaskExecutor';
-import { createImageMaskWidgetRegistry } from '../../base/widgetable-image-mask/widgetable-widgets';
-import { WidgetablePhotoshopProvider } from '../../base/widgetable-photoshop';
+import { WidgetablePhotoshopProvider, createImageMaskWidgetRegistry } from '../../base/widgetable-photoshop';
 import './runninghub.less';
 import { changeSelectedModel, createTask, runninghubStore } from './runninghub.store';
 
@@ -158,37 +157,8 @@ function RunningHubRendererModels() {
     return (
         <UploadPassProvider
             uploader={async (uploadInput, signal) => {
-                const inferFormat = (mime?: string) => {
-                    if (!mime) return 'png';
-                    const subtype = mime.split('/')[1] || '';
-                    if (subtype === 'jpeg') return 'jpg';
-                    if (subtype.includes('jpg')) return 'jpg';
-                    if (subtype.includes('png')) return 'png';
-                    if (subtype.includes('webp')) return 'webp';
-                    return 'png';
-                };
-
-                const format = inferFormat(uploadInput.mimeType) as 'png' | 'jpg' | 'jpeg' | 'webp';
-                const source = uploadInput.resource as any;
-                let payload: ArrayBuffer;
-                if (source && typeof source === 'object' && 'data' in source) {
-                    const data = source.data;
-                    if (data instanceof ArrayBuffer) {
-                        payload = data;
-                    } else if (ArrayBuffer.isView(data)) {
-                        payload = (data as ArrayBufferView).buffer;
-                    } else {
-                        payload = data as ArrayBuffer;
-                    }
-                } else if (uploadInput.resource instanceof ArrayBuffer) {
-                    payload = uploadInput.resource;
-                } else if (ArrayBuffer.isView(uploadInput.resource)) {
-                    payload = (uploadInput.resource as ArrayBufferView).buffer;
-                } else {
-                    payload = uploadInput.resource as ArrayBuffer;
-                }
-
-                return await client.uploadImage('buffer', payload, format, signal);
+                if (uploadInput.type !== 'resource') throw new Error('Unsupported upload type: ' + uploadInput.type);
+                return await client.uploadImage(uploadInput.type, uploadInput.resourceId as string, 'png', signal);
             }}
         >
         <WidgetablePhotoshopProvider>
@@ -270,7 +240,7 @@ function RunningHubRendererForm({
                     <Button
                         type="text"
                         size="small"
-                        icon={<QuestionCircleOutlined />}
+                        icon={<HelpCircle size={16} />}
                         style={{ color: 'var(--sdppp-host-text-color-secondary)' }}
                         onClick={async () => {
                             const banners = loadRemoteConfig('banners');
@@ -303,7 +273,7 @@ function RunningHubRendererForm({
                     <Tooltip title={translate('runninghub.stop_all', { defaultMessage: 'Stop' })}>
                         <Button
                             className="workflow-action-button"
-                            icon={<StopOutlined />}
+                            icon={<CircleStop size={18} />}
                             danger
                             onClick={handleCancel}
                             disabled={!canCancel}

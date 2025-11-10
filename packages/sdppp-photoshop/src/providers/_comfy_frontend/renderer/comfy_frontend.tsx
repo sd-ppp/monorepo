@@ -1,13 +1,12 @@
-import { QuestionCircleOutlined } from '@ant-design/icons';
 import { sdpppSDK, useTranslation } from '@sdppp/common';
 import { loadRemoteConfig } from '@sdppp/vite-remote-config-loader';
 import { WidgetableProvider } from '@sdppp/widgetable-ui';
 import { Alert, Button, Flex, Input, Tooltip } from 'antd';
+import { HelpCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useStore } from 'zustand';
 import { UploadPassProvider } from '../../base/upload-pass-context';
-import { createImageMaskWidgetRegistry } from '../../base/widgetable-image-mask/widgetable-widgets';
-import { WidgetablePhotoshopProvider } from '../../base/widgetable-photoshop';
+import { WidgetablePhotoshopProvider, createImageMaskWidgetRegistry } from '../../base/widgetable-photoshop';
 import { ComfyCloudRecommendBanner } from './cloud_recommend';
 import { WorkflowListProvider } from './comfy_frontend';
 import './comfy_frontend.less';
@@ -34,7 +33,7 @@ export function ComfyFrontendRenderer() {
                     <Button
                         type="text"
                         size="small"
-                        icon={<QuestionCircleOutlined />}
+                        icon={<HelpCircle size={16} />}
                         onClick={async () => {
                             const banners = loadRemoteConfig('banners');
                             const comfyURL = banners.find((banner: any) => banner.type === 'comfy_tutorial' && banner.locale == language)?.link;

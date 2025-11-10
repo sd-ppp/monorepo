@@ -1,4 +1,4 @@
-import { GlobalImageStore } from '../stores/global-image-store';
+import { GlobalImageStore } from './global-image-store';
 
 export type AdvancedAutoContent = 'canvas' | 'curlayer' | 'selection';
 

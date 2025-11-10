@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Space } from 'antd';
-import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
+import { Plus, Trash2 } from 'lucide-react';
 import {
   ExclusiveSyncGroup,
   type ButtonConfig,
@@ -172,7 +172,7 @@ export const Default: Story = {
           <Button
             type="dashed"
             onClick={handleAdd}
-            icon={<PlusOutlined />}
+            icon={<Plus size={16} />}
             style={{ width: 120, justifyContent: 'center' }}
           >
             Add
@@ -186,7 +186,7 @@ export const Default: Story = {
                     key={`remove-${index}`}
                     size="small"
                     type="default"
-                    icon={isHovered ? <DeleteOutlined /> : undefined}
+                    icon={isHovered ? <Trash2 size={14} /> : undefined}
                     onMouseEnter={() => setHoveredRemoveIndex(index)}
                     onMouseLeave={() =>
                       setHoveredRemoveIndex(prev => (prev === index ? null : prev))
@@ -378,7 +378,7 @@ export const ShiftModifierColors: Story = {
           <Button
             type="dashed"
             onClick={handleAdd}
-            icon={<PlusOutlined />}
+            icon={<Plus size={16} />}
             style={{ width: 120, justifyContent: 'center' }}
           >
             Add

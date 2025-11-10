@@ -11,8 +11,7 @@ import { changeSelectedModel, createTask, customapiStore } from './customapi.sto
 import type { WorkflowStatusDescriptor } from '@sdppp/ui-library';
 import { SimpleWorkflowControlPanel } from '../../_comfy_frontend/renderer/components/workflow-detail/components/SimpleWorkflowControlPanel';
 import '../../base/styles/workflow-controls.less';
-import { createImageMaskWidgetRegistry } from '../../base/widgetable-image-mask/widgetable-widgets';
-import { WidgetablePhotoshopProvider } from '../../base/widgetable-photoshop';
+import { WidgetablePhotoshopProvider, createImageMaskWidgetRegistry } from '../../base/widgetable-photoshop';
 
 const log = sdpppSDK.logger.extend('customapi')
 

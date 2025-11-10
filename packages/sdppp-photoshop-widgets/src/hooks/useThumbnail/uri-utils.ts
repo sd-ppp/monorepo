@@ -97,15 +97,27 @@ export const parseContentUri = (uri: ContentUri): ParsedContent => {
     throw new Error(`Missing content segment in content URI: ${uri}`);
   }
 
-  if (target === 'canvas' || target === 'selection' || target === 'curlayer') {
+  if (target === 'canvas' || target === 'selection') {
     return { docId, content: target, layerIdentify: null };
   }
 
-  if (target === 'layer') {
+  if (target === 'curlayer') {
     return {
       docId,
       content: 'curlayer',
-      layerIdentify: url.searchParams.get('layerId'),
+      layerIdentify: url.searchParams.get('layerid'),
+    };
+  }
+
+  if (target === 'layer') {
+    const layerIdentify = url.searchParams.get('layerid');
+    if (!layerIdentify) {
+      throw new Error(`Missing layerid query parameter in content URI: ${uri}`);
+    }
+    return {
+      docId,
+      content: 'curlayer',
+      layerIdentify,
     };
   }
 
@@ -132,14 +144,17 @@ export const parseMaskUri = (uri: MaskUri): ParsedMask => {
   }
 
   if (target === 'layer') {
+    const layerIdentify = url.searchParams.get('layerid');
+    if (!layerIdentify) {
+      throw new Error(`Missing layerid query parameter in mask URI: ${uri}`);
+    }
     return {
       docId,
       content: 'curlayer',
-      layerIdentify: url.searchParams.get('layerId'),
+      layerIdentify,
       reverse,
     };
   }
 
   throw new Error(`Unsupported mask segment: ${target}`);
 };
-

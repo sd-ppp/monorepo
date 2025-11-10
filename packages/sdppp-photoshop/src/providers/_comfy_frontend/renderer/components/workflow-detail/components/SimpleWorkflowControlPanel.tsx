@@ -1,4 +1,4 @@
-import { CloseCircleOutlined, PlayCircleFilled } from '@ant-design/icons';
+import { CircleX, PlayCircle } from 'lucide-react';
 import { useTranslation } from '@sdppp/common';
 import { WorkflowControlsPanel, WorkflowStatusDisplay, type WorkflowStatusDescriptor } from '@sdppp/ui-library';
 import { Button, Flex, Tooltip, Typography } from 'antd';
@@ -74,7 +74,7 @@ export const SimpleWorkflowControlPanel: React.FC<SimpleWorkflowControlPanelProp
           <Tooltip title={runTooltip}>
             <Button
               type="primary"
-              icon={<PlayCircleFilled />}
+              icon={<PlayCircle size={MAIN_ICON_SIZE} />}
               className="workflow-main-action-button workflow-detail-run-button"
               onClick={onRun}
               disabled={runDisabled}
@@ -99,7 +99,7 @@ export const SimpleWorkflowControlPanel: React.FC<SimpleWorkflowControlPanelProp
             <Button
               danger={true}
               className="workflow-action-button"
-              icon={<CloseCircleOutlined />}
+              icon={<CircleX size={ACTION_ICON_SIZE} />}
               onClick={onCancel}
             />
           </Tooltip>
@@ -125,3 +125,6 @@ export const SimpleWorkflowControlPanel: React.FC<SimpleWorkflowControlPanelProp
     />
   );
 };
+
+const ACTION_ICON_SIZE = 16;
+const MAIN_ICON_SIZE = 32;

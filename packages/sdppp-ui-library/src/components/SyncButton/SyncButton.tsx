@@ -1,10 +1,29 @@
 import { Button, Tooltip, Typography, Space } from 'antd';
 import type { ButtonProps } from 'antd';
-import { SyncOutlined } from '@ant-design/icons';
 import type { TooltipPlacement } from 'antd/es/tooltip';
+import { RefreshCw } from 'lucide-react';
 import React, { useCallback, useMemo } from 'react';
 
-const DEFAULT_AUTO_SYNC_ICON = <SyncOutlined />;
+const SPIN_STYLE_ID = 'sdppp-sync-button-spin-style';
+const ensureSpinStyle = () => {
+  if (typeof document === 'undefined') {
+    return;
+  }
+  if (document.getElementById(SPIN_STYLE_ID)) {
+    return;
+  }
+  const styleElement = document.createElement('style');
+  styleElement.id = SPIN_STYLE_ID;
+  styleElement.textContent = `
+    @keyframes sdppp-sync-button-spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  `;
+  document.head.appendChild(styleElement);
+};
+
+const DEFAULT_AUTO_SYNC_ICON = <RefreshCw size={18} strokeWidth={2} />;
 const AUTO_PRIMARY_SIZE = 28;
 const DEFAULT_CROSS_SIZE = 28;
 
@@ -81,10 +100,41 @@ export const SyncButton: React.FC<SyncButtonProps> = ({
     return DEFAULT_AUTO_SYNC_ICON;
   }, [autoSyncIcon]);
 
-  const autoSyncButtonIcon = useMemo(
-    () => React.cloneElement(resolvedAutoSyncIcon, { spin: isAutoSync }),
-    [resolvedAutoSyncIcon, isAutoSync],
-  );
+  const autoSyncButtonIcon = useMemo(() => {
+    const baseStyle = resolvedAutoSyncIcon.props.style ?? {};
+    const nextStyle: React.CSSProperties = { ...baseStyle };
+
+    if (isAutoSync) {
+      if (typeof document !== 'undefined') {
+        ensureSpinStyle();
+      }
+      if (!nextStyle.animation) {
+        nextStyle.animation = 'sdppp-sync-button-spin 1s linear infinite';
+      }
+      if (!nextStyle.transformOrigin) {
+        nextStyle.transformOrigin = 'center';
+      }
+    } else if (nextStyle.animation === 'sdppp-sync-button-spin 1s linear infinite') {
+      delete nextStyle.animation;
+    }
+
+    const baseClassName = resolvedAutoSyncIcon.props.className ?? '';
+    const mergedClassName = [
+      'sync-button-auto-icon',
+      baseClassName,
+      isAutoSync ? 'sync-button-auto-icon--spinning' : null,
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .trim();
+
+    return React.cloneElement(resolvedAutoSyncIcon, {
+      className: mergedClassName || undefined,
+      style: nextStyle,
+      spin: isAutoSync,
+      'data-spinning': isAutoSync || undefined,
+    });
+  }, [resolvedAutoSyncIcon, isAutoSync]);
 
   const handleSyncClick = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
     onSync({ altKey: e.altKey, shiftKey: e.shiftKey });

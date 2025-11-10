@@ -70,7 +70,10 @@ export const parseBoundaryRect = (ctx: ActionContext, boundaryUri: string): Stag
       return normalizeRect(selection);
     }
     if (target === 'layer' || target === 'curlayer') {
-      const layerId = sanitizeLayerId(url.searchParams.get('layerId')) ?? ctx.getCurrentLayerId();
+      const layerId =
+        sanitizeLayerId(url.searchParams.get('layername')) ??
+        sanitizeLayerId(url.searchParams.get('layerid')) ??
+        ctx.getCurrentLayerId();
       const rect = resolveLayerRect(stage, layerId);
       return rect ?? fallback;
     }
@@ -97,7 +100,10 @@ export const normalizeBoundaryUri = (ctx: ActionContext, boundary: string): stri
     }
 
     if (target === 'layer' || target === 'curlayer') {
-      const layerId = sanitizeLayerId(url.searchParams.get('layerId')) ?? ctx.getCurrentLayerId();
+      const layerId =
+        sanitizeLayerId(url.searchParams.get('layername')) ??
+        sanitizeLayerId(url.searchParams.get('layerid')) ??
+        ctx.getCurrentLayerId();
       const rect = resolveLayerRect(stage, layerId);
       if (rect) {
         return rectToBoundaryUrl(stage, docId, rect);

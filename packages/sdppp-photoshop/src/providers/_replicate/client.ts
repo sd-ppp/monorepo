@@ -1,8 +1,8 @@
-import Replicate from "replicate";
-import { getDefaultValues, WidgetableWidget, WidgetableNode } from '@sdppp/common/schemas/schemas';
-import { Task } from "../base/Task";
-import { Client } from "../base/Client";
 import { sdpppSDK } from '@sdppp/common';
+import { getDefaultValues, WidgetableNode } from '@sdppp/common/schemas/schemas';
+import Replicate from "replicate";
+import { Client } from "../base/Client";
+import { Task } from "../base/Task";
 
 const log = sdpppSDK.logger.extend('replicate')
 
@@ -173,7 +173,7 @@ export class SDPPPReplicate extends Client<{
             throw error;
         }
     }
-    async uploadImage(type: 'token' | 'buffer' | 'resource', image: ArrayBuffer | string, format: 'png' | 'jpg' | 'jpeg' | 'webp', signal?: AbortSignal): Promise<string> {
+    async uploadImage(type: 'resource', image: ArrayBuffer | string, format: 'png' | 'jpg' | 'jpeg' | 'webp', signal?: AbortSignal): Promise<string> {
         log('uploadImage called', { type, format });
 
         try {
@@ -182,7 +182,7 @@ export class SDPPPReplicate extends Client<{
                 throw new DOMException('Upload aborted', 'AbortError');
             }
 
-            if (type === 'token' || type === 'resource') {
+            if (type === 'resource') {
                 // Check if aborted before file upload
                 if (signal?.aborted) {
                     throw new DOMException('File upload aborted', 'AbortError');
@@ -198,21 +198,7 @@ export class SDPPPReplicate extends Client<{
             }
 
             log('uploadImage - converting to base64 data URL');
-            const arrayBuffer = image instanceof ArrayBuffer
-                ? image
-                : ArrayBuffer.isView(image)
-                  ? (image as ArrayBufferView).buffer
-                  : (image as ArrayBuffer);
-            const base64 = typeof Buffer !== 'undefined'
-                ? Buffer.from(arrayBuffer).toString('base64')
-                : (() => {
-                    const bytes = new Uint8Array(arrayBuffer);
-                    let binary = '';
-                    for (let i = 0; i < bytes.length; i++) {
-                        binary += String.fromCharCode(bytes[i]);
-                    }
-                    return btoa(binary);
-                })();
+            const base64 = Buffer.from(image as ArrayBuffer).toString('base64');
             const dataUrl = `data:image/${format};base64,${base64}`;
 
             log('uploadImage success', { type, format });

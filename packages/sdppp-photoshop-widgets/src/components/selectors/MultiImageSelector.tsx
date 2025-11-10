@@ -196,6 +196,7 @@ export const MultiImageSelector: React.FC<MultiImageSelectorProps> = ({
               handleSlotValueChange(index, next);
             }}
             showActionButtons={showActionButtons}
+            defaultAuto={false}
             showUploadIndicator={false}
             externalErrorDismissSignal={errorDismissSignals[index] ?? 0}
             onUploadStateChange={state => {

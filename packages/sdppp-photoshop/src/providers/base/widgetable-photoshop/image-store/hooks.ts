@@ -5,6 +5,8 @@ export function useComponent(componentId: string) {
   return GlobalImageStore(state => state.components[componentId]);
 }
 
+export const useComponentState = useComponent;
+
 export function useImageSlotState(componentId: string, index: number) {
   const comp = useComponent(componentId);
   const slot = comp?.slots?.[index];

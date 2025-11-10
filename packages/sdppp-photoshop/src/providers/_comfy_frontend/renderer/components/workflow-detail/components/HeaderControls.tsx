@@ -1,4 +1,4 @@
-import { ArrowLeftOutlined, ReloadOutlined, SaveOutlined } from '@ant-design/icons';
+import { ArrowLeft, RotateCcw, Save } from 'lucide-react';
 import { Button, Tooltip, Typography } from 'antd';
 import React from 'react';
 import { useTranslation } from '@sdppp/common';
@@ -45,7 +45,7 @@ export const BackButton: React.FC<BackButtonProps> = ({ onBack, className }) => 
     <Tooltip title={translate('comfy.back')}>
       <Button
         className={className}
-        icon={<ArrowLeftOutlined />}
+        icon={<ArrowLeft size={16} />}
         onClick={onBack}
       />
     </Tooltip>
@@ -59,7 +59,7 @@ export const SaveButton: React.FC<SaveRefreshProps> = ({ currentWorkflow, classN
     <Tooltip title={translate('comfy.save')}>
       <Button
         className={className}
-        icon={<SaveOutlined />}
+        icon={<Save size={16} />}
         onClick={() => {
           sdpppSDK.plugins.ComfyCaller.saveWorkflow({
             workflow_path: currentWorkflow,
@@ -77,7 +77,7 @@ export const RefreshButton: React.FC<SaveRefreshProps> = ({ currentWorkflow, cla
     <Tooltip title={translate('comfy.refresh')}>
       <Button
         className={className}
-        icon={<ReloadOutlined />}
+        icon={<RotateCcw size={16} />}
         onClick={() =>
           sdpppSDK.plugins.ComfyCaller.openWorkflow({
             workflow_path: currentWorkflow,

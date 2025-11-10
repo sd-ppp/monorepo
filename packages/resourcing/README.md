@@ -5,12 +5,12 @@
 
 - `uxp://file/<uuid>` – materialized resource handle (used for image/mask/generic files).
 - `uxp://boundary/<docId>/<canvas|curlayer|selection>` – document boundary reference.
-- `uxp://boundary/<docId>/layer?layerId=<id>` – layer boundary snapshot.
+- `uxp://boundary/<docId>/layer?layerid=<id>&layername=<name>` – layer boundary snapshot.
 - `uxp://boundary/<docId>/rect?leftDistance=...` – boundary rectangle snapshot.
 - `uxp://content/<docId>/<canvas|curlayer>` – content source specifier.
-- `uxp://content/<docId>/layer?layerId=<id>` – specific layer content.
+- `uxp://content/<docId>/layer?layerid=<id>&layername=<name>` – specific layer content.
 - `uxp://mask/<docId>/<canvas|curlayer|selection>?reverse=0|1` – mask content reference.
-- `uxp://mask/<docId>/layer?layerId=<id>&reverse=0|1` – layer-based mask content.
+- `uxp://mask/<docId>/layer?layerid=<id>&layername=<name>&reverse=0|1` – layer-based mask content.
 
 ## Mesh Actions (UXP)
 

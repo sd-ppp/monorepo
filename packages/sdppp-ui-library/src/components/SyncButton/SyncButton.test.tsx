@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { SyncButton } from './SyncButton';
 import { ConfigProvider } from 'antd';
-import { SyncOutlined } from '@ant-design/icons';
+import { RefreshCw } from 'lucide-react';
 
 const mockOnSync = vi.fn();
 const mockOnAutoSyncToggle = vi.fn();
@@ -86,20 +86,21 @@ describe('SyncButton', () => {
     });
 
     it('should apply spin animation to the icon when isAutoSync is true', () => {
-      const { rerender } = renderComponent({ isAutoSync: false, autoSyncIcon: <SyncOutlined /> });
+      const { rerender } = renderComponent({ isAutoSync: false, autoSyncIcon: <RefreshCw /> });
       const autoSyncButton = screen.getByTestId('sync-button-auto-sync');
-      
-      let icon = autoSyncButton.querySelector('.anticon-sync');
-      expect(icon).not.toHaveClass('anticon-spin');
+      let icon = autoSyncButton.querySelector('.sync-button-auto-icon');
+      expect(icon?.getAttribute('data-spinning')).toBeNull();
+      expect(icon).not.toHaveClass('sync-button-auto-icon--spinning');
 
       rerender(
         <ConfigProvider>
-          <SyncButton {...defaultProps} isAutoSync={true} autoSyncIcon={<SyncOutlined />} />
+          <SyncButton {...defaultProps} isAutoSync={true} autoSyncIcon={<RefreshCw />} />
         </ConfigProvider>
       );
 
-      icon = screen.getByTestId('sync-button-auto-sync').querySelector('.anticon-sync');
-      expect(icon).toHaveClass('anticon-spin');
+      icon = screen.getByTestId('sync-button-auto-sync').querySelector('.sync-button-auto-icon');
+      expect(icon?.getAttribute('data-spinning')).toBe('true');
+      expect(icon).toHaveClass('sync-button-auto-icon--spinning');
     });
   });
 

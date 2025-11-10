@@ -1,4 +1,4 @@
-import { PlusOutlined } from '@ant-design/icons';
+import { Plus } from 'lucide-react';
 import {
   ExclusiveSyncGroup,
   ImagePreviewSplit,
@@ -266,7 +266,7 @@ export const ConditionalControlsExample: Story = {
           '自动取遮罩中...'
         ) : (
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-            <PlusOutlined />
+            <Plus size={16} />
             选区遮罩
           </span>
         )}
