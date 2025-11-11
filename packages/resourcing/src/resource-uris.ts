@@ -112,13 +112,16 @@ function extractLayerParams(layerIdentify?: string | null): { layerId?: string; 
   const trimmed = String(layerIdentify).trim();
   if (!trimmed) return {};
 
-  const match = /(.*)\(id:(\d+)\)\s*$/.exec(trimmed);
+  const match = /(.*)\(id:([^\)]+)\)\s*$/.exec(trimmed);
   let layerId: string | undefined;
   let layerName: string | undefined;
 
   if (match) {
     layerName = match[1].trim().replace(/^-+/, '').trim() || undefined;
-    layerId = match[2];
+    layerId = match[2].trim();
+  } else if (trimmed.startsWith('(id:') && trimmed.endsWith(')')) {
+    const inner = trimmed.slice(4, -1).trim();
+    layerId = inner || undefined;
   } else if (/^\d+$/.test(trimmed)) {
     layerId = trimmed;
   } else {
@@ -126,6 +129,22 @@ function extractLayerParams(layerIdentify?: string | null): { layerId?: string; 
   }
 
   return { layerId, layerName };
+}
+
+function composeLayerIdentify(layerId?: string | null, layerName?: string | null): string | undefined {
+  const id = layerId?.trim();
+  const name = layerName?.trim();
+
+  if (name && id) {
+    return `${name} (id:${id})`;
+  }
+  if (name) {
+    return name;
+  }
+  if (id) {
+    return `${id} (id:${id})`;
+  }
+  return undefined;
 }
 
 function ensureUxpUrl(uri: string, expectedHost: string) {
@@ -206,22 +225,24 @@ export function parseContentResource(resource: string): ParsedContentResource {
   }
 
   if (contentType === "curlayer") {
+    const layerId = parsed.searchParams.get("layerid");
+    const layerName = parsed.searchParams.get("layername");
     return {
       docId,
       content: "curlayer",
-      layerIdentify: parsed.searchParams.get("layerid") ?? undefined
+      layerIdentify: composeLayerIdentify(layerId, layerName)
     };
   }
 
   if (contentType === "layer") {
-    const layerIdentify = parsed.searchParams.get("layerid");
-    if (!layerIdentify) {
+    const layerId = parsed.searchParams.get("layerid");
+    if (!layerId) {
       throw new Error("content uri with /layer requires layerid query parameter");
     }
     return {
       docId,
       content: "curlayer",
-      layerIdentify
+      layerIdentify: composeLayerIdentify(layerId, parsed.searchParams.get("layername"))
     };
   }
 
@@ -244,23 +265,25 @@ export function parseMaskResource(resource: string): ParsedMaskResource {
   }
 
   if (contentType === "curlayer") {
+    const layerId = parsed.searchParams.get("layerid");
+    const layerName = parsed.searchParams.get("layername");
     return {
       docId,
       content: "curlayer",
       reverse,
-      layerIdentify: parsed.searchParams.get("layerid") ?? undefined
+      layerIdentify: composeLayerIdentify(layerId, layerName)
     };
   }
 
   if (contentType === "layer") {
-    const layerIdentify = parsed.searchParams.get("layerid");
-    if (!layerIdentify) {
+    const layerId = parsed.searchParams.get("layerid");
+    if (!layerId) {
       throw new Error("mask content uri with /layer requires layerid query parameter");
     }
     return {
       docId,
       content: "curlayer",
-      layerIdentify,
+      layerIdentify: composeLayerIdentify(layerId, parsed.searchParams.get("layername")),
       reverse
     };
   }

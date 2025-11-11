@@ -1,6 +1,6 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button, Spin } from 'antd';
 import { FileVideo, Plus, Trash2 } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   useWidgetLogger,
   useWidgetText,
@@ -527,7 +527,6 @@ export const SingleVideoSelector: React.FC<{
               void handleAddFromFile();
             }}
           >
-            {buttonLabel}
           </Button>
           {hasVideo ? (
             <Button
@@ -537,7 +536,6 @@ export const SingleVideoSelector: React.FC<{
               style={trashButtonStyle}
               onClick={handleClearVideo}
             >
-              {t('video.local.remove', { defaultValue: '清除视频' })}
             </Button>
           ) : null}
         </div>

@@ -1,6 +1,6 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Plus } from 'lucide-react';
 import { ImagePreviewSplitList, SyncButton } from '@sdppp/ui-library';
+import { Plus } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   useWidgetImageMaskActions,
@@ -51,6 +51,7 @@ export const MaskSelector: React.FC<MaskSelectorProps> = ({ widgetableId, value 
 
   const imageUrl = useMemo(() => (value?.[0] ?? '').trim(), [value]);
   const [maskResource, setMaskResource] = useState<string>('');
+  const [maskFileUri, setMaskFileUri] = useState<string>('');
   const [docIdFallback, setDocIdFallback] = useState<number | null>(null);
   const [lastSourceMode, setLastSourceMode] = useState<MaskSourceKind>('selection');
 
@@ -74,6 +75,11 @@ export const MaskSelector: React.FC<MaskSelectorProps> = ({ widgetableId, value 
   useEffect(() => {
     setMaskResource(prev => {
       if (imageUrl && imageUrl !== prev) return imageUrl;
+      if (!imageUrl && prev !== '') return '';
+      return prev;
+    });
+    setMaskFileUri(prev => {
+      if (imageUrl && prev !== '') return '';
       if (!imageUrl && prev !== '') return '';
       return prev;
     });
@@ -149,6 +155,8 @@ export const MaskSelector: React.FC<MaskSelectorProps> = ({ widgetableId, value 
         throw new Error(reportedError ?? 'resource.file.createFromCBM returned empty resource');
       }
 
+      setMaskFileUri(resource);
+      setLastSourceMode(mode);
       return resource;
     },
     [actions, boundaryUri, buildMaskUri],
@@ -165,7 +173,7 @@ export const MaskSelector: React.FC<MaskSelectorProps> = ({ widgetableId, value 
       logger('MaskSelector upload success', JSON.stringify({ mode, resource: normalized }));
       return true;
     },
-    [emitValue, logger, setMaskResource, setUploadError],
+    [emitValue, logger, setMaskFileUri, setMaskResource, setUploadError],
   );
 
   const applyUploadError = useCallback(
@@ -288,16 +296,20 @@ export const MaskSelector: React.FC<MaskSelectorProps> = ({ widgetableId, value 
     return buildMaskUri(lastSourceMode, derivedDocId) as MaskUri;
   }, [buildMaskUri, derivedDocId, lastSourceMode]);
 
+  const previewFileUri = maskFileUri;
+
   const previewParams = useMaskPreviewParams({
     isAutoEnabled: false,
     contentUri: derivedContentUri,
     boundaryUri: derivedBoundaryUri,
     maskUri: activeMaskUri ?? '',
-    fileUri: maskResource,
+    fileUri: previewFileUri,
   });
 
   const { data: previewUrl } = useThumbnail(previewParams);
-  const displayUrl = previewUrl ?? maskResource ?? '';
+  const displayUrl = maskFileUri
+    ? previewUrl ?? maskFileUri ?? maskResource ?? ''
+    : maskResource ?? '';
 
   const disableButtons = manualUploadInFlightRef.current;
 
@@ -364,6 +376,7 @@ export const MaskSelector: React.FC<MaskSelectorProps> = ({ widgetableId, value 
           left={leftNode}
           imageUrl={displayUrl}
           background="white"
+          previewStyle={{ backgroundColor: '#000' }}
           uploadStatus="idle"
         />
         <UploadIndicator

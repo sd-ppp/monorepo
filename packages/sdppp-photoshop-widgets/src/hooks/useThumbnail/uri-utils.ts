@@ -10,6 +10,16 @@ import type {
 const isFiniteNumber = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value);
 
+const composeLayerIdentify = (layerId?: string | null, layerName?: string | null): string | null => {
+  const id = typeof layerId === 'string' ? layerId.trim() : '';
+  const name = typeof layerName === 'string' ? layerName.trim() : '';
+
+  if (name && id) return `${name} (id:${id})`;
+  if (name) return name;
+  if (id) return `${id} (id:${id})`;
+  return null;
+};
+
 export interface ParsedBoundary {
   docId: number;
   boundary: BoundarySetting;
@@ -102,22 +112,25 @@ export const parseContentUri = (uri: ContentUri): ParsedContent => {
   }
 
   if (target === 'curlayer') {
+    const layerId = url.searchParams.get('layerid');
+    const layerName = url.searchParams.get('layername');
     return {
       docId,
       content: 'curlayer',
-      layerIdentify: url.searchParams.get('layerid'),
+      layerIdentify: composeLayerIdentify(layerId, layerName),
     };
   }
 
   if (target === 'layer') {
-    const layerIdentify = url.searchParams.get('layerid');
-    if (!layerIdentify) {
+    const layerId = url.searchParams.get('layerid');
+    if (!layerId) {
       throw new Error(`Missing layerid query parameter in content URI: ${uri}`);
     }
+    const layerName = url.searchParams.get('layername');
     return {
       docId,
       content: 'curlayer',
-      layerIdentify,
+      layerIdentify: composeLayerIdentify(layerId, layerName) ?? layerId,
     };
   }
 
@@ -144,14 +157,15 @@ export const parseMaskUri = (uri: MaskUri): ParsedMask => {
   }
 
   if (target === 'layer') {
-    const layerIdentify = url.searchParams.get('layerid');
-    if (!layerIdentify) {
+    const layerId = url.searchParams.get('layerid');
+    if (!layerId) {
       throw new Error(`Missing layerid query parameter in mask URI: ${uri}`);
     }
+    const layerName = url.searchParams.get('layername');
     return {
       docId,
       content: 'curlayer',
-      layerIdentify,
+      layerIdentify: composeLayerIdentify(layerId, layerName) ?? layerId,
       reverse,
     };
   }

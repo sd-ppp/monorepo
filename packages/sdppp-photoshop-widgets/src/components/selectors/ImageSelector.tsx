@@ -41,6 +41,56 @@ interface ImageSelectorProps {
 const SECTION_SIZE = 120;
 const ACTION_BUTTON_SIZE = 60;
 const SYNC_BUTTON_SIZE = SECTION_SIZE;
+
+type TranslateFn = (key: string, options?: Record<string, unknown>) => string;
+
+const resolveContentTooltip = (uri: string, translate: TranslateFn): string | undefined => {
+  const normalized = uri?.trim();
+  if (!normalized) return undefined;
+
+  const resolveLayerTooltip = (layerName?: string | null) => {
+    const trimmed = layerName?.trim();
+    if (trimmed) {
+      return translate('image.upload.tooltip.current.layer_named', {
+        defaultValue: `当前选项：图层 ${trimmed}`,
+        layerName: trimmed,
+      });
+    }
+    return translate('image.upload.tooltip.current.layer', {
+      defaultValue: '当前选项：图层',
+    });
+  };
+
+  try {
+    const parsed = new URL(normalized);
+    const segments = parsed.pathname.split('/').filter(Boolean);
+    const lastSegment = segments[segments.length - 1];
+    if (lastSegment === 'canvas') {
+      return translate('image.upload.tooltip.current.canvas', {
+        defaultValue: '当前选项：画布',
+      });
+    }
+    if (lastSegment === 'layer') {
+      return resolveLayerTooltip(parsed.searchParams.get('layername'));
+    }
+  } catch {
+    // ignore parsing errors and fallback to string checks
+  }
+
+  if (normalized.endsWith('/canvas')) {
+    return translate('image.upload.tooltip.current.canvas', {
+      defaultValue: '当前选项：画布',
+    });
+  }
+  if (/\/layer(?:\/|\?|$)/.test(normalized)) {
+    const match = /layername=([^&#]+)/.exec(normalized);
+    const layerName = match ? decodeURIComponent(match[1]) : undefined;
+    return resolveLayerTooltip(layerName);
+  }
+
+  return undefined;
+};
+
 export const ImageSelector: React.FC<ImageSelectorProps> = ({
   widgetableId,
   value = [],
@@ -60,6 +110,12 @@ export const ImageSelector: React.FC<ImageSelectorProps> = ({
   const addPrimaryLabel = t('image.upload.primary.manual', { defaultValue: '使用主图' });
   const cutLabel = t('image.upload.primary.cut', { defaultValue: '裁剪' });
   const scanLabel = t('image.upload.primary.scan', { defaultValue: '扫描' });
+  const cutTooltipText = t('image.upload.tooltip.cut_action', {
+    defaultValue: '获取图像+\n裁剪选区遮罩',
+  });
+  const scanTooltipText = t('image.upload.tooltip.scan_action', {
+    defaultValue: '获取图像+\n限制图像范围',
+  });
   const uploadErrorLabel = useMemo(
     () => t('image.upload.error', { defaultValue: '上传失败，请重试' }),
     [t],
@@ -154,6 +210,56 @@ export const ImageSelector: React.FC<ImageSelectorProps> = ({
 
   const displayUrl = previewUrl ?? imageUrl ?? '';
 
+  const ensureContentUri = useCallback(() => {
+    const normalized = contentUri.trim();
+    if (normalized) {
+      return normalized;
+    }
+    const fallback = derivedContentUri.trim() ? derivedContentUri : DEFAULT_CONTENT_URI;
+    setContentUri(fallback);
+    return fallback;
+  }, [contentUri, derivedContentUri]);
+
+  const mainButtonTooltip = useMemo(() => {
+    const tooltipFromContent = resolveContentTooltip(contentUri, t);
+    if (tooltipFromContent) {
+      return tooltipFromContent;
+    }
+
+    if (!contentUri.trim() && effectiveFileUri) {
+      return t('image.upload.tooltip.current.file', {
+        defaultValue: '当前选项：文件',
+      });
+    }
+
+    const tooltipFromDerived = resolveContentTooltip(derivedContentUri, t);
+    if (tooltipFromDerived) {
+      return tooltipFromDerived;
+    }
+
+    if (effectiveFileUri) {
+      return t('image.upload.tooltip.current.file', {
+        defaultValue: '当前选项：文件',
+      });
+    }
+
+    return undefined;
+  }, [contentUri, derivedContentUri, effectiveFileUri, t]);
+
+  const renderTooltipLines = useCallback((text: string) => {
+    const lines = text.split('\n');
+    return (
+      <>
+        {lines.map((line, index) => (
+          <React.Fragment key={`${line}-${index}`}>
+            {line}
+            {index < lines.length - 1 && <br />}
+          </React.Fragment>
+        ))}
+      </>
+    );
+  }, []);
+
   const { debugDetails } = useImageSelectorDebug({
     auto,
     displayUrl,
@@ -227,8 +333,8 @@ export const ImageSelector: React.FC<ImageSelectorProps> = ({
           height: 24,
         }}
       >
-        <BaseIcon size={20} strokeWidth={2} />
-        <Plus
+        <Plus size={20} strokeWidth={2} />
+        <BaseIcon
           size={14}
           strokeWidth={2}
           style={{
@@ -537,6 +643,7 @@ export const ImageSelector: React.FC<ImageSelectorProps> = ({
         if (normalized) {
           pendingManualFileRef.current = true;
           lastKnownValueRef.current = '';
+          setContentUri('');
           setAuto(false);
           setFileUri(normalized);
           await handleResourceUpload(normalized);
@@ -553,11 +660,38 @@ export const ImageSelector: React.FC<ImageSelectorProps> = ({
     }
   }, [handleResourceUpload, handleSync, logger, selectAdvancedContentSource]);
 
+  const flushAutoModeOnce = useCallback(async () => {
+    const overrides = pendingAutoOverridesRef.current
+      ? { ...pendingAutoOverridesRef.current }
+      : undefined;
+    pendingAutoOverridesRef.current = null;
+    clearAutoUploadPass();
+    try {
+      const resource = await sync(overrides ?? undefined);
+      await handleResourceUpload(resource);
+    } catch (error) {
+      logger(
+        'ImageSelector flushAutoModeOnce error',
+        JSON.stringify({
+          message: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+        }),
+      );
+    }
+  }, [clearAutoUploadPass, handleResourceUpload, logger, sync]);
+
   const handleAutoToggle = useCallback(() => {
-    setAuto(prev => !prev);
-  }, []);
+    const wasAuto = autoRef.current;
+    const nextAuto = !wasAuto;
+    setAuto(nextAuto);
+    if (wasAuto && !nextAuto) {
+      autoRef.current = false;
+      void flushAutoModeOnce();
+    }
+  }, [flushAutoModeOnce]);
 
   const handleMaskRebuildWithSync = useCallback(async () => {
+    ensureContentUri();
     const updatedMaskUri = await rebuildMask();
     if (auto) {
       const overrides = pendingAutoOverridesRef.current ?? {};
@@ -567,9 +701,10 @@ export const ImageSelector: React.FC<ImageSelectorProps> = ({
     }
     const resource = await sync({ maskUri: updatedMaskUri });
     await handleResourceUpload(resource);
-  }, [auto, handleResourceUpload, rebuildMask, tryRegisterAutoUploadPass, sync]);
+  }, [auto, ensureContentUri, handleResourceUpload, rebuildMask, tryRegisterAutoUploadPass, sync]);
 
   const handleBoundaryNormalizeWithSync = useCallback(async () => {
+    ensureContentUri();
     const updatedBoundaryUri = await normalizeBoundary();
     if (auto) {
       const overrides = pendingAutoOverridesRef.current ?? {};
@@ -579,7 +714,7 @@ export const ImageSelector: React.FC<ImageSelectorProps> = ({
     }
     const resource = await sync({ boundaryUri: updatedBoundaryUri });
     await handleResourceUpload(resource);
-  }, [auto, handleResourceUpload, normalizeBoundary, tryRegisterAutoUploadPass, sync]);
+  }, [auto, ensureContentUri, handleResourceUpload, normalizeBoundary, tryRegisterAutoUploadPass, sync]);
 
   return (
     <div
@@ -626,6 +761,7 @@ export const ImageSelector: React.FC<ImageSelectorProps> = ({
               handleAutoToggle();
             }}
             tooltipPlacement="right"
+            syncButtonTooltip={mainButtonTooltip}
             data-testid={`single-image-sync-${widgetableId}`}
           >
             <span
@@ -671,13 +807,7 @@ export const ImageSelector: React.FC<ImageSelectorProps> = ({
             <Tooltip
               placement="left"
               autoAdjustOverflow={false}
-              title={
-                <>
-                  获取图像+
-                  <br />
-                  裁剪选区遮罩
-                </>
-              }
+              title={renderTooltipLines(cutTooltipText)}
             >
               <Button
                 type="default"
@@ -693,13 +823,7 @@ export const ImageSelector: React.FC<ImageSelectorProps> = ({
             <Tooltip
               placement="left"
               autoAdjustOverflow={false}
-              title={
-                <>
-                  获取图像+
-                  <br />
-                  限制图像范围
-                </>
-              }
+              title={renderTooltipLines(scanTooltipText)}
             >
               <Button
                 type="default"

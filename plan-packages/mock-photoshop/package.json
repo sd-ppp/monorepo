@@ -8,8 +8,6 @@
   "types": "./src/index.ts",
   "sideEffects": false,
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "dev": "vite --config playground/vite.config.ts",
     "preview": "vite preview --config playground/vite.config.ts"
   },
   "dependencies": {

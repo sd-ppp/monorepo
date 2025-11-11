@@ -1,5 +1,5 @@
-import { ImagePreviewFrame } from '@sdppp/ui-library';
 import type { ImagePreviewSplitProps } from '@sdppp/ui-library';
+import { ImagePreviewFrame } from '@sdppp/ui-library';
 import React from 'react';
 import { UploadIndicator, type UploadIndicatorStatus } from './UploadIndicator';
 
@@ -64,20 +64,6 @@ export const UploadableImagePreviewSplit: React.FC<UploadableImagePreviewSplitPr
       }}
     >
       <ImagePreviewFrame {...previewProps} />
-      {indicatorPlacement === 'overlay' ? (
-        <UploadIndicator
-          status={uploadStatus}
-          uploadingMessage={uploadIndicatorUploadingMessage}
-          errorMessage={uploadIndicatorErrorMessage}
-          onRetry={onUploadRetry}
-          retryLabel={uploadRetryLabel}
-          onDismiss={onUploadDismiss}
-          progressCurrent={uploadIndicatorProgressCurrent}
-          progressTotal={uploadIndicatorProgressTotal}
-          containerClassName={uploadIndicatorContainerClassName}
-          containerStyle={uploadIndicatorContainerStyle}
-        />
-      ) : null}
     </div>
   );
 

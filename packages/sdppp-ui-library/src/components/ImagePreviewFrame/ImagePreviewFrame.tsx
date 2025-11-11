@@ -1,12 +1,12 @@
 import { Image } from 'antd';
 import {
   memo,
-  type FC,
-  type CSSProperties,
   useEffect,
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
+  type FC,
 } from 'react';
 
 export interface ImagePreviewFrameProps {
@@ -73,7 +73,7 @@ const ImagePreviewFrameComponent: FC<ImagePreviewFrameProps> = ({
         backgroundPosition: '0 0',
       } satisfies CSSProperties;
     }
-    return { backgroundColor: '#fff' } satisfies CSSProperties;
+    return { backgroundColor: '#000' } satisfies CSSProperties;
   }, [background]);
 
   const ratio = imageRatio ?? 1;
