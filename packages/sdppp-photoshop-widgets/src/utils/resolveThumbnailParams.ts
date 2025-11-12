@@ -1,10 +1,10 @@
+import type { UseThumbnailParams } from '../hooks/useThumbnail';
 import type {
   BoundaryUri,
   ContentUri,
   FileUri,
   MaskUri,
 } from '../hooks/useThumbnail/types';
-import type { UseThumbnailParams } from '../hooks/useThumbnail';
 
 export const DEFAULT_CONTENT_URI = 'uxp://content/canvas';
 
@@ -30,7 +30,7 @@ export const resolveThumbnailParams = ({
   const normalizedMaskUri = maskUri.trim() as MaskUri | string;
   const normalizedFileUri = fileUri.trim();
 
-  if (!isAutoEnabled && normalizedFileUri) {
+  if (!isAutoEnabled) {
     return {
       fileUri: normalizedFileUri as FileUri,
     };

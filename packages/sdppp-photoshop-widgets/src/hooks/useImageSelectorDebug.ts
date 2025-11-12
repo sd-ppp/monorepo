@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from 'react';
 
+import type { WidgetRenderMeta } from '@sdppp/widgetable-ui';
 import type { WidgetImageMaskLogger } from '../context/WidgetImageMaskContext';
 import type { UseThumbnailParams } from './useThumbnail';
 
@@ -13,6 +14,7 @@ export interface UseImageSelectorDebugOptions {
   maskUri: string;
   thumbnailParams: UseThumbnailParams;
   logger: WidgetImageMaskLogger;
+  renderMeta?: WidgetRenderMeta | null;
 }
 
 export const useImageSelectorDebug = ({
@@ -25,6 +27,7 @@ export const useImageSelectorDebug = ({
   maskUri,
   thumbnailParams,
   logger,
+  renderMeta,
 }: UseImageSelectorDebugOptions) => {
   const debugDetails = useMemo(
     () => ({
@@ -33,8 +36,12 @@ export const useImageSelectorDebug = ({
       boundaryUri: boundaryUri || '-',
       maskUri: maskUri || '-',
       auto: auto ? 'true' : 'false',
+      widgetPosition: renderMeta
+        ? `${renderMeta.sameTypePosition}/${renderMeta.sameTypeTotal}`
+        : '-',
+      widgetAbsolute: renderMeta?.absolutePosition ?? '-',
     }),
-    [auto, boundaryUri, contentUri, fileUri, maskUri],
+    [auto, boundaryUri, contentUri, fileUri, maskUri, renderMeta],
   );
 
   useEffect(() => {
@@ -68,6 +75,11 @@ export const useImageSelectorDebug = ({
       }),
     );
   }, [logger, auto, displayUrl, imageUrl, fileUri]);
+
+  useEffect(() => {
+    if (!renderMeta) return;
+    logger('ImageSelector render meta', JSON.stringify(renderMeta));
+  }, [logger, renderMeta]);
 
   return { debugDetails };
 };

@@ -1,12 +1,15 @@
 import React, { ReactNode, FC, useCallback } from "react";
 import { WidgetableNode, WidgetableValues, WidgetableWidget } from "@sdppp/common/schemas/schemas";
 import { useWidgetable } from "../context";
+import type { WidgetRenderMeta } from "../widget-registry";
+import { WidgetRenderMetaProvider } from "../render-tracker/context";
 
 interface UseWidgetableRendererProps {
     widgetableValues: WidgetableValues;
     onWidgetChange: (nodeID: string, widgetIndex: number, value: any, fieldInfo: WidgetableNode) => void;
     onTitleChange: (nodeID: string, title: string) => void;
     extraOptions?: any;
+    getRenderMeta?: (fieldInfo: WidgetableNode, widgetIndex: number) => WidgetRenderMeta | undefined;
 }
 
 interface RenderFunctions {
@@ -21,7 +24,8 @@ export const useWidgetableRenderer = ({
     widgetableValues,
     onWidgetChange,
     onTitleChange,
-    extraOptions
+    extraOptions,
+    getRenderMeta
 }: UseWidgetableRendererProps): RenderFunctions => {
     useWidgetableRendererCount++;
 
@@ -36,21 +40,32 @@ export const useWidgetableRenderer = ({
         if (!renderer) {
             return null;
         }
+        const renderMeta = getRenderMeta?.(fieldInfo, widgetIndex);
 
         const value = widgetableValues[fieldInfo.id]?.[widgetIndex];
         const onValueChange = (newValue: any) => {
             onWidgetChange(fieldInfo.id, widgetIndex, newValue, fieldInfo);
         };
 
-        return renderer({
+        const element = renderer({
             fieldInfo,
             widget,
             widgetIndex,
             value,
             onValueChange,
-            extraOptions
+            extraOptions,
+            renderMeta
         });
-    }, [widgetableValues, onWidgetChange, getWidgetRenderer, extraOptions]);
+        if (!element) {
+            return null;
+        }
+
+        return (
+            <WidgetRenderMetaProvider value={renderMeta ?? null}>
+                {element}
+            </WidgetRenderMetaProvider>
+        );
+    }, [widgetableValues, onWidgetChange, getWidgetRenderer, extraOptions, getRenderMeta]);
 
     const renderTitle = useCallback((title: string, fieldInfo: WidgetableNode): ReactNode => {
         // return <EditableTitle title={title} onTitleChange={(newTitle) => {

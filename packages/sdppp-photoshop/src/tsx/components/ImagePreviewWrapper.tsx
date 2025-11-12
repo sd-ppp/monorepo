@@ -30,7 +30,20 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
   const autoSendTypeRef = React.useRef<'smartobject' | 'newdoc'>('smartobject');
   const pendingAutoSendRef = React.useRef(new Map<string, { cancel: boolean }>());
 
-  const currentItem = images[currentIndex];
+  const normalizedIndex = React.useMemo(() => {
+    if (!images.length) {
+      return 0;
+    }
+    return Math.min(currentIndex, images.length - 1);
+  }, [currentIndex, images.length]);
+
+  React.useEffect(() => {
+    if (currentIndex !== normalizedIndex) {
+      setCurrentIndex(normalizedIndex);
+    }
+  }, [currentIndex, normalizedIndex]);
+
+  const currentItem = images[normalizedIndex];
   const isCurrentItemImage = currentItem ? isImage(currentItem.url) : false;
   const ICON_SIZE = 16;
 
@@ -75,7 +88,7 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
   };
 
   const handleSendToPS = async (event?: { shiftKey?: boolean }) => {
-    await sendToPSAtIndex(currentIndex, { shiftKey: !!event?.shiftKey });
+    await sendToPSAtIndex(normalizedIndex, { shiftKey: !!event?.shiftKey });
   };
 
   // Send by URL using resource once ready
@@ -105,15 +118,15 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
   };
 
   const handleDeleteCurrent = async () => {
-    const current = images[currentIndex];
+    const current = images[normalizedIndex];
     if (current?.resource) {
       await MainStore.getState().deletePreviewImages([current.resource]);
     } else {
-      const newImages = images.filter((_, index) => index !== currentIndex);
+      const newImages = images.filter((_, index) => index !== normalizedIndex);
       MainStore.setState({ previewImageList: newImages });
     }
     const nextList = MainStore.getState().previewImageList;
-    if (currentIndex >= nextList.length && nextList.length > 0) {
+    if (normalizedIndex >= nextList.length && nextList.length > 0) {
       setCurrentIndex(nextList.length - 1);
     } else if (!nextList.length) {
       setCurrentIndex(0);
@@ -283,7 +296,7 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
         size="middle"
       />
     ) : null,
-    jumpToLast: currentIndex < images.length - 1 ? (
+    jumpToLast: normalizedIndex < images.length - 1 ? (
       <Button
         className="image-preview__floating-btn--jump"
         icon={<StepForward size={ICON_SIZE} />}
@@ -305,7 +318,7 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
     ),
     indicator: (
       <div className="image-preview__indicator">
-        {currentIndex + 1} / {images.length}
+        {normalizedIndex + 1} / {images.length}
       </div>
     ),
     bottomDeleteAll: (
@@ -392,7 +405,7 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
         overlayStyle={{ minWidth: 'auto', width: 'max-content' }}
       >
         <div className="image-preview__bottom-indicator" style={{ cursor: 'pointer' }}>
-          {currentIndex + 1} / {images.length} <MoreHorizontal size={ICON_SIZE} />
+          {normalizedIndex + 1} / {images.length} <MoreHorizontal size={ICON_SIZE} />
         </div>
       </Dropdown>
     )
@@ -406,7 +419,7 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
         <div className="image-preview__container">
           <ImagePreview
             images={images}
-            currentIndex={currentIndex}
+            currentIndex={normalizedIndex}
             onIndexChange={setCurrentIndex}
           />
 

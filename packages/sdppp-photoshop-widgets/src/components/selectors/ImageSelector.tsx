@@ -1,10 +1,13 @@
 import { ImagePreviewFrame, SyncButton } from '@sdppp/ui-library';
+import { useWidgetRenderMeta } from '@sdppp/widgetable-ui';
 import { Button, Tooltip } from 'antd';
 import type { LucideIcon } from 'lucide-react';
-import { Layers, Plus, Scan, Scissors, Upload } from 'lucide-react';
+import { Plus, Scan, Scissors, Settings } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { v4 } from 'uuid';
 import {
   useSelectAdvancedContentSource,
+  useSelectionBoundary,
   useWidgetImageMaskActions,
   useWidgetLogger,
   useWidgetText,
@@ -39,8 +42,10 @@ interface ImageSelectorProps {
 }
 
 const SECTION_SIZE = 120;
-const ACTION_BUTTON_SIZE = 60;
 const SYNC_BUTTON_SIZE = SECTION_SIZE;
+const SYNC_BUTTON_WIDTH = SECTION_SIZE / 4;
+const ACTION_BUTTON_SIZE = 44;
+const ACTION_BUTTON_MARGIN = 8;
 
 type TranslateFn = (key: string, options?: Record<string, unknown>) => string;
 
@@ -105,6 +110,17 @@ export const ImageSelector: React.FC<ImageSelectorProps> = ({
   const t = useWidgetText();
   const actions = useWidgetImageMaskActions();
   const logger = useWidgetLogger();
+  const selectionBoundary = useSelectionBoundary();
+  const renderMeta = useWidgetRenderMeta();
+  const resolvedDefaultAuto = useMemo(() => {
+    if (!defaultAuto) {
+      return false;
+    }
+    if (!renderMeta) {
+      return true;
+    }
+    return renderMeta.sameTypeIndex === 0;
+  }, [defaultAuto, renderMeta]);
 
   const imageUrl = value?.[0] ?? '';
   const addPrimaryLabel = t('image.upload.primary.manual', { defaultValue: '使用主图' });
@@ -125,9 +141,32 @@ export const ImageSelector: React.FC<ImageSelectorProps> = ({
   const [contentUri, setContentUri] = useState<string>('');
   const [boundaryUri, setBoundaryUri] = useState<string>(workBoundary);
   const [maskUri, setMaskUri] = useState<string>('');
-  const [auto, setAuto] = useState<boolean>(defaultAuto);
+  const [auto, setAutoState] = useState<boolean>(resolvedDefaultAuto);
   const autoRef = useRef<boolean>(auto);
-  autoRef.current = auto;
+  const hasManualAutoChangeRef = useRef<boolean>(false);
+  useEffect(() => {
+    autoRef.current = auto;
+  }, [auto]);
+  const applyAuto = useCallback(
+    (next: boolean, options?: { manual?: boolean }) => {
+      if (options?.manual) {
+        hasManualAutoChangeRef.current = true;
+      }
+      autoRef.current = next;
+      setAutoState(next);
+    },
+    [setAutoState],
+  );
+  useEffect(() => {
+    if (hasManualAutoChangeRef.current) {
+      return;
+    }
+    const expected = resolvedDefaultAuto;
+    if (autoRef.current !== expected) {
+      autoRef.current = expected;
+      setAutoState(expected);
+    }
+  }, [resolvedDefaultAuto, setAutoState]);
   const pendingManualFileRef = useRef(false);
   const lastKnownValueRef = useRef<string>((value?.[0] ?? '').trim());
   const {
@@ -270,6 +309,7 @@ export const ImageSelector: React.FC<ImageSelectorProps> = ({
     maskUri,
     thumbnailParams,
     logger,
+    renderMeta,
   });
 
   const actionButtonStyle = useMemo(
@@ -280,49 +320,61 @@ export const ImageSelector: React.FC<ImageSelectorProps> = ({
       alignItems: 'center',
       justifyContent: 'center',
       padding: 0,
+      margin: ACTION_BUTTON_MARGIN,
+    }),
+    [],
+  );
+
+  const fallbackActionButtonStyle = useMemo(() => {
+    const margin = ACTION_BUTTON_MARGIN;
+    return {
+      width: ACTION_BUTTON_SIZE,
+      height: 96,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 0,
+      margin,
+    };
+  }, []);
+
+  const actionButtonContainerStyle = useMemo(
+    () => ({
+      flex: '0 0 auto',
+      display: 'flex',
+      alignItems: 'flex-start',
+      flexDirection: 'column',
+      justifyContent: 'flex-start',
+      borderRadius: '0 var(--ant-border-radius-lg, 6px) var(--ant-border-radius-lg, 6px) 0',
+      overflow: 'hidden',
+      border: '1px solid var(--sdppp-widget-border-color, var(--ant-color-border, #d9d9d9))',
     }),
     [],
   );
 
   const selectAdvancedContentSource = useSelectAdvancedContentSource();
 
-  const syncButtonIcon = useMemo(
-    () => (
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 4,
-        }}
-      >
-        <Plus size={16} strokeWidth={2} />
-        <span
-          style={{
-            width: 3,
-            height: 3,
-            borderRadius: '50%',
-            backgroundColor: 'var(--ant-color-text-tertiary, rgba(0, 0, 0, 0.45))',
-          }}
-        />
-        <Layers size={16} strokeWidth={2} />
-        <span
-          style={{
-            width: 3,
-            height: 3,
-            borderRadius: '50%',
-            backgroundColor: 'var(--ant-color-text-tertiary, rgba(0, 0, 0, 0.45))',
-          }}
-        />
-        <Upload size={16} strokeWidth={2} />
-      </div>
-    ),
+  const syncButtonIcon = useMemo(() => <Settings size={20} strokeWidth={2} />, []);
+
+  const syncButtonCornerStyle = useMemo(
+    () => ({
+      borderTopRightRadius: 0,
+      borderBottomRightRadius: 0,
+    }),
     [],
   );
 
-  const createIconWithPlusOverlay = useCallback(
-    (BaseIcon: LucideIcon) => (
+  const shouldShowFallbackActionButton = useMemo(() => {
+    const noMask = !(maskUri?.trim());
+    const normalizedBoundaryUri = (boundaryUri ?? '').trim();
+    const normalizedWorkBoundary = (workBoundary ?? '').trim();
+    const isBoundaryUnchanged = normalizedBoundaryUri === normalizedWorkBoundary;
+    const noSelection = selectionBoundary == null;
+    return noMask && isBoundaryUnchanged && noSelection;
+  }, [boundaryUri, maskUri, selectionBoundary, workBoundary]);
+
+  const createIconWithPlusOverlay = useCallback((BaseIcon: LucideIcon) => {
+    return (
       <span
         style={{
           position: 'relative',
@@ -335,18 +387,17 @@ export const ImageSelector: React.FC<ImageSelectorProps> = ({
       >
         <Plus size={20} strokeWidth={2} />
         <BaseIcon
-          size={14}
+          size={10}
           strokeWidth={2}
           style={{
             position: 'absolute',
-            right: -5,
-            bottom: -5,
+            right: -7,
+            bottom: -7,
           }}
         />
       </span>
-    ),
-    [],
-  );
+    );
+  }, []);
 
   const { sync, rebuildMask, normalizeBoundary } = useImageCbmActions({
     actions,
@@ -454,6 +505,7 @@ export const ImageSelector: React.FC<ImageSelectorProps> = ({
             type: 'resource',
             resource: normalizedResource,
             resourceId: normalizedResource,
+            fileName: `${v4()}.png`
           };
         },
       };
@@ -644,7 +696,7 @@ export const ImageSelector: React.FC<ImageSelectorProps> = ({
           pendingManualFileRef.current = true;
           lastKnownValueRef.current = '';
           setContentUri('');
-          setAuto(false);
+          applyAuto(false, { manual: true });
           setFileUri(normalized);
           await handleResourceUpload(normalized);
         }
@@ -658,7 +710,7 @@ export const ImageSelector: React.FC<ImageSelectorProps> = ({
         }),
       );
     }
-  }, [handleResourceUpload, handleSync, logger, selectAdvancedContentSource]);
+  }, [applyAuto, handleResourceUpload, handleSync, logger, selectAdvancedContentSource]);
 
   const flushAutoModeOnce = useCallback(async () => {
     const overrides = pendingAutoOverridesRef.current
@@ -683,12 +735,11 @@ export const ImageSelector: React.FC<ImageSelectorProps> = ({
   const handleAutoToggle = useCallback(() => {
     const wasAuto = autoRef.current;
     const nextAuto = !wasAuto;
-    setAuto(nextAuto);
+    applyAuto(nextAuto, { manual: true });
     if (wasAuto && !nextAuto) {
-      autoRef.current = false;
       void flushAutoModeOnce();
     }
-  }, [flushAutoModeOnce]);
+  }, [applyAuto, flushAutoModeOnce]);
 
   const handleMaskRebuildWithSync = useCallback(async () => {
     ensureContentUri();
@@ -740,7 +791,7 @@ export const ImageSelector: React.FC<ImageSelectorProps> = ({
           style={{
             height: SECTION_SIZE,
             flex: '0 0 auto',
-            width: ACTION_BUTTON_SIZE,
+            width: SYNC_BUTTON_WIDTH,
             display: 'flex',
             alignItems: 'stretch',
             justifyContent: 'flex-start',
@@ -750,9 +801,11 @@ export const ImageSelector: React.FC<ImageSelectorProps> = ({
             className="single-image-sync-button"
             direction="vertical"
             buttonSize={SYNC_BUTTON_SIZE}
-            buttonSizeSub={ACTION_BUTTON_SIZE}
+            buttonSizeSub={SYNC_BUTTON_WIDTH}
             collapseToAutoWhenEnabled
             style={{ height: '100%' }}
+            mainButtonStyle={syncButtonCornerStyle}
+            autoSyncButtonStyle={syncButtonCornerStyle}
             isAutoSync={auto}
             onSync={() => {
               void handlePrimarySync();
@@ -788,54 +841,67 @@ export const ImageSelector: React.FC<ImageSelectorProps> = ({
           <ImagePreviewFrame
             imageUrl={displayUrl}
             background="checkerboard"
+            containerStyle={{ borderRadius: 0, borderLeft: 'none', borderRight: 'none' }}
             data-testid={`single-image-preview-${widgetableId}`}
           />
           <DebugBadge details={debugDetails} />
         </div>
         {showActionButtons ? (
-          <div
-            style={{
-              flex: '0 0 auto',
-              display: 'flex',
-              alignItems: 'flex-start',
-              flexDirection: 'column',
-              justifyContent: 'flex-start',
-              borderRadius: 'var(--ant-border-radius-lg, 6px)',
-              overflow: 'hidden',
-            }}
-          >
-            <Tooltip
-              placement="left"
-              autoAdjustOverflow={false}
-              title={renderTooltipLines(cutTooltipText)}
-            >
-              <Button
-                type="default"
-                icon={createIconWithPlusOverlay(Scissors)}
-                aria-label={cutLabel}
-                title={cutLabel}
-                style={{ ...actionButtonStyle, margin: 0 }}
-                onClick={() => {
-                  void handleMaskRebuildWithSync();
-                }}
-              />
-            </Tooltip>
-            <Tooltip
-              placement="left"
-              autoAdjustOverflow={false}
-              title={renderTooltipLines(scanTooltipText)}
-            >
-              <Button
-                type="default"
-                icon={createIconWithPlusOverlay(Scan)}
-                aria-label={scanLabel}
-                title={scanLabel}
-                style={{ ...actionButtonStyle, margin: 0 }}
-                onClick={() => {
-                  void handleBoundaryNormalizeWithSync();
-                }}
-              />
-            </Tooltip>
+          <div style={actionButtonContainerStyle}>
+            {shouldShowFallbackActionButton ? (
+              <Tooltip
+                placement="left"
+                autoAdjustOverflow={false}
+                title={renderTooltipLines(cutTooltipText)}
+              >
+                <Button
+                  type="primary"
+                  icon={<Plus size={20} strokeWidth={2} />}
+                  aria-label={cutLabel}
+                  title={cutLabel}
+                  style={fallbackActionButtonStyle}
+                  onClick={async () => {
+                    const resource = await sync({});
+                    await handleResourceUpload(resource);
+                  }}
+                />
+              </Tooltip>
+            ) : (
+              <>
+                <Tooltip
+                  placement="left"
+                  autoAdjustOverflow={false}
+                  title={renderTooltipLines(cutTooltipText)}
+                >
+                  <Button
+                    type="primary"
+                    icon={createIconWithPlusOverlay(Scissors)}
+                    aria-label={cutLabel}
+                    title={cutLabel}
+                    style={actionButtonStyle}
+                    onClick={() => {
+                      void handleMaskRebuildWithSync();
+                    }}
+                  />
+                </Tooltip>
+                <Tooltip
+                  placement="left"
+                  autoAdjustOverflow={false}
+                  title={renderTooltipLines(scanTooltipText)}
+                >
+                  <Button
+                    type="primary"
+                    icon={createIconWithPlusOverlay(Scan)}
+                    aria-label={scanLabel}
+                    title={scanLabel}
+                    style={actionButtonStyle}
+                    onClick={() => {
+                      void handleBoundaryNormalizeWithSync();
+                    }}
+                  />
+                </Tooltip>
+              </>
+            )}
           </div>
         ) : null}
       </div>

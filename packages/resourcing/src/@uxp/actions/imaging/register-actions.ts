@@ -7,6 +7,7 @@ import { registerCreateFromLocalAction } from "./register-create-from-local.js";
 import { registerCreateFromCBMAction } from "./register-create-from-cbm.js";
 import { registerBoundaryNormalizeAction } from "./register-boundary-normalize.js";
 import { registerLayerResolveAction } from "./register-layer-resolve.js";
+import { registerSelectionBoundaryMaintenance } from "../../store/register-selection-boundary.js";
 
 export function registerImagingActions(context: ImagingActionContext): void {
   const { mcpMesh } = context;
@@ -19,6 +20,8 @@ export function registerImagingActions(context: ImagingActionContext): void {
   registerSaveAsAction(context);
   registerBoundaryNormalizeAction(context);
   registerLayerResolveAction(context);
+
+  registerSelectionBoundaryMaintenance(context);
 }
 
 export type {

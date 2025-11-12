@@ -27,6 +27,17 @@ export interface FileResourceMaterializeResult extends FileResourceMaterializeRe
   batch?: FileResourceMaterializeRecord[];
 }
 
+export interface WidgetSelectionBoundaryRect {
+  leftDistance: number;
+  topDistance: number;
+  rightDistance: number;
+  bottomDistance: number;
+  width: number;
+  height: number;
+}
+
+export type WidgetSelectionBoundary = WidgetSelectionBoundaryRect | null;
+
 export interface FileResourceCreateFromCBMParams {
   contentUri?: string;
   boundaryUri?: string;
@@ -64,7 +75,9 @@ export type WidgetRealtimeSubscriber = (
 ) => () => void;
 
 export interface WidgetUploadPass {
-  getUploadFile: (signal?: AbortSignal) => Promise<any>;
+  getUploadFile: (signal?: AbortSignal) => Promise<{
+    fileName: string;
+  }>;
   onUploaded?: (fileURL: string) => Promise<void>;
   onUploadError?: (error: any) => void;
 }
@@ -80,7 +93,8 @@ interface WidgetImageMaskContextValue {
   t: TranslateFn;
   logger: WidgetImageMaskLogger;
   debug: boolean;
-  resolveWorkBoundary: WorkBoundaryResolver;
+  workBoundaryUri: string;
+  selectionBoundary: WidgetSelectionBoundary;
   subscribeToRealtimeChanges: WidgetRealtimeSubscriber;
   uploadPassHandlers: WidgetUploadPassHandlers;
   selectAdvancedContentSource: SelectAdvancedContentSource;
@@ -91,7 +105,8 @@ export interface WidgetImageMaskProviderProps {
   t: TranslateFn;
   logger?: WidgetImageMaskLogger;
   debug?: boolean;
-  resolveWorkBoundary: WorkBoundaryResolver;
+  workBoundaryUri: string;
+  selectionBoundary?: WidgetSelectionBoundary;
   subscribeToRealtimeChanges: WidgetRealtimeSubscriber;
   uploadPassHandlers?: WidgetUploadPassHandlers;
   selectAdvancedContentSource?: SelectAdvancedContentSource;
@@ -115,17 +130,14 @@ export const WidgetImageMaskProvider: React.FC<WidgetImageMaskProviderProps> = (
   t,
   logger,
   debug = false,
-  resolveWorkBoundary,
+  workBoundaryUri,
+  selectionBoundary = null,
   subscribeToRealtimeChanges,
   uploadPassHandlers,
   selectAdvancedContentSource,
   children,
 }) => {
   const resolvedLogger = useMemo<WidgetImageMaskLogger>(() => logger ?? defaultLogger, [logger]);
-  const resolvedWorkBoundary = useMemo<WorkBoundaryResolver>(
-    () => resolveWorkBoundary,
-    [resolveWorkBoundary],
-  );
   const resolvedSubscriber = useMemo<WidgetRealtimeSubscriber>(
     () => subscribeToRealtimeChanges ?? defaultRealtimeSubscriber,
     [subscribeToRealtimeChanges],
@@ -145,7 +157,8 @@ export const WidgetImageMaskProvider: React.FC<WidgetImageMaskProviderProps> = (
       t,
       logger: resolvedLogger,
       debug,
-      resolveWorkBoundary: resolvedWorkBoundary,
+      workBoundaryUri,
+      selectionBoundary,
       subscribeToRealtimeChanges: resolvedSubscriber,
       uploadPassHandlers: resolvedUploadHandlers,
       selectAdvancedContentSource: resolvedSelectAdvancedContentSource,
@@ -155,7 +168,8 @@ export const WidgetImageMaskProvider: React.FC<WidgetImageMaskProviderProps> = (
       t,
       resolvedLogger,
       debug,
-      resolvedWorkBoundary,
+      workBoundaryUri,
+      selectionBoundary,
       resolvedSubscriber,
       resolvedUploadHandlers,
       resolvedSelectAdvancedContentSource,
@@ -175,7 +189,9 @@ export const useWidgetImageMaskActions = (): WidgetImageMaskActions => useWidget
 export const useWidgetText = (): TranslateFn => useWidgetImageMask().t;
 export const useWidgetLogger = (): WidgetImageMaskLogger => useWidgetImageMask().logger;
 export const useWidgetDebug = (): boolean => useWidgetImageMask().debug;
-export const useWorkBoundaryResolver = (): WorkBoundaryResolver => useWidgetImageMask().resolveWorkBoundary;
+export const useWorkBoundary = (): string => useWidgetImageMask().workBoundaryUri;
+export const useSelectionBoundary = (): WidgetSelectionBoundary =>
+  useWidgetImageMask().selectionBoundary;
 export const useWidgetRealtimeSubscriber = (): WidgetRealtimeSubscriber =>
   useWidgetImageMask().subscribeToRealtimeChanges;
 export const useWidgetUploadPassHandlers = (): WidgetUploadPassHandlers =>

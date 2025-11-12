@@ -1,6 +1,7 @@
 import { ImagePreviewSplitList, SyncButton } from '@sdppp/ui-library';
 import { Plus } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { v4 } from 'uuid';
 
 import {
   useWidgetImageMaskActions,
@@ -51,9 +52,14 @@ export const MaskSelector: React.FC<MaskSelectorProps> = ({ widgetableId, value 
 
   const imageUrl = useMemo(() => (value?.[0] ?? '').trim(), [value]);
   const [maskResource, setMaskResource] = useState<string>('');
-  const [maskFileUri, setMaskFileUri] = useState<string>('');
+  const [maskFileUri, _setMaskFileUri] = useState<string>('');
   const [docIdFallback, setDocIdFallback] = useState<number | null>(null);
   const [lastSourceMode, setLastSourceMode] = useState<MaskSourceKind>('selection');
+
+  function setMaskFileUri(uri: string) {
+    console.trace('MaskSelector setMaskFileUri', uri);
+    _setMaskFileUri(uri); 
+  }
 
   const {
     uploadStatus,
@@ -75,11 +81,6 @@ export const MaskSelector: React.FC<MaskSelectorProps> = ({ widgetableId, value 
   useEffect(() => {
     setMaskResource(prev => {
       if (imageUrl && imageUrl !== prev) return imageUrl;
-      if (!imageUrl && prev !== '') return '';
-      return prev;
-    });
-    setMaskFileUri(prev => {
-      if (imageUrl && prev !== '') return '';
       if (!imageUrl && prev !== '') return '';
       return prev;
     });
@@ -213,6 +214,7 @@ export const MaskSelector: React.FC<MaskSelectorProps> = ({ widgetableId, value 
           type: 'resource',
           resource,
           resourceId: resource,
+          fileName: `${v4()}.png`,
         };
       },
     }),

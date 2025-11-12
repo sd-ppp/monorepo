@@ -5,7 +5,8 @@ export type {
     WidgetRenderer, 
     WidgetRegistry, 
     WidgetRegistryContextType, 
-    WidgetRendererProps 
+    WidgetRendererProps,
+    WidgetRenderMeta,
 } from './widget-registry';
 
 // Core registry functions
@@ -13,6 +14,7 @@ export { createDefaultWidgetRegistry } from './widget-registry';
 
 // Context and provider
 export { WidgetableProvider, useWidgetable } from './context';
+export { useWidgetRenderMeta } from './render-tracker/context';
 
 // Note: images and masks widget renderers are now in providers/base
 // Individual widget renderers are no longer exported from core widgetable

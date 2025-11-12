@@ -48,6 +48,14 @@ export declare const sdpppSDK: {
 			curlayerThumbnail: string;
 			canvasStateID?: number | undefined;
 			selectionStateID?: string | undefined;
+			selectionBoundary?: {
+				leftDistance: number;
+				topDistance: number;
+				rightDistance: number;
+				bottomDistance: number;
+				width: number;
+				height: number;
+			} | null | undefined;
 		}>;
 		WebviewStore: NodeStore<{
 			refreshable: boolean;
@@ -129,6 +137,13 @@ export declare const sdpppSDK: {
 						};
 						name: string;
 						outputType: "segment";
+						uiWeight: number;
+					} | {
+						options: {
+							required: boolean;
+						};
+						name: string;
+						outputType: "video";
 						uiWeight: number;
 					})[];
 					uiWeightSum: number;
@@ -251,23 +266,6 @@ export declare const sdpppSDK: {
 			}, signal?: AbortSignal) => Promise<{
 				success: boolean;
 			}>;
-			openImagesFromFile: (data: {
-				nativePath: string;
-				boundary?: {
-					leftDistance: number;
-					topDistance: number;
-					rightDistance: number;
-					bottomDistance: number;
-					width: number;
-					height: number;
-				} | undefined;
-			}, signal?: AbortSignal) => Promise<{
-				success: boolean;
-				width: number;
-				height: number;
-				documentId: number;
-				documentName: string;
-			}>;
 			getBoundary: (data: {
 				type: "curlayer" | "selection";
 			}, signal?: AbortSignal) => Promise<{
@@ -293,30 +291,6 @@ export declare const sdpppSDK: {
 				cropBySelection: "positive" | "negative" | "no";
 				SkipNonNormalLayer: boolean;
 				layer_identify?: string | null | undefined;
-			}, signal?: AbortSignal) => Promise<{
-				error?: string | undefined;
-				width?: number | undefined;
-				height?: number | undefined;
-				mimeType?: string | undefined;
-				thumbnail?: string | undefined;
-				resource?: string | undefined;
-				source?: string | undefined;
-			}>;
-			getResourceImage: (data: {
-				boundary: string;
-				content: string;
-			}, signal?: AbortSignal) => Promise<{
-				error?: string | undefined;
-				width?: number | undefined;
-				height?: number | undefined;
-				mimeType?: string | undefined;
-				thumbnail?: string | undefined;
-				resource?: string | undefined;
-				source?: string | undefined;
-			}>;
-			getResourceMask: (data: {
-				boundary: string;
-				content: string;
 			}, signal?: AbortSignal) => Promise<{
 				error?: string | undefined;
 				width?: number | undefined;
@@ -405,58 +379,6 @@ export declare const sdpppSDK: {
 				resource?: string | undefined;
 				cancelled?: boolean | undefined;
 				layerIdentify?: string | undefined;
-			}>;
-			selectCanvasImage: (data: {
-				additionalData?: Record<string, any> | undefined;
-			}, signal?: AbortSignal) => Promise<{
-				source?: string | undefined;
-				cancelled?: boolean | undefined;
-				getImageParams?: {
-					boundary: "canvas" | "curlayer" | "selection";
-					content: string;
-					imageSize: number;
-					imageQuality: number;
-					cropBySelection: "positive" | "negative" | "no";
-					layer_identify?: string | null | undefined;
-				} | undefined;
-			}>;
-			selectLayerImage: (data: {
-				additionalData?: Record<string, any> | undefined;
-			}, signal?: AbortSignal) => Promise<{
-				source?: string | undefined;
-				cancelled?: boolean | undefined;
-				getImageParams?: {
-					boundary: "canvas" | "curlayer" | "selection";
-					content: string;
-					imageSize: number;
-					imageQuality: number;
-					cropBySelection: "positive" | "negative" | "no";
-					layer_identify?: string | null | undefined;
-				} | undefined;
-			}>;
-			selectLayerMask: (data: {
-				additionalData?: Record<string, any> | undefined;
-			}, signal?: AbortSignal) => Promise<{
-				source?: string | undefined;
-				cancelled?: boolean | undefined;
-				getMaskParams?: {
-					reverse: boolean;
-					content: "canvas" | "curlayer" | "selection";
-					imageSize: number;
-					layer_identify?: string | null | undefined;
-				} | undefined;
-			}>;
-			selectSelectionMask: (data: {
-				additionalData?: Record<string, any> | undefined;
-			}, signal?: AbortSignal) => Promise<{
-				source?: string | undefined;
-				cancelled?: boolean | undefined;
-				getMaskParams?: {
-					reverse: boolean;
-					content: "canvas" | "curlayer" | "selection";
-					imageSize: number;
-					layer_identify?: string | null | undefined;
-				} | undefined;
 			}>;
 			taskAdd: (data: {
 				status: "cancelled" | "running" | "completed" | "failed";

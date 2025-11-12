@@ -1,6 +1,7 @@
-import React, { ReactNode, useMemo, useState } from "react";
+import React, { ReactNode, useMemo, useState, useCallback } from "react";
 
 import type { WidgetableNode, WidgetableStructure, WidgetableValues, WidgetableWidget } from "@sdppp/common/schemas/schemas";
+import type { WidgetRenderMeta } from "./widget-registry";
 import { computeUIWeightCSS } from "./utils";
 
 import './index.less'
@@ -82,11 +83,72 @@ export default function WorkflowEdit({
 
     useWidgetable();
 
+    const renderMetaMap = useMemo(() => {
+        const metaMap = new Map<string, WidgetRenderMeta>();
+        const sameTypeTotals = new Map<string, number>();
+
+        widgetableStructure.nodeIndexes.forEach(nodeID => {
+            const fieldInfo = widgetableStructure.nodes[nodeID];
+            if (!fieldInfo || !Array.isArray(fieldInfo.widgets)) {
+                return;
+            }
+            fieldInfo.widgets.forEach(widget => {
+                if (!widget) return;
+                const widgetType = String(widget.outputType ?? 'unknown');
+                sameTypeTotals.set(widgetType, (sameTypeTotals.get(widgetType) ?? 0) + 1);
+            });
+        });
+
+        const sameTypeSeen = new Map<string, number>();
+        let absoluteIndex = 0;
+
+        widgetableStructure.nodeIndexes.forEach((nodeID, nodeOrderIndex) => {
+            const fieldInfo = widgetableStructure.nodes[nodeID];
+            if (!fieldInfo || !Array.isArray(fieldInfo.widgets)) {
+                return;
+            }
+            fieldInfo.widgets.forEach((widget, widgetIndex) => {
+                if (!widget) {
+                    return;
+                }
+                const widgetType = String(widget.outputType ?? 'unknown');
+                const sameTypeIndex = sameTypeSeen.get(widgetType) ?? 0;
+                const sameTypeTotal = sameTypeTotals.get(widgetType) ?? 0;
+
+                const meta: WidgetRenderMeta = {
+                    absoluteIndex,
+                    absolutePosition: absoluteIndex + 1,
+                    sameTypeIndex,
+                    sameTypePosition: sameTypeIndex + 1,
+                    sameTypeTotal,
+                    widgetType,
+                    nodeOrderIndex,
+                    nodeId: fieldInfo.id,
+                    widgetIndex,
+                };
+                metaMap.set(`${fieldInfo.id}:${widgetIndex}`, meta);
+
+                sameTypeSeen.set(widgetType, sameTypeIndex + 1);
+                absoluteIndex += 1;
+            });
+        });
+
+        return metaMap;
+    }, [widgetableStructure]);
+
+    const getRenderMeta = useCallback(
+        (fieldInfo: WidgetableNode, widgetIndex: number): WidgetRenderMeta | undefined => {
+            return renderMetaMap.get(`${fieldInfo.id}:${widgetIndex}`);
+        },
+        [renderMetaMap],
+    );
+
     const { renderWidget, renderTitle } = useWidgetableRenderer({
         widgetableValues: widgetableValues,
         onWidgetChange,
         onTitleChange,
-        extraOptions: widgetableStructure.options
+        extraOptions: widgetableStructure.options,
+        getRenderMeta,
     });
 
     const allRenderedFields = useMemo(() => {

@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { v4 } from 'uuid';
 
 import {
   useWidgetUploadPassHandlers,
@@ -50,6 +51,7 @@ export const useUploadPassHandler = ({
               type: 'resource',
               resource: normalizedResource,
               resourceId: normalizedResource,
+              fileName: `${v4()}.png`
             };
           },
         };

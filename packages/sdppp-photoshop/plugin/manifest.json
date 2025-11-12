@@ -1,7 +1,7 @@
 {
   "id": "sd-ppp2",
   "name": "SD-PPP2.0",
-  "version": "1.9.14",
+  "version": "1.9.15",
   "main": "sdppp/photoshop.html", 
   "manifestVersion": 5,
   "host": {
@@ -39,7 +39,7 @@
       "type": "panel",
       "id": "sd-ppp",
       "label": {
-        "default": "SD-PPP 2.0-prerelease.4"
+        "default": "SD-PPP 2.0-prerelease.5"
       },
       "minimumSize": {
         "width": 330,

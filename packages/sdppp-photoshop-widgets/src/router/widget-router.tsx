@@ -1,12 +1,12 @@
-import React from 'react';
 import type { WidgetableImagesWidget, WidgetableWidget } from '@sdppp/common/schemas/schemas';
 import type { WidgetRenderer, WidgetRendererProps } from '@sdppp/widgetable-ui';
+import React from 'react';
+import { useWorkBoundary } from 'sdppp-photoshop-widgets/context/WidgetImageMaskContext';
 import { ImageSelector } from '../components/selectors/ImageSelector';
 import { LocalImagePackSelector } from '../components/selectors/LocalImagePackSelector';
 import { MaskSelector } from '../components/selectors/MaskSelector';
 import { MultiImageSelector } from '../components/selectors/MultiImageSelector';
 import { SingleVideoSelector } from '../components/selectors/SingleVideoSelector';
-import { useWorkBoundaryResolver } from '../context/WidgetImageMaskContext';
 
 type SelectorKind =
   | 'single-image'
@@ -44,17 +44,21 @@ const renderSelector = (
   widget: AnyWidget,
   value: any,
   extraOptions: any,
-  resolveWorkBoundary: ReturnType<typeof useWorkBoundaryResolver>,
+  workBoundaryUri: string,
   onValueChange?: (next: string[]) => void,
 ) => {
   switch (selectorKind) {
     case 'single-image':
+      if (!(value instanceof Array)) value = [value];
       return (
         <ImageSelector
           widgetableId={fieldInfo.id}
           value={value as string[]}
-          workBoundary={resolveWorkBoundary()}
-          onValueChange={onValueChange}
+          workBoundary={workBoundaryUri}
+          onValueChange={(next: string[])=> {
+            const singleOnValueChange = onValueChange as ((next: string) => void) | undefined;
+            singleOnValueChange && singleOnValueChange(next[0]);
+          }}
         />
       );
     case 'multi-image': {
@@ -64,18 +68,22 @@ const renderSelector = (
           widgetableId={fieldInfo.id}
           value={value as string[]}
           maxCount={maxCount}
-          workBoundary={resolveWorkBoundary()}
+          workBoundary={workBoundaryUri}
           onValueChange={onValueChange}
         />
       );
     }
     case 'masks':
+      if (!(value instanceof Array)) value = [value];
       return (
         <MaskSelector
           widgetableId={fieldInfo.id}
           value={value as string[]}
-          workBoundary={resolveWorkBoundary()}
-          onValueChange={onValueChange}
+          workBoundary={workBoundaryUri}
+          onValueChange={(next: string[])=> {
+            const singleOnValueChange = onValueChange as ((next: string) => void) | undefined;
+            singleOnValueChange && singleOnValueChange(next[0]);
+          }}
         />
       );
     case 'local-image-pack':
@@ -87,11 +95,15 @@ const renderSelector = (
         />
       );
     case 'single-video':
+      if (!(value instanceof Array)) value = [value];
       return (
         <SingleVideoSelector
           widgetableId={fieldInfo.id}
           value={value as string[]}
-          onValueChange={onValueChange}
+          onValueChange={(next: string[])=> {
+            const singleOnValueChange = onValueChange as ((next: string) => void) | undefined;
+            singleOnValueChange && singleOnValueChange(next[0]);
+          }}
         />
       );
     default:
@@ -109,7 +121,7 @@ export const createImageMaskWidgetRouter = (options: RouterOptions = {}): Widget
     extraOptions,
     onValueChange,
   }) => {
-    const resolveWorkBoundary = useWorkBoundaryResolver();
+    const workBoundaryUri = useWorkBoundary();
     const selectorKind =
       configuredSelectorKind ?? resolveSelectorKind(widget as AnyWidget, extraOptions);
     return renderSelector(
@@ -118,7 +130,7 @@ export const createImageMaskWidgetRouter = (options: RouterOptions = {}): Widget
       widget as AnyWidget,
       value,
       extraOptions,
-      resolveWorkBoundary,
+      workBoundaryUri,
       typeof onValueChange === 'function' ? onValueChange : undefined,
     );
   };

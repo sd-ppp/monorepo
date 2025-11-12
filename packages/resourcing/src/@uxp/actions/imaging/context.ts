@@ -2,6 +2,11 @@ import type { Jimp } from "jimp";
 
 export interface McpMeshLike {
   implementAction: (name: string, handler: (...args: any[]) => any) => void;
+  store?: {
+    getState?: () => any;
+    setState?: (partial: Record<string, unknown>) => void;
+    subscribe?: (listener: (state: any, prevState: any) => void) => () => void;
+  };
 }
 
 export interface MaterializedPayload {

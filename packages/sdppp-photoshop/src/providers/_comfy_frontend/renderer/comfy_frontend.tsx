@@ -95,10 +95,10 @@ function useComfyConnectStatus() {
     } else {
         showRenderer = true
     }
-    if (comfyHTTPCode === 200 && (!comfyWebviewVersion || comfyWebviewVersion != SDPPP_VERSION)) {
-        statusText += (statusText ? ' | ' : '') + t('comfy.version_mismatch', { comfyVersion: comfyWebviewVersion, pluginVersion: SDPPP_VERSION })
-        statusTextType = statusTextType == 'error' ? 'error' : 'warning'
-    }
+    // if (comfyHTTPCode === 200 && (!comfyWebviewVersion || comfyWebviewVersion != SDPPP_VERSION)) {
+    //     statusText += (statusText ? ' | ' : '') + t('comfy.version_mismatch', { comfyVersion: comfyWebviewVersion, pluginVersion: SDPPP_VERSION })
+    //     statusTextType = statusTextType == 'error' ? 'error' : 'warning'
+    // }
 
     return {
         statusText,

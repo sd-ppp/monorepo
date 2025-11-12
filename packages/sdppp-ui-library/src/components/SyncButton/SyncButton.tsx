@@ -53,6 +53,8 @@ export interface SyncButtonProps extends React.HTMLAttributes<HTMLDivElement> {
   buttonSizeSub?: number | string;
   // customize main button style (e.g., 'primary')
   mainButtonType?: ButtonProps['type'];
+  mainButtonStyle?: React.CSSProperties;
+  autoSyncButtonStyle?: React.CSSProperties;
   tooltipPlacement?: TooltipPlacement;
   autoTooltipPlacement?: TooltipPlacement;
   direction?: 'horizontal' | 'vertical';
@@ -76,6 +78,8 @@ export const SyncButton: React.FC<SyncButtonProps> = ({
   buttonSize,
   buttonSizeSub,
   mainButtonType = 'default',
+  mainButtonStyle,
+  autoSyncButtonStyle,
   tooltipPlacement = 'top',
   autoTooltipPlacement = 'top',
   direction = 'horizontal',
@@ -195,6 +199,7 @@ export const SyncButton: React.FC<SyncButtonProps> = ({
         minWidth: 0,
         width: isVertical ? '100%' : mainPrimaryCss,
         ...(isVertical ? { padding: 0, fontSize: 12 } : {}),
+        ...mainButtonStyle,
       }}
     >
       <div
@@ -260,12 +265,22 @@ export const SyncButton: React.FC<SyncButtonProps> = ({
         ) : null}
       </div>
     </Button>
-  ), [disabled, handleSyncClick, children, mainButtonType, descText, isVertical, mainPrimaryCss, autoCrossCss]);
+  ), [
+    disabled,
+    handleSyncClick,
+    children,
+    mainButtonType,
+    descText,
+    isVertical,
+    mainPrimaryCss,
+    autoCrossCss,
+    mainButtonStyle,
+  ]);
 
   const autoSyncButton = useMemo(() => (
     <Button
       data-testid="sync-button-auto-sync"
-      type={isAutoSync ? 'primary' : 'dashed'}
+      type={isAutoSync ? 'default' : 'dashed'}
       icon={autoSyncButtonIcon}
       size="middle"
       disabled={disabled}
@@ -283,6 +298,7 @@ export const SyncButton: React.FC<SyncButtonProps> = ({
         ...((isVertical || shouldCollapseToAuto)
           ? { padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }
           : {}),
+        ...autoSyncButtonStyle,
       }}
     />
   ), [
@@ -294,6 +310,7 @@ export const SyncButton: React.FC<SyncButtonProps> = ({
     autoCrossCss,
     shouldCollapseToAuto,
     collapsePrimaryCss,
+    autoSyncButtonStyle,
   ]);
 
   const renderedAutoSyncButton = useMemo(() => {
