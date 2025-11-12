@@ -23,12 +23,12 @@ export const resolveContentTooltip = (uri: string, translate: TranslateFn): stri
     const trimmed = layerName?.trim();
     if (trimmed) {
       return translate('image.upload.tooltip.current.layer_named', {
-        defaultValue: `当前选项：图层 ${trimmed}`,
+        defaultValue: `Current selection: Layer ${trimmed}`,
         layerName: trimmed,
       });
     }
     return translate('image.upload.tooltip.current.layer', {
-      defaultValue: '当前选项：图层',
+      defaultValue: 'Current selection: Layer',
     });
   };
 
@@ -38,7 +38,7 @@ export const resolveContentTooltip = (uri: string, translate: TranslateFn): stri
     const lastSegment = segments[segments.length - 1];
     if (lastSegment === 'canvas') {
       return translate('image.upload.tooltip.current.canvas', {
-        defaultValue: '当前选项：画布',
+        defaultValue: 'Current selection: Canvas',
       });
     }
     if (lastSegment === 'layer') {
@@ -50,7 +50,7 @@ export const resolveContentTooltip = (uri: string, translate: TranslateFn): stri
 
   if (normalized.endsWith('/canvas')) {
     return translate('image.upload.tooltip.current.canvas', {
-      defaultValue: '当前选项：画布',
+      defaultValue: 'Current selection: Canvas',
     });
   }
   if (/\/layer(?:\/|\?|$)/.test(normalized)) {

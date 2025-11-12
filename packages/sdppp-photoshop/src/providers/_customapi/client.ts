@@ -75,11 +75,16 @@ export class SDPPPCustomAPI extends Client<{
     try {
       // Check if already aborted
       if (signal?.aborted) {
-        throw new DOMException('Task creation aborted', 'AbortError');
+        throw new DOMException(
+          t('common.error.task_creation_aborted', { defaultValue: 'Task creation aborted' }),
+          'AbortError'
+        );
       }
 
       if (!input.image_input || !input.prompt) {
-        throw new Error('Image input and prompt are required');
+        throw new Error(t('customapi.error.input_required', {
+          defaultValue: 'Image input and prompt are required'
+        }));
       }
 
       // Normalize to an array of inputs (tokens or base64)
@@ -94,7 +99,10 @@ export class SDPPPCustomAPI extends Client<{
         statusGetter: async (id: string) => {
           // Check if aborted before making status request
           if (signal?.aborted) {
-            throw new DOMException('Status check aborted', 'AbortError');
+            throw new DOMException(
+              t('common.error.status_check_aborted', { defaultValue: 'Status check aborted' }),
+              'AbortError'
+            );
           }
 
           if (!isCompleted) {
@@ -127,8 +135,13 @@ export class SDPPPCustomAPI extends Client<{
                 isCompleted = true;
                 throw error;
               }
-            }
           }
+        }
+
+          const nonGoogleStatusText = taskResult?.success
+            ? t('common.success', { defaultValue: 'Success' })
+            : t('common.failed', { defaultValue: 'Failed' });
+          const nonGoogleGeneratingText = t('common.generating', { defaultValue: 'Generating...' });
 
           return {
             isCompleted,
@@ -136,20 +149,25 @@ export class SDPPPCustomAPI extends Client<{
             progressMessage: isCompleted
               ? (this.config.format === 'google'
                 ? (taskResult?.success ? t('google.status.success') : t('google.status.failed'))
-                : (taskResult?.success ? 'Success' : 'Failed'))
-              : (this.config.format === 'google' ? t('google.status.generating') : 'Generating...'),
+                : nonGoogleStatusText)
+              : (this.config.format === 'google' ? t('google.status.generating') : nonGoogleGeneratingText),
             rawData: taskResult
           };
         },
         resultGetter: async (id: string, lastStatusResult: any) => {
           // Check if aborted before getting results
           if (signal?.aborted) {
-            throw new DOMException('Result fetch aborted', 'AbortError');
+            throw new DOMException(
+              t('common.error.result_fetch_aborted', { defaultValue: 'Result fetch aborted' }),
+              'AbortError'
+            );
           }
 
           const result = lastStatusResult.rawData;
           if (!result?.success || !result.imageUrl) {
-            throw new Error(result?.error || 'Generation failed');
+            throw new Error(result?.error || t('customapi.error.generation_failed', {
+              defaultValue: 'Generation failed'
+            }));
           }
           return [{ url: result.imageUrl, rawData: result }];
         },
@@ -160,7 +178,9 @@ export class SDPPPCustomAPI extends Client<{
       });
 
       // Set task metadata
-      task.taskName = this.config.format === 'google' ? `Google Gemini - Image Generation` : 'OpenAI - Image Edit';
+      task.taskName = this.config.format === 'google'
+        ? t('customapi.task.name.google', { defaultValue: 'Google Gemini - Image Generation' })
+        : t('customapi.task.name.openai', { defaultValue: 'OpenAI - Image Edit' });
       task.metadata = {
         format: this.config.format,
         model
@@ -177,7 +197,10 @@ export class SDPPPCustomAPI extends Client<{
     try {
       // Check if already aborted
       if (signal?.aborted) {
-        throw new DOMException('Upload aborted', 'AbortError');
+        throw new DOMException(
+          t('common.error.upload_aborted', { defaultValue: 'Upload aborted' }),
+          'AbortError'
+        );
       }
 
       if (type === 'resource') {
@@ -185,7 +208,9 @@ export class SDPPPCustomAPI extends Client<{
         return base64 || '';
 
       } else {
-        throw new Error('Unsupported image input type');
+        throw new Error(t('customapi.error.unsupported_image_input', {
+          defaultValue: 'Unsupported image input type'
+        }));
       }
     } catch (error) {
       console.error('Error uploading image:', error);

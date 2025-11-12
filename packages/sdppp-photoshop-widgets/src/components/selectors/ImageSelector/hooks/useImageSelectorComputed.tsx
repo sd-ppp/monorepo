@@ -48,13 +48,13 @@ export const useImageSelectorComputed = ({
     logger,
   } = state;
 
-  const cutLabel = translate('image.upload.primary.cut', { defaultValue: '裁剪' });
-  const scanLabel = translate('image.upload.primary.scan', { defaultValue: '扫描' });
+  const cutLabel = translate('image.upload.primary.cut', { defaultValue: 'Crop' });
+  const scanLabel = translate('image.upload.primary.scan', { defaultValue: 'Scan' });
   const cutTooltipText = translate('image.upload.tooltip.cut_action', {
-    defaultValue: '获取图像+\n裁剪选区遮罩',
+    defaultValue: 'Fetch image +\nCrop selection mask',
   });
   const scanTooltipText = translate('image.upload.tooltip.scan_action', {
-    defaultValue: '获取图像+\n限制图像范围',
+    defaultValue: 'Fetch image +\nLimit image boundary',
   });
 
   const thumbnailParams = useMemo<UseThumbnailParams>(
@@ -94,22 +94,22 @@ export const useImageSelectorComputed = ({
       const displayName = layerInfo?.layerName?.trim() ?? layerInfo?.layerId?.trim();
       if (displayName) {
         return translate('image.upload.status.layer.short_named', {
-          defaultValue: `图层 ${displayName}`,
+          defaultValue: `Layer ${displayName}`,
           layerName: layerInfo?.layerName ?? undefined,
           layerId: layerInfo?.layerId ?? undefined,
         });
       }
       return translate('image.upload.status.layer.short', {
-        defaultValue: '图层',
+        defaultValue: 'Layer',
       });
     }
     if (sourceMode === 'file') {
       return translate('image.upload.status.file.short', {
-        defaultValue: '本地文件',
+        defaultValue: 'Local file',
       });
     }
     return translate('image.upload.status.canvas.short', {
-      defaultValue: '画布',
+      defaultValue: 'Canvas',
     });
   }, [state, translate]);
 

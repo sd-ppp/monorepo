@@ -10,6 +10,7 @@ export interface LocalResourceSelectionItem {
   preview: string | null;
   mime?: string | null;
   fileName: string;
+  nativePath?: string | null;
 }
 
 export interface LocalResourceSelectionResult {
@@ -29,6 +30,17 @@ const normalizeResource = (value?: string | null): string | null => {
   if (!value) return null;
   const trimmed = value.trim();
   return trimmed.length ? trimmed : null;
+};
+
+const sanitizeNativePath = (value?: string | null): string | null => {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const lower = trimmed.toLowerCase();
+  if (lower === 'undefined' || lower === 'null') {
+    return null;
+  }
+  return trimmed;
 };
 
 export const useLocalResourceSelection = (
@@ -124,6 +136,7 @@ export const useLocalResourceSelection = (
           preview,
           mime,
           fileName: buildUploadFileName(resource, mime ?? undefined),
+          nativePath: sanitizeNativePath(entry.nativePath),
         });
       }
     } catch (error) {

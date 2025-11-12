@@ -35,6 +35,15 @@ const ALLOWED_VIDEO_EXTENSIONS = new Set([
 
 const VIDEO_SELECTION_PARAMS = {
   multiple: false,
+  types: [
+    {
+      description: 'Video Files',
+      extensions: Array.from(ALLOWED_VIDEO_EXTENSIONS),
+      accept: {
+        'video/*': Array.from(ALLOWED_VIDEO_EXTENSIONS),
+      },
+    },
+  ],
 } as const;
 
 const WRAPPER_GAP = 8;
@@ -51,6 +60,17 @@ const PREVIEW_CONTENT_STYLE: React.CSSProperties = {
   alignItems: 'center',
   gap: 12,
   textAlign: 'center',
+};
+
+const sanitizeText = (input?: string | null): string | undefined => {
+  if (typeof input !== 'string') return undefined;
+  const trimmed = input.trim();
+  if (!trimmed) return undefined;
+  const lower = trimmed.toLowerCase();
+  if (lower === 'undefined' || lower === 'null') {
+    return undefined;
+  }
+  return trimmed;
 };
 
 const safeJsonStringify = (value: unknown): string => {
@@ -241,7 +261,9 @@ export const SingleVideoSelector: React.FC<{
 
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'error'>('idle');
   const [uploadErrorMessage, setUploadErrorMessage] = useState<string | null>(null);
-  const [displayNameCache, setDisplayNameCache] = useState<Record<string, string>>({});
+  const [displayInfoCache, setDisplayInfoCache] = useState<
+    Record<string, { fileName?: string; nativePath?: string | null }>
+  >({});
   const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number }>({
     current: 0,
     total: 0,
@@ -249,11 +271,20 @@ export const SingleVideoSelector: React.FC<{
 
   const currentResource = useMemo(() => {
     if (!Array.isArray(value) || !value.length) return '';
-    return (value[0] ?? '').trim();
+    const first = value[0];
+    return sanitizeText(typeof first === 'string' ? first : undefined) ?? '';
   }, [value]);
 
   const hasVideo = currentResource.length > 0;
-  const displayLabel = hasVideo ? displayNameCache[currentResource] ?? currentResource : '';
+  const currentDisplayInfo = hasVideo ? displayInfoCache[currentResource] : undefined;
+  const displayLabel = useMemo(() => {
+    if (!hasVideo) return '';
+    const nativePath = sanitizeText(currentDisplayInfo?.nativePath);
+    if (nativePath) return nativePath;
+    const fileName = sanitizeText(currentDisplayInfo?.fileName);
+    if (fileName) return fileName;
+    return currentResource;
+  }, [hasVideo, currentDisplayInfo, currentResource]);
 
   const recordUploadError = useCallback(
     (reason?: unknown) => {
@@ -326,14 +357,16 @@ export const SingleVideoSelector: React.FC<{
         const uploaded = await runUploadPassOnce(uploadPass);
         const normalized = typeof uploaded === 'string' ? uploaded.trim() : '';
         if (normalized) {
-          setDisplayNameCache(prev => {
+          const safeFileName = sanitizeText(file.name);
+          setDisplayInfoCache(prev => {
             const next = { ...prev };
             if (previousValue && previousValue !== normalized) {
               delete next[previousValue];
             }
-            if (file.name) {
-              next[normalized] = file.name;
-            }
+            next[normalized] = {
+              ...(safeFileName ? { fileName: safeFileName } : {}),
+              nativePath: null,
+            };
             return next;
           });
           emitValue([normalized]);
@@ -360,7 +393,7 @@ export const SingleVideoSelector: React.FC<{
       logger,
       recordUploadError,
       runUploadPassOnce,
-      setDisplayNameCache,
+      setDisplayInfoCache,
       setUploadErrorMessage,
       setUploadProgress,
       setUploadStatus,
@@ -464,14 +497,17 @@ export const SingleVideoSelector: React.FC<{
         const uploaded = await runUploadPassOnce(uploadPass);
         const normalized = typeof uploaded === 'string' ? uploaded.trim() : '';
         if (normalized) {
-          setDisplayNameCache(prev => {
+          const safeNativePath = sanitizeText(item.nativePath) ?? null;
+          const safeFileName = sanitizeText(item.fileName);
+          setDisplayInfoCache(prev => {
             const next = { ...prev };
             if (previousValue && previousValue !== normalized) {
               delete next[previousValue];
             }
-            if (item.fileName) {
-              next[normalized] = item.fileName;
-            }
+            next[normalized] = {
+              ...(safeFileName ? { fileName: safeFileName } : {}),
+              nativePath: safeNativePath,
+            };
             return next;
           });
           emitValue([normalized]);
@@ -514,7 +550,7 @@ export const SingleVideoSelector: React.FC<{
   const emptyLabel = t('video.local.empty', { defaultValue: '暂无视频' });
 
   const handleClearVideo = useCallback(() => {
-    setDisplayNameCache({});
+    setDisplayInfoCache({});
     setUploadErrorMessage(null);
     setUploadStatus('idle');
     setUploadProgress({ current: 0, total: 0 });

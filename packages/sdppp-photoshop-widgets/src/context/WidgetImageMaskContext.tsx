@@ -22,6 +22,7 @@ export interface FileResourceMaterializeRecord {
   width?: number | null;
   height?: number | null;
   mime?: string | null;
+  nativePath?: string | null;
   error?: string | null;
 }
 

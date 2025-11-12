@@ -1,3 +1,4 @@
+import { t } from '@sdppp/common'
 import { GeminiImageGenerator } from './client'
 
 export interface ImageRunResult {
@@ -48,9 +49,19 @@ export async function runOpenAIEditHttp(apiKey: string, baseURL: string, imageBu
     if (imageUrl) {
       return { success: true, imageUrl, apiTime }
     }
-    return { success: false, apiTime, error: 'No image returned' }
+    return {
+      success: false,
+      apiTime,
+      error: t('customapi.error.no_image_returned', { defaultValue: 'No image returned' })
+    }
   } catch (error: any) {
     const apiTime = Date.now() - apiStartTime
-    return { success: false, apiTime, error: error?.message || 'OpenAI API error' }
+    return {
+      success: false,
+      apiTime,
+      error:
+        error?.message ||
+        t('customapi.error.openai_api', { defaultValue: 'OpenAI API error' })
+    }
   }
 }

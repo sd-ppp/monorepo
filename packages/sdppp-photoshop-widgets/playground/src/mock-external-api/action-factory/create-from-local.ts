@@ -68,7 +68,7 @@ const measureImageSize = (src: string): Promise<{ width: number; height: number 
 const normalizeExtension = (value: unknown): string | null => {
   if (typeof value !== 'string') return null;
   const trimmed = value.trim().toLowerCase();
-  if (!trimmed) return null;
+  if (!trimmed || trimmed === 'undefined' || trimmed === 'null') return null;
   return trimmed.startsWith('.') ? trimmed : `.${trimmed}`;
 };
 

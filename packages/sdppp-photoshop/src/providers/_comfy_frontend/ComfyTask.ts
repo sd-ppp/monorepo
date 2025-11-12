@@ -1,4 +1,4 @@
-import { sdpppSDK,  } from '@sdppp/common';
+import { sdpppSDK, t } from '@sdppp/common';
 import { MainStore } from '../../tsx/App.store';
 import { BoundaryRectSchema } from '@sdppp/common/schemas/schemas';
 import { z } from 'zod';
@@ -18,7 +18,10 @@ export class ComfyTask {
 
     constructor(runParams: { size: number }, workflowName: string, docId: number, boundary: any) {
         this.taskId = `comfy_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
-        this.taskName = `ComfyUI - ${workflowName}`;
+        this.taskName = t('comfy.task.name', {
+            workflowName,
+            defaultValue: 'ComfyUI - {{workflowName}}'
+        });
         this.docId = docId;
         this.boundary = boundary;
 
@@ -59,13 +62,17 @@ export class ComfyTask {
 
             for await (const item of result) {
                 if (this.cancelled) {
-                    throw new Error('Task cancelled');
+                    throw new Error(t('comfy.error.task_cancelled', { defaultValue: 'Task cancelled' }));
                 }
 
                 // 更新进度
                 processedCount++;
                 this.progress = Math.min((processedCount / runParams.size) * 100, 95);
-                this.progressMessage = `Processing ${processedCount}/${runParams.size}`;
+                this.progressMessage = t('comfy.task.processing_progress', {
+                    processed: processedCount,
+                    total: runParams.size,
+                    defaultValue: 'Processing {{processed}}/{{total}}'
+                });
 
                 await this.updatePhotoshopProgress();
 

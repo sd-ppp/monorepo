@@ -125185,19 +125185,99 @@ function isVideoExtension(extension) {
   if (!normalised) return false;
   return VIDEO_EXTENSIONS.includes(normalised);
 }
+function normalizeName(input) {
+  if (!input) return void 0;
+  const trimmed = input.trim();
+  if (!trimmed) return void 0;
+  const lower = trimmed.toLowerCase();
+  if (lower === "undefined" || lower === "null") return void 0;
+  return trimmed;
+}
+function normalizeExtensionValue(value) {
+  if (typeof value !== "string") return void 0;
+  const normalized = normaliseExtension(value);
+  if (!normalized) return void 0;
+  if (normalized === ".undefined" || normalized === ".null") return void 0;
+  return normalized;
+}
 function extensionFromName$1(name) {
-  if (!name) return void 0;
-  const dot = name.lastIndexOf(".");
+  const normalized = normalizeName(name);
+  if (!normalized) return void 0;
+  const dot = normalized.lastIndexOf(".");
   if (dot === -1) return void 0;
-  return normaliseExtension(name.slice(dot));
+  return normalizeExtensionValue(normalized.slice(dot));
+}
+function normalizeNativePath(value) {
+  if (typeof value !== "string") return void 0;
+  const trimmed = value.trim();
+  if (!trimmed) return void 0;
+  const lower = trimmed.toLowerCase();
+  if (lower === "undefined" || lower === "null") {
+    return void 0;
+  }
+  return trimmed;
+}
+function sanitizeAcceptRecord(value) {
+  if (!value || typeof value !== "object") return void 0;
+  const result = {};
+  for (const [mime2, extensions] of Object.entries(value)) {
+    if (typeof mime2 !== "string" || !Array.isArray(extensions)) continue;
+    const sanitized = extensions.map(normalizeExtensionValue).filter((ext) => Boolean(ext));
+    if (!sanitized.length) continue;
+    const trimmedMime = mime2.trim();
+    if (!trimmedMime) continue;
+    result[trimmedMime] = sanitized;
+  }
+  return Object.keys(result).length ? result : void 0;
 }
 async function materializeViaSystemDialog(params) {
   const pickerOptions = {
     allowMultiple: (params == null ? void 0 : params.multiple) ?? false
   };
-  if (params == null ? void 0 : params.types) {
-    pickerOptions.types = params.types;
-  }
+  const sanitizeTypes = (types) => {
+    const extensionsSet = /* @__PURE__ */ new Set();
+    const acceptMap = {};
+    if (!Array.isArray(types)) {
+      return { extensions: extensionsSet, accept: acceptMap };
+    }
+    const pickerTypes2 = types.map((type2) => {
+      if (!type2 || typeof type2 !== "object") return null;
+      const description2 = typeof type2.description === "string" && type2.description.trim().length ? type2.description.trim() : void 0;
+      const extensions = Array.isArray(type2.extensions) ? type2.extensions.map(normalizeExtensionValue).filter((ext) => Boolean(ext)) : [];
+      const accept = sanitizeAcceptRecord(type2.accept);
+      if (!extensions.length && !accept) {
+        return null;
+      }
+      extensions.forEach((ext) => extensionsSet.add(ext));
+      if (accept) {
+        for (const [mime2, extensionList] of Object.entries(accept)) {
+          if (!acceptMap[mime2]) {
+            acceptMap[mime2] = [...extensionList];
+          } else {
+            for (const ext of extensionList) {
+              if (!acceptMap[mime2].includes(ext)) {
+                acceptMap[mime2].push(ext);
+              }
+            }
+          }
+        }
+      }
+      return {
+        description: description2,
+        extensions,
+        ...accept ? { accept } : {}
+      };
+    }).filter(
+      (entry) => Boolean(entry)
+    );
+    return {
+      extensions: extensionsSet,
+      accept: acceptMap,
+      pickerTypes: pickerTypes2.length ? pickerTypes2 : void 0
+    };
+  };
+  const { extensions: allowedExtensions, pickerTypes } = sanitizeTypes(params == null ? void 0 : params.types);
+  const allowedExtensionsArray = Array.from(allowedExtensions);
   const entries = await uxp.storage.localFileSystem.getFileForOpening(pickerOptions);
   if (!entries) {
     throw new Error("cancelled");
@@ -125208,8 +125288,11 @@ async function materializeViaSystemDialog(params) {
   }
   return Promise.all(
     files.map(async (file) => {
-      const name = file.name ?? "local-file";
+      const name = normalizeName(file.name) ?? "local-file";
       const extension = extensionFromName$1(name);
+      if (allowedExtensionsArray.length && (!extension || !allowedExtensions.has(extension))) {
+        throw new Error(`Unsupported file type: ${extension ?? "unknown"}`);
+      }
       const mime2 = mimeFromExtension(extension);
       const arrayBuffer = await file.read({ format: uxp.storage.formats.binary });
       return {
@@ -125217,7 +125300,7 @@ async function materializeViaSystemDialog(params) {
         mime: mime2,
         name,
         meta: {
-          nativePath: file.nativePath
+          nativePath: normalizeNativePath(file.nativePath)
         }
       };
     })
@@ -125228,7 +125311,7 @@ function registerCreateFromLocalAction(context) {
   mcpMesh2.implementAction(
     "fileResource.createFromLocal",
     async (params = {}) => {
-      var _a3;
+      var _a3, _b2, _c;
       try {
         const payloads = await materializeViaSystemDialog(params);
         const results = [];
@@ -125291,12 +125374,14 @@ function registerCreateFromLocalAction(context) {
               thumbnail: thumbnailBase64,
               width: imgWidth,
               height: imgHeight,
-              mime: mime2
+              mime: mime2,
+              nativePath: normalizeNativePath((_b2 = payload.meta) == null ? void 0 : _b2.nativePath)
             });
           } catch (fileError) {
             results.push({
               resource: null,
-              error: (fileError == null ? void 0 : fileError.message) || String(fileError)
+              error: (fileError == null ? void 0 : fileError.message) || String(fileError),
+              nativePath: normalizeNativePath((_c = payload.meta) == null ? void 0 : _c.nativePath)
             });
           }
         }
@@ -125583,6 +125668,7 @@ const zhCN = {
   "task.running_duration": "运行了 {{duration}} 秒，{{message}}",
   "task.cancelled": "任务已取消",
   "task.cancel_failed": "任务取消失败: {{error}}",
+  "task.default_name": "AI 生成任务",
   "comfy.connect": "连接",
   "comfy.load_failed": "ComfyUI加载失败，HTTP状态码：{{code}}",
   "comfy.loading": "ComfyUI加载中...",
@@ -125602,6 +125688,9 @@ const zhCN = {
   "comfy.run": "运行",
   "comfy.back": "返回",
   "comfy.uploading": "正在上传...",
+  "comfy.task.name": "ComfyUI - {{workflowName}}",
+  "comfy.error.task_cancelled": "任务已取消",
+  "comfy.task.processing_progress": "处理进度 {{processed}}/{{total}}",
   "comfy.help_tooltip": "使用教程",
   "comfy.no_workflow_selected": "未选择工作流",
   "boundary.title": "输入设置",
@@ -125638,9 +125727,36 @@ const zhCN = {
   "runninghub.status.failed": "执行失败",
   "runninghub.status.success": "执行成功",
   "image.auto_refetch": "自动从PS重新获取",
+  "local_resource.selection.images": "图片",
   "runninghub.error.get_result_failed": "获取结果失败: {{error}}",
   "runninghub.error.task_failed": "任务执行失败: {{error}}",
   "runninghub.error.task_incomplete": "任务未完成，当前状态: {{status}}",
+  "runninghub.error.account_status_http": "getAccountStatus API 调用失败 - HTTP 错误，状态: {{status}}",
+  "runninghub.error.account_status_reason_unknown": "获取账户信息失败",
+  "runninghub.error.account_status_failed": "getAccountStatus API 调用失败 - {{reason}}",
+  "runninghub.error.form_data_http": "getNodes API 调用失败 - HTTP 错误，状态: {{status}}",
+  "runninghub.error.form_data_reason_unknown": "获取表单数据失败",
+  "runninghub.error.form_data_failed": "getNodes API 调用失败 - {{reason}}",
+  "runninghub.error.node_info_missing": "运行失败 - 未获取到 nodeInfoList，请先执行 getNodes()。",
+  "runninghub.error.run_http": "run API 调用失败 - HTTP 错误，状态: {{status}}",
+  "runninghub.error.run_reason_default": "任务执行失败",
+  "runninghub.error.run_failed": "run API 调用失败 - {{reason}}",
+  "runninghub.error.status_http": "status API 调用失败 - HTTP 错误，状态: {{status}}",
+  "runninghub.error.status_reason_unknown": "获取任务状态失败",
+  "runninghub.error.status_failed": "status API 调用失败 - {{reason}}",
+  "runninghub.error.outputs_http": "outputs API 调用失败 - HTTP 错误，状态: {{status}}",
+  "runninghub.error.outputs_failed": "outputs API 调用失败 - {{reason}}",
+  "runninghub.task.title": "RunningHub - {{webappId}}",
+  "runninghub.error.upload_http": "uploadImage API 调用失败 - HTTP 错误，状态: {{status}}",
+  "runninghub.error.upload_reason_unknown": "文件上传失败",
+  "runninghub.error.upload_failed": "uploadImage API 调用失败 - {{reason}}",
+  "customapi.error.no_image_returned": "未返回图片",
+  "customapi.error.openai_api": "OpenAI API 错误",
+  "customapi.error.input_required": "需要提供图像和提示词",
+  "customapi.error.generation_failed": "生成失败",
+  "customapi.task.name.google": "Google Gemini - 图片生成",
+  "customapi.task.name.openai": "OpenAI - 图片编辑",
+  "customapi.error.unsupported_image_input": "不支持的图像输入类型",
   "replicate.get_apikey": "如何获取APIKey",
   "replicate.apikey_placeholder": "请输入您的Replicate API Key",
   "replicate.execute": "执行",
@@ -125656,11 +125772,20 @@ const zhCN = {
   "common.save_and_run": "保存并立即执行",
   "common.loading": "加载中...",
   "common.error": "错误",
+  "common.error.unknown": "未知错误",
+  "common.error.task_creation_aborted": "任务创建已中止",
+  "common.error.status_check_aborted": "状态检查已中止",
+  "common.error.result_fetch_aborted": "结果获取已中止",
+  "common.error.upload_aborted": "上传已中止",
   "common.success": "成功",
+  "common.failed": "失败",
+  "common.generating": "生成中...",
   "common.cancel": "取消",
   "common.confirm": "确认",
   "common.options": "选项",
   "common.options_separator": "=== 选项 ===",
+  "upload_pass.error.unsupported_type": "不支持的上传类型：{{type}}",
+  "upload_pass.error.uploader_missing": "未配置上传器",
   // 已有的翻译资源（从 locales/zh.json）
   "webviewInForeground": "插件可能正在拦截 PS 快捷键... ",
   "webviewInForeground2": "点我恢复",
@@ -125710,6 +125835,11 @@ const zhCN = {
   "mask.selection_exclude": "选区除外",
   "mask.current_layer_exclude": "当前图层除外",
   "mask.empty": "空",
+  "widgetable.photoshop.deprecated_node": "SDPPP 2.0 不再需要此节点",
+  "work_boundary.error.empty_selection_mask": "选区遮罩为空",
+  "work_boundary.error.primary_resource_missing": "缺少主图资源",
+  "work_boundary.error.mask_resource_missing": "缺少遮罩资源",
+  "work_boundary.error.mask_apply_empty": "遮罩应用后未得到资源",
   // 文档和图层操作相关翻译
   "document {{0}} not found": "找不到文档: {{0}}",
   "create document for preview": "创建预览文档",
@@ -125792,6 +125922,14 @@ const zhCN = {
   "image.upload.primary.advanced.boundary.curlayer": "当前图层边界",
   "image.upload.primary.advanced.boundary.selection": "选区边界",
   "image.upload.primary.advanced.boundary.primary": "主图边界",
+  "image.upload.source.file.tooltip": "从磁盘上传",
+  "image.upload.source.layer.tooltip": "使用当前图层",
+  "image.upload.source.canvas.tooltip": "使用整个画布",
+  "image.upload.dropHint": "拖拽图片到此处松开完成上传",
+  "image.upload.status.layer.short_named": "图层 {{layerName}}",
+  "image.upload.status.layer.short": "图层",
+  "image.upload.status.file.short": "本地文件",
+  "image.upload.status.canvas.short": "画布",
   "image.upload.mask.button": "选区遮罩",
   "image.upload.mask.selection": "选区遮罩",
   "image.upload.mask.layer": "图层遮罩",
@@ -125912,6 +126050,7 @@ const enUS = {
   "task.running_duration": "Running for {{duration}} secs, {{message}}",
   "task.cancelled": "Task cancelled",
   "task.cancel_failed": "Task cancel failed: {{error}}",
+  "task.default_name": "AI Generation Task",
   "comfy.connect": "Connect",
   "comfy.load_failed": "ComfyUI failed to load, HTTP status code: {{code}}",
   "comfy.loading": "ComfyUI loading...",
@@ -125931,6 +126070,9 @@ const enUS = {
   "comfy.run": "Run",
   "comfy.back": "Back",
   "comfy.uploading": "Uploading...",
+  "comfy.task.name": "ComfyUI - {{workflowName}}",
+  "comfy.error.task_cancelled": "Task cancelled",
+  "comfy.task.processing_progress": "Processing {{processed}}/{{total}}",
   "comfy.help_tooltip": "Tutorial",
   "comfy.no_workflow_selected": "No workflow selected",
   "boundary.title": "Input Setting",
@@ -125967,9 +126109,36 @@ const enUS = {
   "runninghub.status.failed": "Failed",
   "runninghub.status.success": "Success",
   "image.auto_refetch": "Auto repick from PS",
+  "local_resource.selection.images": "Images",
   "runninghub.error.get_result_failed": "Failed to get result: {{error}}",
   "runninghub.error.task_failed": "Task execution failed: {{error}}",
   "runninghub.error.task_incomplete": "Task incomplete, current status: {{status}}",
+  "runninghub.error.account_status_http": "getAccountStatus API failed - HTTP error! status: {{status}}",
+  "runninghub.error.account_status_reason_unknown": "Failed to fetch account status",
+  "runninghub.error.account_status_failed": "getAccountStatus API failed - {{reason}}",
+  "runninghub.error.form_data_http": "getNodes API failed - HTTP error! status: {{status}}",
+  "runninghub.error.form_data_reason_unknown": "Failed to fetch form data",
+  "runninghub.error.form_data_failed": "getNodes API failed - {{reason}}",
+  "runninghub.error.node_info_missing": "run API failed - nodeInfoList unavailable. Please call getNodes() first.",
+  "runninghub.error.run_http": "run API failed - HTTP error! status: {{status}}",
+  "runninghub.error.run_reason_default": "Task execution failed",
+  "runninghub.error.run_failed": "run API failed - {{reason}}",
+  "runninghub.error.status_http": "status API failed - HTTP error! status: {{status}}",
+  "runninghub.error.status_reason_unknown": "Failed to get task status",
+  "runninghub.error.status_failed": "status API failed - {{reason}}",
+  "runninghub.error.outputs_http": "outputs API failed - HTTP error! status: {{status}}",
+  "runninghub.error.outputs_failed": "outputs API failed - {{reason}}",
+  "runninghub.task.title": "RunningHub - {{webappId}}",
+  "runninghub.error.upload_http": "uploadImage API failed - HTTP error! status: {{status}}",
+  "runninghub.error.upload_reason_unknown": "File upload failed",
+  "runninghub.error.upload_failed": "uploadImage API failed - {{reason}}",
+  "customapi.error.no_image_returned": "No image returned",
+  "customapi.error.openai_api": "OpenAI API error",
+  "customapi.error.input_required": "Image input and prompt are required",
+  "customapi.error.generation_failed": "Generation failed",
+  "customapi.task.name.google": "Google Gemini - Image Generation",
+  "customapi.task.name.openai": "OpenAI - Image Edit",
+  "customapi.error.unsupported_image_input": "Unsupported image input type",
   "replicate.get_apikey": "How to get APIKey",
   "replicate.apikey_placeholder": "Enter your Replicate API Key",
   "replicate.execute": "Execute",
@@ -125985,11 +126154,20 @@ const enUS = {
   "common.save_and_run": "Save and run immediately",
   "common.loading": "Loading...",
   "common.error": "Error",
+  "common.error.unknown": "Unknown error",
+  "common.error.task_creation_aborted": "Task creation aborted",
+  "common.error.status_check_aborted": "Status check aborted",
+  "common.error.result_fetch_aborted": "Result fetch aborted",
+  "common.error.upload_aborted": "Upload aborted",
   "common.success": "Success",
+  "common.failed": "Failed",
+  "common.generating": "Generating...",
   "common.cancel": "Cancel",
   "common.confirm": "Confirm",
   "common.options": "Options",
   "common.options_separator": "=== Options ===",
+  "upload_pass.error.unsupported_type": "Unsupported upload type: {{type}}",
+  "upload_pass.error.uploader_missing": "Uploader not set",
   // Existing translations (from locales/en.json)
   "webviewInForeground": "PS shortcuts may be blocked by plugin...",
   "webviewInForeground2": "click to restore",
@@ -126039,6 +126217,11 @@ const enUS = {
   "mask.selection_exclude": "Exclude selection",
   "mask.current_layer_exclude": "Exclude current layer",
   "mask.empty": "Empty",
+  "widgetable.photoshop.deprecated_node": "SDPPP 2.0 no longer needs this node",
+  "work_boundary.error.empty_selection_mask": "Empty selection mask",
+  "work_boundary.error.primary_resource_missing": "Primary image resource is missing",
+  "work_boundary.error.mask_resource_missing": "Mask resource is missing",
+  "work_boundary.error.mask_apply_empty": "Mask apply returned empty resource",
   // Document and layer operation related translations
   "document {{0}} not found": "Document {{0}} not found",
   "create document for preview": "Create document for preview",
@@ -126091,9 +126274,9 @@ const enUS = {
   "image.upload.tooltip.autosync.on": "Auto Sync: on",
   "image.upload.tooltip.autosync.off": "Auto Sync: off",
   "image.upload.tooltip.more_options_hint": "Hold Shift for more options; Ctrl for single fetch",
-  "image.upload.tooltip.current.canvas": "Current option: Canvas",
-  "image.upload.tooltip.current.layer": "Current option: Layer",
-  "image.upload.tooltip.current.layer_named": "Current option: Layer {{layerName}}",
+  "image.upload.tooltip.current.canvas": "Current selection: Canvas",
+  "image.upload.tooltip.current.layer": "Current selection: Layer",
+  "image.upload.tooltip.current.layer_named": "Current selection: Layer {{layerName}}",
   "image.upload.tooltip.current.file": "Current option: File",
   "image.upload.autosync.fetching": "Auto fetching…",
   "image.upload.retry": "Retry",
@@ -126121,6 +126304,14 @@ const enUS = {
   "image.upload.primary.advanced.boundary.curlayer": "Current layer boundary",
   "image.upload.primary.advanced.boundary.selection": "Selection boundary",
   "image.upload.primary.advanced.boundary.primary": "Primary boundary",
+  "image.upload.source.file.tooltip": "Upload from disk",
+  "image.upload.source.layer.tooltip": "Use current layer",
+  "image.upload.source.canvas.tooltip": "Use entire canvas",
+  "image.upload.dropHint": "Drag images here and release to upload",
+  "image.upload.status.layer.short_named": "Layer {{layerName}}",
+  "image.upload.status.layer.short": "Layer",
+  "image.upload.status.file.short": "Local file",
+  "image.upload.status.canvas.short": "Canvas",
   "image.upload.mask.button": "Selection mask",
   "image.upload.mask.selection": "Selection mask",
   "image.upload.mask.layer": "Layer mask",
@@ -130075,7 +130266,7 @@ async function loadMaskSnapshotJimp(mesh, boundaryUri, maskUri) {
     jimpImage.bitmap.data[idx + 0] = grayValue;
     jimpImage.bitmap.data[idx + 1] = grayValue;
     jimpImage.bitmap.data[idx + 2] = grayValue;
-    jimpImage.bitmap.data[idx + 3] = grayValue;
+    jimpImage.bitmap.data[idx + 3] = 255 - grayValue;
   });
   return {
     jimp: jimpImage,
@@ -132019,6 +132210,34 @@ startAuthMaintenance();
 let lastCurrentDocumentID = ((_a2 = photoshop.app.activeDocument) == null ? void 0 : _a2.id) || 0;
 let lastCurrentLayerID = ((_b = photoshop.app.activeDocument) == null ? void 0 : _b.activeLayers.map((layer) => layer.id).join(",")) || "";
 let selectionAreaID = 0;
+let lastSelectionStateIDFrame = "";
+let lastFrameSelectionBounds = null;
+function getActiveSelectionBounds() {
+  try {
+    const doc = photoshop.app.activeDocument;
+    if (!doc) {
+      return null;
+    }
+    const selection = doc.selection;
+    if (!selection) {
+      return null;
+    }
+    const bounds = selection.bounds;
+    if (!bounds) {
+      return null;
+    }
+    const left = bounds.left ?? bounds[0];
+    const top = bounds.top ?? bounds[1];
+    const right = bounds.right ?? bounds[2];
+    const bottom = bounds.bottom ?? bounds[3];
+    if (left == null || top == null || right == null || bottom == null || right <= left || bottom <= top) {
+      return null;
+    }
+    return { left, top, right, bottom };
+  } catch {
+    return null;
+  }
+}
 (async () => {
   mcpMesh.store.setState({
     uname: getSDPPPUID()
@@ -132031,7 +132250,7 @@ photoshop.action.addNotificationListener(["historyStateChanged"], (args) => {
     notifyLayerChange();
   }
 });
-photoshop.action.addNotificationListener(["toolModalStateChanged"], (name, args, ...rest) => {
+photoshop.action.addNotificationListener(["toolModalStateChanged"], (name, args) => {
   if (args.state._value == "exit" && args.kind._value == "paint") {
     notifyCanvasStateChange();
     notifyLayerChange();
@@ -132077,6 +132296,7 @@ function notifyCanvasStateChange() {
 function notifySelectionStateChange() {
   const id = `${selectionAreaID}_${lastCurrentDocumentID}_${lastCurrentLayerID}`;
   mcpMesh.store.setState({ selectionStateID: id });
+  return id;
 }
 function notifyLayerChange() {
   fetchDocuments();
@@ -132135,6 +132355,18 @@ function updateActions() {
 function checkCurrentDocument() {
   var _a3, _b2;
   try {
+    if ((mcpMesh == null ? void 0 : mcpMesh.store) && typeof mcpMesh.store.getState === "function") {
+      const currentState = mcpMesh.store.getState();
+      const currentSelectionStateID = (currentState == null ? void 0 : currentState.selectionStateID) ?? "";
+      const currentBounds = getActiveSelectionBounds();
+      if (currentSelectionStateID !== lastSelectionStateIDFrame) {
+        lastSelectionStateIDFrame = currentSelectionStateID;
+      } else if (!!currentBounds !== !!lastFrameSelectionBounds || currentBounds && lastFrameSelectionBounds && (currentBounds.left != lastFrameSelectionBounds.left || currentBounds.top != lastFrameSelectionBounds.top || currentBounds.right != lastFrameSelectionBounds.right || currentBounds.bottom != lastFrameSelectionBounds.bottom)) {
+        selectionAreaID++;
+        lastSelectionStateIDFrame = notifySelectionStateChange();
+      }
+      lastFrameSelectionBounds = currentBounds;
+    }
     const currentDocId = ((_a3 = photoshop.app.activeDocument) == null ? void 0 : _a3.id) || 0;
     const activeLayers = (_b2 = photoshop.app.activeDocument) == null ? void 0 : _b2.activeLayers.map((layer) => layer.id).join(",");
     if (lastCurrentDocumentID != currentDocId) {
@@ -132157,7 +132389,8 @@ function checkCurrentDocument() {
   requestAnimationFrame(checkCurrentDocument);
 }
 requestAnimationFrame(checkCurrentDocument);
-notifySelectionStateChange();
+lastSelectionStateIDFrame = notifySelectionStateChange();
+lastFrameSelectionBounds = getActiveSelectionBounds();
 setInterval(updateActions, 5e3);
 setInterval(() => {
   updateDocumentState();

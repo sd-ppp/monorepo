@@ -157,7 +157,12 @@ function RunningHubRendererModels() {
     return (
         <UploadPassProvider
             uploader={async (uploadInput, signal) => {
-                if (uploadInput.type !== 'resource') throw new Error('Unsupported upload type: ' + uploadInput.type);
+                if (uploadInput.type !== 'resource') {
+                    throw new Error(t('upload_pass.error.unsupported_type', {
+                        type: uploadInput.type,
+                        defaultValue: 'Unsupported upload type: {{type}}'
+                    }));
+                }
                 return await client.uploadImage(uploadInput.type, uploadInput.resourceId as string, 'png', signal);
             }}
         >

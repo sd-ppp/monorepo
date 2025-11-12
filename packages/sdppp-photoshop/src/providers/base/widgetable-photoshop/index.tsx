@@ -17,13 +17,15 @@ import { resolveWorkBoundaryContext } from './work-boundary';
 
 // 渲染旧版 PS_DOCUMENT / PS_LAYER 节点的占位内容
 export const renderDeprecatedWidget: WidgetRenderer = () => {
-    return <span>SDPPP 2.0不需要这个节点了</span>;
+    const { t } = useTranslation();
+    return <span>{t('widgetable.photoshop.deprecated_node', { defaultValue: 'SDPPP 2.0 no longer needs this node' })}</span>;
 };
 
 export const createImageMaskWidgetRegistry = (): WidgetRegistry => {
     return {
         images: imageMaskWidgetRouter,
         masks: imageMaskWidgetRouter,
+        video: imageMaskWidgetRouter,
         PS_DOCUMENT: renderDeprecatedWidget,
         PS_LAYER: renderDeprecatedWidget,
     };

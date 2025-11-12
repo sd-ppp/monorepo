@@ -19,6 +19,10 @@ export class SDPPPRunningHub extends Client<{
   // Simple in-module store to keep latest nodeInfoList per webappId
   private static nodeInfoListStore: Record<string, any[] | undefined> = {};
 
+  private getUnknownErrorMessage() {
+    return t('common.error.unknown', { defaultValue: 'Unknown error' });
+  }
+
   private getBaseHost(): string {
     const locale = getCurrentLanguage();
     return locale === 'en-US' ? 'www.runninghub.ai' : 'www.runninghub.cn';
@@ -45,7 +49,10 @@ export class SDPPPRunningHub extends Client<{
       });
 
       if (!response.ok) {
-        const errorMsg = `getAccountStatus API failed - HTTP error! status: ${response.status}`;
+        const errorMsg = t('runninghub.error.account_status_http', {
+          status: response.status,
+          defaultValue: 'getAccountStatus API failed - HTTP error! status: {{status}}'
+        });
         log('getAccountStatus error', { status: response.status, url: apiUrl });
         throw new Error(errorMsg);
       }
@@ -53,7 +60,15 @@ export class SDPPPRunningHub extends Client<{
       const result = await response.json();
 
       if (result.code !== 0) {
-        const errorMsg = `getAccountStatus API failed - ${result.msg || 'Failed to fetch account status'}`;
+        const reason =
+          result.msg ||
+          t('runninghub.error.account_status_reason_unknown', {
+            defaultValue: 'Failed to fetch account status'
+          });
+        const errorMsg = t('runninghub.error.account_status_failed', {
+          reason,
+          defaultValue: 'getAccountStatus API failed - {{reason}}'
+        });
         log('getAccountStatus error', { code: result.code, msg: result.msg, url: apiUrl });
         throw new Error(errorMsg);
       }
@@ -82,7 +97,10 @@ export class SDPPPRunningHub extends Client<{
       });
 
       if (!response.ok) {
-        const errorMsg = `getNodes API failed - HTTP error! status: ${response.status}`;
+        const errorMsg = t('runninghub.error.form_data_http', {
+          status: response.status,
+          defaultValue: 'getNodes API failed - HTTP error! status: {{status}}'
+        });
         log('getNodes error', { webappId, status: response.status, url: apiUrl });
         throw new Error(errorMsg);
       }
@@ -90,7 +108,15 @@ export class SDPPPRunningHub extends Client<{
       const formData = await response.json();
 
       if (formData.code !== 0) {
-        const errorMsg = `getNodes API failed - ${formData.msg || 'Failed to fetch form data'}`;
+        const reason =
+          formData.msg ||
+          t('runninghub.error.form_data_reason_unknown', {
+            defaultValue: 'Failed to fetch form data'
+          });
+        const errorMsg = t('runninghub.error.form_data_failed', {
+          reason,
+          defaultValue: 'getNodes API failed - {{reason}}'
+        });
         log('getNodes error', { webappId, code: formData.code, msg: formData.msg, url: apiUrl });
         throw new Error(errorMsg);
       }
@@ -160,7 +186,10 @@ export class SDPPPRunningHub extends Client<{
     try {
       // Check if already aborted
       if (signal?.aborted) {
-        throw new DOMException('Task creation aborted', 'AbortError');
+        throw new DOMException(
+          t('common.error.task_creation_aborted', { defaultValue: 'Task creation aborted' }),
+          'AbortError'
+        );
       }
 
       // Ensure nodeInfoList is available (fetch on-demand)
@@ -174,9 +203,10 @@ export class SDPPPRunningHub extends Client<{
         }
       }
       if (!currentNodeInfoList || currentNodeInfoList.length === 0) {
-        const errorMsg = 'run API failed - nodeInfoList unavailable. Please call getNodes() first.';
         log('run error', { webappId, error: 'nodeInfoList empty', url: apiUrl });
-        throw new Error(errorMsg);
+        throw new Error(t('runninghub.error.node_info_missing', {
+          defaultValue: 'run API failed - nodeInfoList unavailable. Please call getNodes() first.'
+        }));
       }
 
       const mergedNodeInfoList = this.mergeInputWithNodeInfoList(currentNodeInfoList, input);
@@ -212,7 +242,10 @@ export class SDPPPRunningHub extends Client<{
       });
 
       if (!response.ok) {
-        const errorMsg = `run API failed - HTTP error! status: ${response.status}`;
+        const errorMsg = t('runninghub.error.run_http', {
+          status: response.status,
+          defaultValue: 'run API failed - HTTP error! status: {{status}}'
+        });
         log('run error', { webappId, status: response.status, url: apiUrl });
         throw new Error(errorMsg);
       }
@@ -220,7 +253,15 @@ export class SDPPPRunningHub extends Client<{
       const result = await response.json();
 
       if (result.code !== 0) {
-        const errorMsg = `run API failed - ${result.msg || 'Task execution failed'}`;
+        const reason =
+          result.msg ||
+          t('runninghub.error.run_reason_default', {
+            defaultValue: 'Task execution failed'
+          });
+        const errorMsg = t('runninghub.error.run_failed', {
+          reason,
+          defaultValue: 'run API failed - {{reason}}'
+        });
         log('run error', { webappId, code: result.code, msg: result.msg, url: apiUrl });
         throw new Error(errorMsg);
       }
@@ -234,7 +275,10 @@ export class SDPPPRunningHub extends Client<{
 
           // Check if aborted before making status request
           if (signal?.aborted) {
-            throw new DOMException('Status check aborted', 'AbortError');
+            throw new DOMException(
+              t('common.error.status_check_aborted', { defaultValue: 'Status check aborted' }),
+              'AbortError'
+            );
           }
 
           const requestBody = {
@@ -267,7 +311,10 @@ export class SDPPPRunningHub extends Client<{
           // }
 
           if (!statusResponse.ok) {
-            const errorMsg = `status API failed - HTTP error! status: ${statusResponse.status}`;
+            const errorMsg = t('runninghub.error.status_http', {
+              status: statusResponse.status,
+              defaultValue: 'status API failed - HTTP error! status: {{status}}'
+            });
             log('statusGetter error', { taskId: id, status: statusResponse.status, url: statusUrl });
             throw new Error(errorMsg);
           }
@@ -275,7 +322,15 @@ export class SDPPPRunningHub extends Client<{
           const statusData = await statusResponse.json();
 
           if (statusData.code !== 0) {
-            const errorMsg = `status API failed - ${statusData.msg || 'Failed to get task status'}`;
+            const reason =
+              statusData.msg ||
+              t('runninghub.error.status_reason_unknown', {
+                defaultValue: 'Failed to get task status'
+              });
+            const errorMsg = t('runninghub.error.status_failed', {
+              reason,
+              defaultValue: 'status API failed - {{reason}}'
+            });
             log('statusGetter error', { taskId: id, code: statusData.code, msg: statusData.msg, url: statusUrl });
             throw new Error(errorMsg);
           }
@@ -295,7 +350,10 @@ export class SDPPPRunningHub extends Client<{
 
           // Check if aborted before getting results
           if (signal?.aborted) {
-            throw new DOMException('Result fetch aborted', 'AbortError');
+            throw new DOMException(
+              t('common.error.result_fetch_aborted', { defaultValue: 'Result fetch aborted' }),
+              'AbortError'
+            );
           }
 
           if (lastStatusResult.rawData.data === 'SUCCESS') {
@@ -315,7 +373,10 @@ export class SDPPPRunningHub extends Client<{
             });
 
             if (!outputsResponse.ok) {
-              const errorMsg = `outputs API failed - HTTP error! status: ${outputsResponse.status}`;
+              const errorMsg = t('runninghub.error.outputs_http', {
+                status: outputsResponse.status,
+                defaultValue: 'outputs API failed - HTTP error! status: {{status}}'
+              });
               log('resultGetter error', { taskId: id, status: outputsResponse.status, url: outputUrl });
               throw new Error(errorMsg);
             }
@@ -323,7 +384,13 @@ export class SDPPPRunningHub extends Client<{
             const outputsData = await outputsResponse.json();
 
             if (outputsData.code !== 0) {
-              const errorMsg = `outputs API failed - ${outputsData.msg || '未知错误'}`;
+              const reason =
+                outputsData.msg ||
+                this.getUnknownErrorMessage();
+              const errorMsg = t('runninghub.error.outputs_failed', {
+                reason,
+                defaultValue: 'outputs API failed - {{reason}}'
+              });
               log('resultGetter error', { taskId: id, code: outputsData.code, msg: outputsData.msg, url: outputUrl });
               throw new Error(t('runninghub.error.get_result_failed', { error: errorMsg }));
             }
@@ -335,7 +402,9 @@ export class SDPPPRunningHub extends Client<{
               rawData: output
             }));
           } else if (lastStatusResult.rawData.data === 'FAILED') {
-            throw new Error(t('runninghub.error.task_failed', { error: lastStatusResult.rawData.msg || '未知错误' }));
+            throw new Error(t('runninghub.error.task_failed', {
+              error: lastStatusResult.rawData.msg || this.getUnknownErrorMessage()
+            }));
           } else {
             throw new Error(t('runninghub.error.task_incomplete', { status: this.mapStatusToChineseMessage(lastStatusResult.rawData.data) }));
           }
@@ -355,7 +424,10 @@ export class SDPPPRunningHub extends Client<{
       });
 
       // 设置任务信息
-      task.taskName = `RunningHub - ${webappId}`;
+      task.taskName = t('runninghub.task.title', {
+        webappId,
+        defaultValue: 'RunningHub - {{webappId}}'
+      });
       task.metadata = {
         provider: 'runninghub',
         webappId: webappId,
@@ -379,7 +451,10 @@ export class SDPPPRunningHub extends Client<{
     try {
       // Check if already aborted
       if (signal?.aborted) {
-        throw new DOMException('Upload aborted', 'AbortError');
+        throw new DOMException(
+          t('common.error.upload_aborted', { defaultValue: 'Upload aborted' }),
+          'AbortError'
+        );
       }
 
       // Create form data for file upload
@@ -406,7 +481,10 @@ export class SDPPPRunningHub extends Client<{
       // }
 
       if (!response.ok) {
-        const errorMsg = `uploadImage API failed - HTTP error! status: ${response.status}`;
+        const errorMsg = t('runninghub.error.upload_http', {
+          status: response.status,
+          defaultValue: 'uploadImage API failed - HTTP error! status: {{status}}'
+        });
         log('uploadImage error', { filename, status: response.status, url: apiUrl });
         throw new Error(errorMsg);
       }
@@ -414,7 +492,13 @@ export class SDPPPRunningHub extends Client<{
       const result = await response.json();
 
       if (result.code !== 0) {
-        const errorMsg = `uploadImage API failed - ${result.msg || 'File upload failed'}`;
+        const reason =
+          result.msg ||
+          t('runninghub.error.upload_reason_unknown', { defaultValue: 'File upload failed' });
+        const errorMsg = t('runninghub.error.upload_failed', {
+          reason,
+          defaultValue: 'uploadImage API failed - {{reason}}'
+        });
         log('uploadImage error', { filename, code: result.code, msg: result.msg, url: apiUrl });
         throw new Error(errorMsg);
       }

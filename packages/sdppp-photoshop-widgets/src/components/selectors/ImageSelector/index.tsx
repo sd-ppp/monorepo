@@ -198,7 +198,7 @@ export const ImageSelector: React.FC<ImageSelectorProps> = ({
         icon: FileUp,
         activeIcon: FileUp,
         tooltip: t('image.upload.source.file.tooltip', {
-          defaultValue: '磁盘上传',
+          defaultValue: 'Upload from disk',
         }),
       },
       {
@@ -206,7 +206,7 @@ export const ImageSelector: React.FC<ImageSelectorProps> = ({
         icon: Layers,
         activeIcon: Layers2,
         tooltip: t('image.upload.source.layer.tooltip', {
-          defaultValue: '以图层选择',
+          defaultValue: 'Use current layer',
         }),
       },
       {
@@ -214,7 +214,7 @@ export const ImageSelector: React.FC<ImageSelectorProps> = ({
         icon: Scroll,
         activeIcon: Scroll,
         tooltip: t('image.upload.source.canvas.tooltip', {
-          defaultValue: '以画布选择',
+          defaultValue: 'Use entire canvas',
         }),
       },
     ],
@@ -229,7 +229,7 @@ export const ImageSelector: React.FC<ImageSelectorProps> = ({
   );
 
   const dropHint = t('image.upload.dropHint', {
-    defaultValue: '拖拽图片到此区域释放以上传',
+    defaultValue: 'Drag images here and release to upload',
   });
 
   const { isDragging, handlers: dropHandlers } = useFileDropZone({

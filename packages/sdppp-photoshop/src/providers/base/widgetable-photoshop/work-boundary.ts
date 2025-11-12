@@ -1,4 +1,4 @@
-import { sdpppSDK } from '@sdppp/common';
+import { sdpppSDK, t } from '@sdppp/common';
 import { GlobalImageStore } from './image-store/global-image-store';
 import type { AutoSyncConfig } from './image-store/types';
 
@@ -127,7 +127,9 @@ export const captureCurrentMask = async (
   try {
     result = await tryGetMask('selection', 'selection', true);
     if (!result?.resource) {
-      throw new Error('Empty selection mask');
+      throw new Error(t('work_boundary.error.empty_selection_mask', {
+        defaultValue: 'Empty selection mask'
+      }));
     }
   } catch (error) {
     try {
@@ -160,10 +162,14 @@ export const composeImageWithMask = async (
 ): Promise<CaptureResponse> => {
   const slot = GlobalImageStore.getState().getSlot(componentId, index);
   if (!slot?.primaryResourceId) {
-    throw new Error('Primary image resource is missing');
+    throw new Error(t('work_boundary.error.primary_resource_missing', {
+      defaultValue: 'Primary image resource is missing'
+    }));
   }
   if (!slot?.maskResourceId) {
-    throw new Error('Mask resource is missing');
+    throw new Error(t('work_boundary.error.mask_resource_missing', {
+      defaultValue: 'Mask resource is missing'
+    }));
   }
 
   try {
@@ -180,7 +186,9 @@ export const composeImageWithMask = async (
         maskResourceId: slot.maskResourceId,
         result: result ? { hasResource: !!result.resource, hasThumbnail: !!result.thumbnail, width: result.width, height: result.height } : null,
       });
-      throw new Error('applyMaskToImage returned empty resource');
+      throw new Error(t('work_boundary.error.mask_apply_empty', {
+        defaultValue: 'Mask apply returned empty resource'
+      }));
     }
 
     GlobalImageStore.getState().setSlotCompositeResource(componentId, index, result.resource);

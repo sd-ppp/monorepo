@@ -1,34 +1,34 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { theme } from 'antd';
-import {
-  useWidgetImageMaskActions,
-  useWidgetLogger,
-  useWidgetText,
-  useWidgetUploadPassHandlers,
-  useWorkBoundary,
-  type WidgetUploadPass,
-} from '../../context/WidgetImageMaskContext';
-import { LocalImagePackLayout } from './local-image-pack/LocalImagePackLayout';
-import {
-  useLocalImagePackSelection,
-  type LocalImagePackSelectionResult,
-} from '../../hooks/useLocalImagePackSelection';
-import {
-  buildUploadFileName,
-  type LocalImagePackPreviewCell,
-} from '../../utils/localImagePackLayout';
-import { useUploadCopy } from '../../hooks/useUploadCopy';
-import { useWidgetValueEmitter } from '../../hooks/useWidgetValueEmitter';
-import { resolveDocContext } from '../../utils/docContext';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { v4 } from 'uuid';
+import {
+    useWidgetImageMaskActions,
+    useWidgetLogger,
+    useWidgetText,
+    useWidgetUploadPassHandlers,
+    useWorkBoundary,
+    type WidgetUploadPass,
+} from '../../context/WidgetImageMaskContext';
 import { useFileDropZone } from '../../hooks/useFileDropZone';
 import {
-  buildBufferPayloadFromFile,
-  getSuccessfulMaterializeRecord,
-  isImageFile,
-  readFileAsDataUrl,
-} from '../../utils/fileUtils';
+    useLocalImagePackSelection,
+    type LocalImagePackSelectionResult,
+} from '../../hooks/useLocalImagePackSelection';
+import { useUploadCopy } from '../../hooks/useUploadCopy';
+import { useWidgetValueEmitter } from '../../hooks/useWidgetValueEmitter';
 import { withAlpha } from '../../utils/color';
+import { resolveDocContext } from '../../utils/docContext';
+import {
+    buildBufferPayloadFromFile,
+    getSuccessfulMaterializeRecord,
+    isImageFile,
+    readFileAsDataUrl,
+} from '../../utils/fileUtils';
+import {
+    buildUploadFileName,
+    type LocalImagePackPreviewCell,
+} from '../../utils/localImagePackLayout';
+import { LocalImagePackLayout } from './local-image-pack/LocalImagePackLayout';
 
 interface LocalImagePackSelectorProps {
   widgetableId: string;
@@ -88,6 +88,10 @@ export const LocalImagePackSelector: React.FC<LocalImagePackSelectorProps> = ({
         return;
       }
 
+      if (selection.hasError) {
+        recordUploadError(selection.errorDetail ?? selection.errorMessage);
+      }
+
       const totalForProgress = Math.max(selection.items.length, selection.hasError ? 1 : 0);
       if (totalForProgress > 0) {
         setUploadProgress({ current: 0, total: totalForProgress });
@@ -108,10 +112,6 @@ export const LocalImagePackSelector: React.FC<LocalImagePackSelectorProps> = ({
       const appended: string[] = [];
       let encounteredError = selection.hasError;
       let completedCount = 0;
-
-      if (selection.hasError) {
-        recordUploadError(selection.errorDetail ?? selection.errorMessage);
-      }
 
       for (const item of selection.items) {
         try {
@@ -346,7 +346,6 @@ export const LocalImagePackSelector: React.FC<LocalImagePackSelectorProps> = ({
   const handleClearImages = useCallback(() => {
     setPendingItems([]);
     setPreviewCache({});
-    logger('LocalImagePackSelector clearImages');
     setUploadErrorMessage(null);
     setUploadStatus('idle');
     setUploadProgress({ current: 0, total: 0 });

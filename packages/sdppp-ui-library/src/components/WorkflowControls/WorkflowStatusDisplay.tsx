@@ -15,12 +15,14 @@ export interface WorkflowStatusDisplayProps {
   status: WorkflowStatusDescriptor;
   className?: string;
   style?: CSSProperties;
+  uploadingFallback?: ReactNode;
 }
 
 export const WorkflowStatusDisplay = ({
   status,
   className,
   style,
+  uploadingFallback,
 }: WorkflowStatusDisplayProps) => {
   switch (status.type) {
     case 'uploading':
@@ -31,7 +33,7 @@ export const WorkflowStatusDisplay = ({
           ellipsis={{ tooltip: true }}
           type="secondary"
         >
-          {status.message ?? 'Uploading...'}
+          {status.message ?? uploadingFallback ?? null}
         </Text>
       );
     case 'error':

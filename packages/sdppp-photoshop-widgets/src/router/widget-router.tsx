@@ -38,6 +38,12 @@ const resolveSelectorKind = (
   return 'single-image';
 };
 
+function formatToString(val: string | { url: string } | undefined): string {
+  if (typeof val === 'string') return val;
+  if (val && typeof val === 'object' && 'url' in val) return val.url;
+  return '';
+}
+
 const renderSelector = (
   selectorKind: SelectorKind,
   fieldInfo: Record<string, any>,
@@ -50,12 +56,13 @@ const renderSelector = (
   switch (selectorKind) {
     case 'single-image':
       if (!(value instanceof Array)) value = [value];
+      value = value.map(formatToString);
       return (
         <ImageSelector
           widgetableId={fieldInfo.id}
           value={value as string[]}
           workBoundary={workBoundaryUri}
-          onValueChange={(next: string[])=> {
+          onValueChange={(next: string[]) => {
             const singleOnValueChange = onValueChange as ((next: string) => void) | undefined;
             singleOnValueChange && singleOnValueChange(next[0]);
           }}
@@ -63,6 +70,8 @@ const renderSelector = (
       );
     case 'multi-image': {
       const maxCount = (widget as WidgetableImagesWidget).options?.maxCount ?? 1;
+      value = value || [];
+      value = value.map(formatToString).filter(Boolean);
       return (
         <MultiImageSelector
           widgetableId={fieldInfo.id}
@@ -74,33 +83,48 @@ const renderSelector = (
       );
     }
     case 'masks':
+      value = value || [];
       if (!(value instanceof Array)) value = [value];
+      value = value.map(formatToString);
       return (
         <MaskSelector
           widgetableId={fieldInfo.id}
           value={value as string[]}
           workBoundary={workBoundaryUri}
-          onValueChange={(next: string[])=> {
+          onValueChange={(next: string[]) => {
             const singleOnValueChange = onValueChange as ((next: string) => void) | undefined;
             singleOnValueChange && singleOnValueChange(next[0]);
           }}
         />
       );
     case 'local-image-pack':
+      value = value || [];
+      if (!(value instanceof Array)) value = [value];
+      value = value.map(formatToString).filter(Boolean);
       return (
         <LocalImagePackSelector
           widgetableId={fieldInfo.id}
           value={value as string[]}
-          onValueChange={onValueChange}
+          onValueChange={(value: string[]) => {
+            onValueChange && onValueChange(
+              value.map((v) => {
+                return {
+                  url: v,
+                };
+              }) as any
+            );
+          }}
         />
       );
     case 'single-video':
+      value = value || [];
       if (!(value instanceof Array)) value = [value];
+      value = value.map(formatToString);
       return (
         <SingleVideoSelector
           widgetableId={fieldInfo.id}
           value={value as string[]}
-          onValueChange={(next: string[])=> {
+          onValueChange={(next: string[]) => {
             const singleOnValueChange = onValueChange as ((next: string) => void) | undefined;
             singleOnValueChange && singleOnValueChange(next[0]);
           }}
