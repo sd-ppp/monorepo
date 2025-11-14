@@ -128,6 +128,18 @@ const useSelectionBoundary = (): PhotoshopSelectionBoundary => {
 const createActions = (): WidgetImageMaskActions => {
     const photoshopActions = sdpppSDK?.plugins?.photoshop as Record<string, any> | undefined;
 
+    const createFromBuffer: WidgetImageMaskActions['resource.file.createFromBuffer'] = async params => {
+        const fn = photoshopActions?.['fileResource.createFromBuffer'];
+        if (typeof fn !== 'function') {
+            return { error: 'fileResource.createFromBuffer unavailable' };
+        }
+        try {
+            return await fn(params);
+        } catch (error) {
+            return { error: error instanceof Error ? error.message : String(error) };
+        }
+    };
+
     const createFromCBM: WidgetImageMaskActions['resource.file.createFromCBM'] = async params => {
         const fn = photoshopActions?.['fileResource.createFromCBM'];
         if (typeof fn !== 'function') {
@@ -190,6 +202,7 @@ const createActions = (): WidgetImageMaskActions => {
 
     return {
         'resource.file.createFromCBM': createFromCBM,
+        'resource.file.createFromBuffer': createFromBuffer,
         'resource.file.createFromLocal': createFromLocal,
         'resource.thumbnail': createThumbnail,
         'resource.boundary.normalize': normalizeBoundary,

@@ -1,7 +1,8 @@
-import { Button, Spin } from 'antd';
+import { Button, Spin, theme } from 'antd';
 import { FileVideo, Plus, Trash2 } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  useWidgetImageMaskActions,
   useWidgetLogger,
   useWidgetText,
   useWidgetUploadPassHandlers,
@@ -11,7 +12,16 @@ import {
   useLocalResourceSelection,
   type LocalResourceSelectionItem,
 } from '../../hooks/useLocalResourceSelection';
+import { useUploadCopy } from '../../hooks/useUploadCopy';
+import { useWidgetValueEmitter } from '../../hooks/useWidgetValueEmitter';
 import { UploadIndicator } from '../shared/UploadIndicator';
+import { useFileDropZone } from '../../hooks/useFileDropZone';
+import {
+  buildBufferPayloadFromFile,
+  getSuccessfulMaterializeRecord,
+  isVideoFile,
+} from '../../utils/fileUtils';
+import { withAlpha } from '../../utils/color';
 
 const ALLOWED_VIDEO_EXTENSIONS = new Set([
   '.mp4',
@@ -31,7 +41,7 @@ const WRAPPER_GAP = 8;
 const PANEL_HEIGHT = 128;
 const ADD_BUTTON_HEIGHT = 100;
 const TRASH_BUTTON_HEIGHT = 28;
-const LEFT_WIDTH = 120;
+const CONTROL_COLUMN_WIDTH = 120;
 const BORDER_COLOR = 'var(--sdppp-widget-border-color, var(--ant-color-border, #d9d9d9))';
 const BORDER_RADIUS = 'var(--sdppp-widget-border-radius, 4px)';
 
@@ -122,6 +132,11 @@ export const SingleVideoSelector: React.FC<{
 }> = ({ widgetableId, value = [], onValueChange }) => {
   const t = useWidgetText();
   const logger = useWidgetLogger();
+  const actions = useWidgetImageMaskActions();
+  const { token } = theme.useToken();
+  const dropOverlayBackground = useMemo(() => withAlpha(token.colorPrimary, 0.12), [token.colorPrimary]);
+  const dropOverlayBorder = useMemo(() => withAlpha(token.colorPrimary, 0.55), [token.colorPrimary]);
+  const dropOverlayText = token.colorText;
   const selectLocalVideo = useLocalResourceSelection({
     actionParams: VIDEO_SELECTION_PARAMS as unknown as Record<string, unknown>,
     maxItems: 1,
@@ -129,18 +144,13 @@ export const SingleVideoSelector: React.FC<{
   });
   const { runUploadPassOnce } = useWidgetUploadPassHandlers();
 
-  const emitValue = useCallback(
-    (next: string[]) => {
-      if (!onValueChange) return;
-      onValueChange(next);
-    },
-    [onValueChange],
-  );
+  const emitValue = useWidgetValueEmitter({
+    onValueChange,
+    logger,
+    logLabel: 'SingleVideoSelector emitValue',
+  });
 
-  const uploadErrorLabel = useMemo(
-    () => t('image.upload.error', { defaultValue: '上传失败，请重试' }),
-    [t],
-  );
+  const { errorLabel: uploadErrorLabel } = useUploadCopy();
 
   const extractErrorMessage = useCallback((reason?: unknown): string => {
     if (!reason) return '';
@@ -259,6 +269,114 @@ export const SingleVideoSelector: React.FC<{
     [extractErrorMessage, logErrorDetail, uploadErrorLabel],
   );
 
+  const handleDropFiles = useCallback(
+    async (files: File[]) => {
+      const createFromBuffer = actions['resource.file.createFromBuffer'];
+      if (typeof createFromBuffer !== 'function') {
+        logger(
+          'SingleVideoSelector createFromBuffer unavailable',
+          JSON.stringify({ reason: 'handler_missing' }),
+        );
+        return;
+      }
+      const accepted = files.filter(isVideoFile);
+      if (!accepted.length) return;
+      const file = accepted[0];
+      if (!file) return;
+
+      setUploadErrorMessage(null);
+      setUploadStatus('uploading');
+      setUploadProgress({ current: 0, total: 1 });
+
+      try {
+        const payload = await buildBufferPayloadFromFile(file);
+        const result = await createFromBuffer({ files: [payload] });
+        const record = getSuccessfulMaterializeRecord(result);
+        const resource = record?.resource ? record.resource.trim() : '';
+        logger(
+          'SingleVideoSelector createFromBuffer result',
+          JSON.stringify({
+            file: file.name,
+            resource,
+            error: record?.error ?? (result as any)?.error ?? null,
+            mime: record?.mime ?? payload.mime ?? file.type ?? null,
+          }),
+        );
+        if (!resource) {
+          recordUploadError('视频处理失败');
+          return;
+        }
+
+        const previousValue = currentResource;
+        const uploadPass: WidgetUploadPass = {
+          getUploadFile: async (signal?: AbortSignal) => {
+            if (signal?.aborted) {
+              throw new DOMException('Upload aborted', 'AbortError');
+            }
+            return {
+              type: 'resource',
+              resource,
+              resourceId: resource,
+              fileName: file.name,
+              mimeType: record?.mime ?? payload.mime ?? file.type ?? undefined,
+            };
+          },
+        };
+
+        const uploaded = await runUploadPassOnce(uploadPass);
+        const normalized = typeof uploaded === 'string' ? uploaded.trim() : '';
+        if (normalized) {
+          setDisplayNameCache(prev => {
+            const next = { ...prev };
+            if (previousValue && previousValue !== normalized) {
+              delete next[previousValue];
+            }
+            if (file.name) {
+              next[normalized] = file.name;
+            }
+            return next;
+          });
+          emitValue([normalized]);
+          setUploadProgress({ current: 1, total: 1 });
+          setUploadStatus('idle');
+        } else {
+          recordUploadError();
+        }
+      } catch (error) {
+        recordUploadError(error);
+        logger(
+          'SingleVideoSelector drop upload error',
+          extractErrorMessage(error) || (error instanceof Error ? error.message : String(error)),
+        );
+      } finally {
+        setUploadStatus(prev => (prev === 'error' ? 'error' : 'idle'));
+      }
+    },
+    [
+      actions,
+      currentResource,
+      emitValue,
+      extractErrorMessage,
+      logger,
+      recordUploadError,
+      runUploadPassOnce,
+      setDisplayNameCache,
+      setUploadErrorMessage,
+      setUploadProgress,
+      setUploadStatus,
+    ],
+  );
+
+  const dropHint = t('video.local.dropHint', { defaultValue: '拖拽视频到此区域释放以上传' });
+
+  const { isDragging, handlers: dropHandlers } = useFileDropZone({
+    onDropFiles: files => {
+      void handleDropFiles(files);
+    },
+    accept: isVideoFile,
+    multiple: false,
+  });
+
   const handleAddFromFile = useCallback(async () => {
     setUploadErrorMessage(null);
     setUploadStatus('uploading');
@@ -356,7 +474,6 @@ export const SingleVideoSelector: React.FC<{
             }
             return next;
           });
-          logger('SingleVideoSelector emitValue', JSON.stringify([normalized]));
           emitValue([normalized]);
           if (totalForProgress > 0) {
             setUploadProgress({ current: totalForProgress, total: totalForProgress });
@@ -425,6 +542,7 @@ export const SingleVideoSelector: React.FC<{
     () => ({
       display: 'flex',
       alignItems: 'stretch',
+      flexDirection: 'row-reverse',
       gap: WRAPPER_GAP,
       width: '100%',
       height: PANEL_HEIGHT,
@@ -432,10 +550,10 @@ export const SingleVideoSelector: React.FC<{
     [],
   );
 
-  const leftColumnStyle = useMemo<React.CSSProperties>(
+  const controlsColumnStyle = useMemo<React.CSSProperties>(
     () => ({
-      width: LEFT_WIDTH,
-      minWidth: LEFT_WIDTH,
+      width: CONTROL_COLUMN_WIDTH,
+      minWidth: CONTROL_COLUMN_WIDTH,
       flex: '0 0 auto',
       display: 'flex',
       flexDirection: 'column',
@@ -506,6 +624,29 @@ export const SingleVideoSelector: React.FC<{
     [],
   );
 
+  const dropOverlayStyle = useMemo<React.CSSProperties>(
+    () => ({
+      position: 'absolute',
+      inset: 0,
+      background: dropOverlayBackground,
+      border: `2px dashed ${dropOverlayBorder}`,
+      borderRadius: BORDER_RADIUS,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      color: dropOverlayText,
+      fontSize: 14,
+      fontWeight: 500,
+      letterSpacing: 0.5,
+      pointerEvents: 'none',
+      backdropFilter: 'blur(1px)',
+      textAlign: 'center',
+      padding: '0 24px',
+      zIndex: 5,
+    }),
+    [dropOverlayBackground, dropOverlayBorder, dropOverlayText],
+  );
+
   const handleIndicatorDismiss = useCallback(() => {
     setUploadErrorMessage(null);
     setUploadStatus('idle');
@@ -514,49 +655,55 @@ export const SingleVideoSelector: React.FC<{
 
   return (
     <div data-widgetable-id={widgetableId} style={containerStyle}>
-      <div style={panelStyle}>
-        <div style={leftColumnStyle}>
-          <Button
-            type="default"
-            block
-            icon={<Plus size={18} strokeWidth={2} />}
-            style={addButtonStyle}
-            aria-label={buttonLabel}
-            title={buttonLabel}
-            onClick={() => {
-              void handleAddFromFile();
-            }}
-          >
-          </Button>
-          {hasVideo ? (
+      <div
+        style={{ position: 'relative', width: '100%' }}
+        {...dropHandlers}
+      >
+        {isDragging ? <div style={dropOverlayStyle}>{dropHint}</div> : null}
+        <div style={panelStyle}>
+          <div style={controlsColumnStyle}>
             <Button
-              block
               type="default"
-              icon={<Trash2 size={16} />}
-              style={trashButtonStyle}
-              onClick={handleClearVideo}
-            >
-            </Button>
-          ) : null}
-        </div>
-        <div style={previewWrapperStyle}>
-          <div style={PREVIEW_CONTENT_STYLE}>
-            <FileVideo size={48} strokeWidth={1.5} color="rgba(0,0,0,0.65)" />
-            <span
-              style={{
-                fontSize: 14,
-                color: hasVideo ? 'rgba(0,0,0,0.85)' : 'rgba(0,0,0,0.45)',
-                wordBreak: 'break-all',
+              block
+              icon={<Plus size={18} strokeWidth={2} />}
+              style={addButtonStyle}
+              aria-label={buttonLabel}
+              title={buttonLabel}
+              onClick={() => {
+                void handleAddFromFile();
               }}
             >
-              {hasVideo ? displayLabel : emptyLabel}
-            </span>
+            </Button>
+            {hasVideo ? (
+              <Button
+                block
+                type="default"
+                icon={<Trash2 size={16} />}
+                style={trashButtonStyle}
+                onClick={handleClearVideo}
+              >
+              </Button>
+            ) : null}
           </div>
-          {uploadStatus === 'uploading' ? (
-            <div style={uploadingOverlayStyle}>
-              <Spin />
+          <div style={previewWrapperStyle}>
+            <div style={PREVIEW_CONTENT_STYLE}>
+              <FileVideo size={48} strokeWidth={1.5} color="rgba(0,0,0,0.65)" />
+              <span
+                style={{
+                  fontSize: 14,
+                  color: hasVideo ? 'rgba(0,0,0,0.85)' : 'rgba(0,0,0,0.45)',
+                  wordBreak: 'break-all',
+                }}
+              >
+                {hasVideo ? displayLabel : emptyLabel}
+              </span>
             </div>
-          ) : null}
+            {uploadStatus === 'uploading' ? (
+              <div style={uploadingOverlayStyle}>
+                <Spin />
+              </div>
+            ) : null}
+          </div>
         </div>
       </div>
       <UploadIndicator

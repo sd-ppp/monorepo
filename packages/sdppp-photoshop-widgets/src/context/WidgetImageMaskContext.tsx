@@ -3,6 +3,8 @@ import React, { createContext, useContext, useMemo } from 'react';
 export interface LayerResolveResult {
   uri?: string | null;
   error?: string | null;
+  layerId?: string | null;
+  layerName?: string | null;
 }
 
 export interface BoundaryNormalizeResult {
@@ -25,6 +27,20 @@ export interface FileResourceMaterializeRecord {
 
 export interface FileResourceMaterializeResult extends FileResourceMaterializeRecord {
   batch?: FileResourceMaterializeRecord[];
+}
+
+export interface FileResourceCreateFromBufferPayload {
+  buffer: ArrayBuffer | ArrayBufferView | Uint8Array | string;
+  name?: string | null;
+  mime?: string | null;
+  width?: number | null;
+  height?: number | null;
+  thumbnail?: string | null;
+  meta?: Record<string, unknown>;
+}
+
+export interface FileResourceCreateFromBufferParams {
+  files: FileResourceCreateFromBufferPayload[];
 }
 
 export interface WidgetSelectionBoundaryRect {
@@ -54,10 +70,13 @@ export type SelectAdvancedContentSource = () => Promise<
 >;
 
 export interface WidgetImageMaskActions {
-  'resource.layer.resolve': (params: { uri: string }) => Promise<LayerResolveResult | void>;
+  'resource.layer.resolve': (params: { uri: string; type?: string }) => Promise<LayerResolveResult | void>;
   'resource.boundary.normalize': (params: { boundary: string }) => Promise<BoundaryNormalizeResult | void>;
   'resource.thumbnail': (params: FileResourceCreateFromCBMParams) => Promise<ResourceThumbnailResult | void>;
   'resource.file.createFromCBM': (params: FileResourceCreateFromCBMParams) => Promise<FileResourceMaterializeResult | void>;
+  'resource.file.createFromBuffer': (
+    params: FileResourceCreateFromBufferParams
+  ) => Promise<FileResourceMaterializeResult | void>;
   'resource.file.createFromLocal': (params?: Record<string, unknown>) => Promise<FileResourceMaterializeResult | void>;
 }
 

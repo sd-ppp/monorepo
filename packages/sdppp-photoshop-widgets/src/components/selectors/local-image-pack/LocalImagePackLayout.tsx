@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Image, Spin } from 'antd';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Upload } from 'lucide-react';
 import {
   computeLocalImagePackCells,
   computeLocalImagePackLayout,
@@ -25,28 +25,32 @@ const BORDER_RADIUS = BORDER_RADIUS_VALUE;
 export interface LocalImagePackLayoutProps {
   widgetableId: string;
   items: LocalImagePackPreviewCell[];
-  buttonLabel: string;
+  uploadButtonLabel: string;
+  canvasButtonLabel: string;
   emptyLabel: string;
   uploadStatus?: UploadIndicatorStatus;
   uploadErrorMessage?: React.ReactNode;
   onUploadRetry?: () => void;
   onUploadDismiss?: () => void;
   uploadProgress?: { current: number; total: number };
-  onAdd: () => void;
+  onUploadClick: () => void;
+  onCanvasClick: () => void;
   onClear: () => void;
 }
 
 export const LocalImagePackLayout: React.FC<LocalImagePackLayoutProps> = ({
   widgetableId,
   items,
-  buttonLabel,
+  uploadButtonLabel,
+  canvasButtonLabel,
   emptyLabel,
   uploadStatus = 'idle',
   uploadErrorMessage,
   onUploadRetry,
   onUploadDismiss,
   uploadProgress,
-  onAdd,
+  onUploadClick,
+  onCanvasClick,
   onClear,
 }) => {
   const totalItems = items.length;
@@ -110,6 +114,7 @@ export const LocalImagePackLayout: React.FC<LocalImagePackLayoutProps> = ({
       style={{
         display: 'flex',
         alignItems: 'stretch',
+        flexDirection: 'row-reverse',
         gap: WRAPPER_GAP,
         width: '100%',
       }}
@@ -124,27 +129,60 @@ export const LocalImagePackLayout: React.FC<LocalImagePackLayoutProps> = ({
           height: layout.panelHeight,
         }}
       >
-        <Button
-          type="default"
-          block
-          icon={<Plus size={addIconSize} strokeWidth={2} />}
+        <div
           style={{
+            display: 'flex',
+            width: '100%',
             height: layout.addButtonHeight,
             minHeight: layout.addButtonHeight,
-            padding: 0,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            border: BORDER_STYLE,
-            borderColor: BORDER_COLOR,
-            borderRadius: hasImages
-              ? `${BORDER_RADIUS_VALUE} ${BORDER_RADIUS_VALUE} 0 0`
-              : BORDER_RADIUS_VALUE,
           }}
-          aria-label={buttonLabel}
-          title={buttonLabel}
-          onClick={onAdd}
-        />
+        >
+          <Button
+            type="default"
+            icon={<Upload size={addIconSize} strokeWidth={2} />}
+            style={{
+              flex: '1 1 0%',
+              height: '100%',
+              minHeight: layout.addButtonHeight,
+              padding: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: BORDER_STYLE,
+              borderColor: BORDER_COLOR,
+              borderRight: 'none',
+              borderBottom: BORDER_STYLE,
+              borderRadius: hasImages
+                ? `${BORDER_RADIUS_VALUE} 0 0 0`
+                : `${BORDER_RADIUS_VALUE} 0 0 ${BORDER_RADIUS_VALUE}`,
+            }}
+            aria-label={uploadButtonLabel}
+            title={uploadButtonLabel}
+            onClick={onUploadClick}
+          />
+          <Button
+            type="default"
+            icon={<Plus size={addIconSize} strokeWidth={2} />}
+            style={{
+              flex: '1 1 0%',
+              height: '100%',
+              minHeight: layout.addButtonHeight,
+              padding: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: BORDER_STYLE,
+              borderColor: BORDER_COLOR,
+              borderBottom: BORDER_STYLE,
+              borderRadius: hasImages
+                ? `0 ${BORDER_RADIUS_VALUE} 0 0`
+                : `0 ${BORDER_RADIUS_VALUE} ${BORDER_RADIUS_VALUE} 0`,
+            }}
+            aria-label={canvasButtonLabel}
+            title={canvasButtonLabel}
+            onClick={onCanvasClick}
+          />
+        </div>
         {hasImages ? (
           <Button
             block

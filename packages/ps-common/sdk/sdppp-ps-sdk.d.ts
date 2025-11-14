@@ -599,6 +599,26 @@ export declare const sdpppSDK: {
 				resource?: string | undefined;
 				mime?: string | undefined;
 			}>;
+			"fileResource.createFromBuffer": (data: {
+				files: {
+					buffer: string | ArrayBuffer | Uint8Array<ArrayBuffer> | DataView<ArrayBufferLike & {
+						BYTES_PER_ELEMENT?: never;
+					}>;
+					name?: string | null | undefined;
+					width?: number | null | undefined;
+					height?: number | null | undefined;
+					thumbnail?: string | null | undefined;
+					mime?: string | null | undefined;
+					meta?: Record<string, unknown> | undefined;
+				}[];
+			}, signal?: AbortSignal) => Promise<{
+				error?: string | undefined;
+				width?: number | undefined;
+				height?: number | undefined;
+				thumbnail?: string | undefined;
+				resource?: string | undefined;
+				mime?: string | undefined;
+			}>;
 			"fileResource.createFromCBM": (data: {
 				options?: Record<string, unknown> | undefined;
 				contentUri?: string | undefined;

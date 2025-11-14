@@ -2,7 +2,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Minimize2,
-  MoreHorizontal,
+  MoreVertical,
   Save,
   Send,
   StepForward,
@@ -405,7 +405,7 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
         overlayStyle={{ minWidth: 'auto', width: 'max-content' }}
       >
         <div className="image-preview__bottom-indicator" style={{ cursor: 'pointer' }}>
-          {normalizedIndex + 1} / {images.length} <MoreHorizontal size={ICON_SIZE} />
+          {normalizedIndex + 1} / {images.length} <MoreVertical size={ICON_SIZE} />
         </div>
       </Dropdown>
     )

@@ -9,7 +9,7 @@ import {
 } from '../../../src/context/WidgetImageMaskContext';
 import { MockExternalApiPlayground } from './MockExternalApiPlayground';
 import { readBlobAsDataUrl } from './upload-helpers';
-import { useProvideMockExternalApi } from './useProvideMockExternalApi';
+import { MOCK_DOCUMENT_ID, useProvideMockExternalApi } from './useProvideMockExternalApi';
 import type { UploadPassRunSummary } from './types';
 
 const extractLayerMetadata = (
@@ -426,7 +426,9 @@ export const MockExternalApiProvider: React.FC<MockExternalApiProviderProps> = (
     const layerNameSeed = name ?? normalizedLayerId;
     const layerIdParam = encodeURIComponent(layerIdSeed);
     const layerNameParam = encodeURIComponent(layerNameSeed);
-    return { contentUri: `uxp://content/0/layer?layerid=${layerIdParam}&layername=${layerNameParam}` };
+    return {
+      contentUri: `uxp://content/${MOCK_DOCUMENT_ID}/layer?layerid=${layerIdParam}&layername=${layerNameParam}`,
+    };
   }, [getCurrentLayerId, logger]);
 
   return (
@@ -435,7 +437,7 @@ export const MockExternalApiProvider: React.FC<MockExternalApiProviderProps> = (
       t={t}
       logger={logger}
       debug
-      resolveWorkBoundary={() => ''}
+      workBoundaryUri={`uxp://boundary/${MOCK_DOCUMENT_ID}/canvas`}
       subscribeToRealtimeChanges={contextValue.subscribeToRealtimeChanges}
       uploadPassHandlers={uploadPassHandlers}
       selectAdvancedContentSource={selectAdvancedContentSource}

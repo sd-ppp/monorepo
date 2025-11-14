@@ -4,6 +4,7 @@ import { registerDeleteDownloadedImageAction } from "./register-delete-downloade
 import { registerThumbnailAction } from "./register-get-thumbnail.js";
 import { registerSaveAsAction } from "./register-request-save-image.js";
 import { registerCreateFromLocalAction } from "./register-create-from-local.js";
+import { registerCreateFromBufferAction } from "./register-create-from-buffer.js";
 import { registerCreateFromCBMAction } from "./register-create-from-cbm.js";
 import { registerBoundaryNormalizeAction } from "./register-boundary-normalize.js";
 import { registerLayerResolveAction } from "./register-layer-resolve.js";
@@ -14,6 +15,7 @@ export function registerImagingActions(context: ImagingActionContext): void {
 
   registerCreateFromExternalAction(context);
   registerCreateFromLocalAction(context);
+  registerCreateFromBufferAction(context);
   registerCreateFromCBMAction(context);
   registerDeleteDownloadedImageAction(context);
   registerThumbnailAction(context);

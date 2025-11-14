@@ -9,6 +9,8 @@ import { createMockActions, MIN_SELECTION_EDGE, roundRect } from './action-facto
 import { MockResourceStore } from './resource-store';
 import type { MockRealtimeContent, SelectionRect } from './types';
 
+export const MOCK_DOCUMENT_ID = 9527;
+
 export interface ProvideResult {
   actions: WidgetImageMaskActions;
   resourceStore: MockResourceStore;
@@ -49,7 +51,7 @@ export const useProvideMockExternalApi = (logger: WidgetImageMaskLogger): Provid
   const notifySubscribers = useCallback(
     (content: MockRealtimeContent) => {
       subscribersRef.current.forEach(({ docId, contents, callback }) => {
-        if (docId !== 0) return;
+        if (docId !== MOCK_DOCUMENT_ID) return;
         if (contents.has(content)) {
           scheduleCallback(callback);
         }

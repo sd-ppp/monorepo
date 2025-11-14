@@ -13,7 +13,10 @@ import {
 import { useMaskPreviewParams } from '../../hooks/useMaskPreviewParams';
 import { useThumbnail } from '../../hooks/useThumbnail';
 import type { BoundaryUri, ContentUri, MaskUri } from '../../hooks/useThumbnail/types';
-import { useUploadTracker } from '../../hooks/useUploadTracker';
+import { useManagedUploadTracker } from '../../hooks/useManagedUploadTracker';
+import { useUploadCopy } from '../../hooks/useUploadCopy';
+import { useWidgetValueEmitter } from '../../hooks/useWidgetValueEmitter';
+import { resolveDocContext, resolveDocIdFromBoundary } from '../../utils/docContext';
 import { UploadableImagePreviewSplit } from '../shared/UploadableImagePreviewSplit';
 import { UploadIndicator } from '../shared/UploadIndicator';
 
@@ -33,10 +36,7 @@ export const MaskSelector: React.FC<MaskSelectorProps> = ({ widgetableId, value 
   const logger = useWidgetLogger();
   const { runUploadPassOnce } = useWidgetUploadPassHandlers();
 
-  const uploadErrorLabel = useMemo(
-    () => t('image.upload.error', { defaultValue: '上传失败，请重试' }),
-    [t],
-  );
+  const { errorLabel: uploadErrorLabel } = useUploadCopy();
   const selectionMaskLabel = useMemo(
     () => t('image.upload.mask.selection', { defaultValue: '选区遮罩' }),
     [t],
@@ -69,14 +69,8 @@ export const MaskSelector: React.FC<MaskSelectorProps> = ({ widgetableId, value 
     markUploadEnd,
     setUploadError,
     setUploadProgress,
-    resetProgress,
-  } = useUploadTracker();
-
-  useEffect(() => {
-    if (uploadStatus === 'idle' && uploadError === null) {
-      resetProgress();
-    }
-  }, [uploadStatus, uploadError, resetProgress]);
+    dismissUploadError,
+  } = useManagedUploadTracker();
 
   useEffect(() => {
     setMaskResource(prev => {
@@ -103,9 +97,7 @@ export const MaskSelector: React.FC<MaskSelectorProps> = ({ widgetableId, value 
   }, [docIdFromValue]);
 
   const docIdFromBoundary = useMemo<number>(() => {
-    const match = /^uxp:\/\/boundary\/(\d+)/.exec(boundaryUri);
-    const parsed = match ? Number(match[1]) : NaN;
-    return Number.isFinite(parsed) ? parsed : 0;
+    return resolveDocIdFromBoundary(boundaryUri);
   }, [boundaryUri]);
 
   useEffect(() => {
@@ -114,22 +106,17 @@ export const MaskSelector: React.FC<MaskSelectorProps> = ({ widgetableId, value 
     }
   }, [docIdFromBoundary]);
 
-  const effectiveDocId = useMemo<number>(() => {
-    if (docIdFromBoundary > 0) return docIdFromBoundary;
-    if (docIdFallback && docIdFallback > 0) return docIdFallback;
-    return 0;
-  }, [docIdFromBoundary, docIdFallback]);
-
-  const maskSourceAvailable = effectiveDocId > 0;
-
-  const emitValue = useCallback(
-    (next: string[]) => {
-      if (!onValueChange) return;
-      onValueChange(next);
-      logger('MaskSelector emitValue', JSON.stringify(next));
-    },
-    [logger, onValueChange],
+  const docContext = useMemo(
+    () => resolveDocContext(boundaryUri, docIdFallback),
+    [boundaryUri, docIdFallback],
   );
+  const maskSourceAvailable = docContext.hasDocument;
+
+  const emitValue = useWidgetValueEmitter({
+    onValueChange,
+    logger,
+    logLabel: 'MaskSelector emitValue',
+  });
 
   const lastRequestedModeRef = useRef<MaskSourceKind>('selection');
 
@@ -174,7 +161,7 @@ export const MaskSelector: React.FC<MaskSelectorProps> = ({ widgetableId, value 
       logger('MaskSelector upload success', JSON.stringify({ mode, resource: normalized }));
       return true;
     },
-    [emitValue, logger, setMaskFileUri, setMaskResource, setUploadError],
+    [emitValue, logger, setMaskResource, setUploadError],
   );
 
   const applyUploadError = useCallback(
@@ -191,14 +178,22 @@ export const MaskSelector: React.FC<MaskSelectorProps> = ({ widgetableId, value 
   const resolveDocIdOrEmitError = useCallback(
     (maskType: MaskSourceKind): number | null => {
       if (maskSourceAvailable) {
-        return effectiveDocId;
+        return docContext.docId;
       }
       setUploadError(uploadErrorLabel);
       setUploadProgress({ current: 0, total: 0 });
       logger('MaskSelector docId missing', JSON.stringify({ maskType, boundaryUri }));
       return null;
     },
-    [boundaryUri, effectiveDocId, logger, maskSourceAvailable, setUploadError, setUploadProgress, uploadErrorLabel],
+    [
+      boundaryUri,
+      docContext.docId,
+      logger,
+      maskSourceAvailable,
+      setUploadError,
+      setUploadProgress,
+      uploadErrorLabel,
+    ],
   );
 
   const manualUploadInFlightRef = useRef(false);
@@ -277,26 +272,22 @@ export const MaskSelector: React.FC<MaskSelectorProps> = ({ widgetableId, value 
   }, [runManualMask]);
 
   const handleDismissError = useCallback(() => {
-    setUploadError(null);
-    resetProgress();
-  }, [resetProgress, setUploadError]);
+    dismissUploadError();
+  }, [dismissUploadError]);
 
-  const derivedDocId = effectiveDocId > 0 ? effectiveDocId : 0;
   const derivedBoundaryUri = useMemo<BoundaryUri>(() => {
     if (boundaryUri) return boundaryUri as BoundaryUri;
-    if (derivedDocId > 0) return `uxp://boundary/${derivedDocId}/canvas` as BoundaryUri;
-    return 'uxp://boundary/0/canvas' as BoundaryUri;
-  }, [boundaryUri, derivedDocId]);
+    return docContext.canvasBoundaryUri as BoundaryUri;
+  }, [boundaryUri, docContext.canvasBoundaryUri]);
 
   const derivedContentUri = useMemo<ContentUri>(() => {
-    if (derivedDocId > 0) return `uxp://content/${derivedDocId}/canvas` as ContentUri;
-    return 'uxp://content/canvas' as ContentUri;
-  }, [derivedDocId]);
+    return docContext.canvasContentUri as ContentUri;
+  }, [docContext.canvasContentUri]);
 
   const activeMaskUri = useMemo(() => {
-    if (derivedDocId <= 0) return null;
-    return buildMaskUri(lastSourceMode, derivedDocId) as MaskUri;
-  }, [buildMaskUri, derivedDocId, lastSourceMode]);
+    if (!docContext.hasDocument) return null;
+    return buildMaskUri(lastSourceMode, docContext.docId) as MaskUri;
+  }, [buildMaskUri, docContext.docId, docContext.hasDocument, lastSourceMode]);
 
   const previewFileUri = maskFileUri;
 
@@ -376,6 +367,7 @@ export const MaskSelector: React.FC<MaskSelectorProps> = ({ widgetableId, value 
       >
         <UploadableImagePreviewSplit
           left={leftNode}
+          style={{ flexDirection: 'row-reverse' }}
           imageUrl={displayUrl}
           background="white"
           previewStyle={{ backgroundColor: '#000' }}

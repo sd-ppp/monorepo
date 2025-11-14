@@ -5,6 +5,7 @@ import type {
 } from '../../../src/context/WidgetImageMaskContext';
 import { createFromCBM } from './create-from-cbm';
 import { createFromLocal } from './create-from-local';
+import { createFromBuffer } from './create-from-buffer';
 import { createResourceThumbnail } from './resource-thumbnail';
 import { normalizeBoundary } from './boundary-normalize';
 import { resolveLayer } from './layer-resolve';
@@ -36,6 +37,7 @@ export const createMockActions = (deps: FactoryDeps): WidgetImageMaskActions => 
     'resource.boundary.normalize': payload => normalizeBoundary(ctx, payload),
     'resource.thumbnail': handleThumbnail,
     'resource.file.createFromCBM': params => createFromCBM(ctx, params),
+    'resource.file.createFromBuffer': params => createFromBuffer(ctx, params),
     'resource.file.createFromLocal': params => createFromLocal(ctx, params),
   };
 };
