@@ -10,10 +10,10 @@ import {
   useWidgetUploadPassHandlers,
   type WidgetUploadPass,
 } from '../../context/WidgetImageMaskContext';
+import { useManagedUploadTracker } from '../../hooks/useManagedUploadTracker';
 import { useMaskPreviewParams } from '../../hooks/useMaskPreviewParams';
 import { useThumbnail } from '../../hooks/useThumbnail';
 import type { BoundaryUri, ContentUri, MaskUri } from '../../hooks/useThumbnail/types';
-import { useManagedUploadTracker } from '../../hooks/useManagedUploadTracker';
 import { useUploadCopy } from '../../hooks/useUploadCopy';
 import { useWidgetValueEmitter } from '../../hooks/useWidgetValueEmitter';
 import { resolveDocContext, resolveDocIdFromBoundary } from '../../utils/docContext';
@@ -370,7 +370,7 @@ export const MaskSelector: React.FC<MaskSelectorProps> = ({ widgetableId, value 
           style={{ flexDirection: 'row-reverse' }}
           imageUrl={displayUrl}
           background="white"
-          previewStyle={{ backgroundColor: '#000' }}
+          previewStyle={{ backgroundColor: '#fff' }}
           uploadStatus="idle"
         />
         <UploadIndicator

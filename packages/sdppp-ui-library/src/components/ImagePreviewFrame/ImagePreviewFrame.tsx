@@ -73,8 +73,8 @@ const ImagePreviewFrameComponent: FC<ImagePreviewFrameProps> = ({
         backgroundPosition: '0 0',
       } satisfies CSSProperties;
     }
-    return { backgroundColor: '#000' } satisfies CSSProperties;
-  }, [background]);
+    return { backgroundColor: '#fff' } satisfies CSSProperties;
+  }, [background]); 
 
   const ratio = imageRatio ?? 1;
   const { width, height } = containerSize;

@@ -349,13 +349,14 @@ export async function loadMaskSnapshotJimp(mesh: any, boundaryUri: string, maskU
     }
   }
 
+  // comfy 会将rgb为255的地方或者alpha为0的认为是遮罩
   jimpImage.scan(0, 0, jimpImage.bitmap.width, jimpImage.bitmap.height, (_x: number, _y: number, idx: number) => {
     const alpha = jimpImage.bitmap.data[idx + 3];
     const grayValue = built.reverse ? 255 - alpha : alpha;
     jimpImage.bitmap.data[idx + 0] = grayValue;
     jimpImage.bitmap.data[idx + 1] = grayValue;
     jimpImage.bitmap.data[idx + 2] = grayValue;
-    jimpImage.bitmap.data[idx + 3] = grayValue;
+    jimpImage.bitmap.data[idx + 3] = 255 - grayValue;
   });
 
   return {
