@@ -13,6 +13,7 @@ const modelIds: Record<string, string> = {
 
 export const availableModels = [
     'google/nano-banana',
+    'google/nano-banana-pro',
     'black-forest-labs/flux-kontext-dev',
     'black-forest-labs/flux-kontext-pro',
     'flux-kontext-apps/multi-image-kontext-pro',

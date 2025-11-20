@@ -109,26 +109,8 @@ function ReplicateRendererModels() {
                 };
 
                 const format = inferFormat(uploadInput.mimeType) as 'png' | 'jpg' | 'jpeg' | 'webp';
-                const source = uploadInput.resource as any;
-                let payload: ArrayBuffer;
-                if (source && typeof source === 'object' && 'data' in source) {
-                    const data = source.data;
-                    if (data instanceof ArrayBuffer) {
-                        payload = data;
-                    } else if (ArrayBuffer.isView(data)) {
-                        payload = (data as ArrayBufferView).buffer;
-                    } else {
-                        payload = data as ArrayBuffer;
-                    }
-                } else if (uploadInput.resource instanceof ArrayBuffer) {
-                    payload = uploadInput.resource;
-                } else if (ArrayBuffer.isView(uploadInput.resource)) {
-                    payload = (uploadInput.resource as ArrayBufferView).buffer;
-                } else {
-                    payload = uploadInput.resource as ArrayBuffer;
-                }
 
-                return await client.uploadImage('buffer', payload, format, signal);
+                return await client.uploadImage('resource', uploadInput.resource, format, signal);
             }}
         >
             <WidgetablePhotoshopProvider>

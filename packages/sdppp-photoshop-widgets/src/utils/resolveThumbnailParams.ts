@@ -8,6 +8,28 @@ import type {
 
 export const DEFAULT_CONTENT_URI = 'uxp://content/canvas';
 
+const IMAGE_SIZE_LIMIT = 192;
+const DEFAULT_IMAGE_QUALITY = 1;
+
+const ensureImageSizeParams = (uri: string): string => {
+  if (!uri.trim()) {
+    return uri;
+  }
+
+  try {
+    const parsed = new URL(uri);
+    if (!parsed.searchParams.has('imageSize')) {
+      parsed.searchParams.set('imageSize', String(IMAGE_SIZE_LIMIT));
+    }
+    if (!parsed.searchParams.has('imageQuality')) {
+      parsed.searchParams.set('imageQuality', String(DEFAULT_IMAGE_QUALITY));
+    }
+    return parsed.toString();
+  } catch {
+    return uri;
+  }
+};
+
 export interface ResolveThumbnailParamsInput {
   isAutoEnabled: boolean;
   contentUri: string;
@@ -36,9 +58,11 @@ export const resolveThumbnailParams = ({
     };
   }
 
+  const boundaryWithSize = ensureImageSizeParams(normalizedBoundaryUri) as BoundaryUri;
+
   return {
     contentUri: normalizedContentUri,
-    boundaryUri: normalizedBoundaryUri as BoundaryUri,
+    boundaryUri: boundaryWithSize,
     maskUri: normalizedMaskUri,
   };
 };

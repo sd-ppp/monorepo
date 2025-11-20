@@ -1,6 +1,6 @@
-import { availableModels, SDPPPReplicate } from "../client";
-import { BaseStoreState, createBaseStore, AsyncOperationManager, createTask as createBaseTask } from "../../base/BaseStore";
+import { AsyncOperationManager, BaseStoreState, createBaseStore, createTask as createBaseTask } from "../../base/BaseStore";
 import { Task } from "../../base/Task";
+import { availableModels, SDPPPReplicate } from "../client";
 
 // replicate特有的状态接口
 interface ReplicateStoreState extends BaseStoreState<SDPPPReplicate> {
@@ -14,7 +14,7 @@ interface ReplicateStoreState extends BaseStoreState<SDPPPReplicate> {
 
 // 创建replicate store
 export const replicateStore = createBaseStore<SDPPPReplicate, ReplicateStoreState>(
-    'replicate-store',
+    'replicate-store-v2',
     availableModels[0],
     {
         apiKey: '',
