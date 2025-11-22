@@ -151,9 +151,19 @@ export class SDPPPRunningHub extends Client<{
       if (ft === 'IMAGE' || ft === 'FILE') {
         if (Array.isArray(fieldValue)) {
           const first = fieldValue[0];
-          fieldValue = first && typeof first === 'object' && (first as any).url ? (first as any).url : first;
-        } else if (fieldValue && typeof fieldValue === 'object' && (fieldValue as any).url) {
-          fieldValue = (fieldValue as any).url;
+          if (first && typeof first === 'object' && typeof (first as any).url === 'string') {
+            fieldValue = ((first as any).url ?? '').trim();
+          } else if (typeof first === 'string') {
+            fieldValue = first.trim();
+          } else {
+            fieldValue = '';
+          }
+        } else if (fieldValue && typeof fieldValue === 'object' && typeof (fieldValue as any).url === 'string') {
+          fieldValue = ((fieldValue as any).url ?? '').trim();
+        } else if (typeof fieldValue === 'string') {
+          fieldValue = fieldValue.trim();
+        } else if (fieldValue == null) {
+          fieldValue = '';
         }
       }
 
@@ -535,11 +545,49 @@ export class SDPPPRunningHub extends Client<{
         };
 
         widgetableNodes.push(widgetableNode);
-        defaultInput[widgetableNode.id] = widget.outputType === 'images' ? null : node.fieldValue || this.getDefaultValueForType(widget.outputType);
+        if (widget.outputType === 'images') {
+          defaultInput[widgetableNode.id] = this.normalizeImageDefault(node.fieldValue);
+        } else {
+          const fallbackValue = this.getDefaultValueForType(widget.outputType);
+          defaultInput[widgetableNode.id] = node.fieldValue || fallbackValue;
+        }
       });
     }
 
     return { widgetableNodes, defaultInput };
+  }
+
+  private normalizeImageDefault(fieldValue: any): string[] {
+    if (Array.isArray(fieldValue)) {
+      return fieldValue
+        .map(item => {
+          if (!item) {
+            return null;
+          }
+          if (typeof item === 'string') {
+            const normalized = item.trim();
+            return normalized || null;
+          }
+          if (typeof item === 'object' && item && typeof item.url === 'string') {
+            const normalized = item.url.trim();
+            return normalized || null;
+          }
+          return null;
+        })
+        .filter((item): item is string => !!item);
+    }
+
+    if (typeof fieldValue === 'string') {
+      const normalized = fieldValue.trim();
+      return normalized ? [normalized] : [];
+    }
+
+    if (fieldValue && typeof fieldValue === 'object' && typeof fieldValue.url === 'string') {
+      const normalized = fieldValue.url.trim();
+      return normalized ? [normalized] : [];
+    }
+
+    return [];
   }
 
   private mapFieldTypeToOutputType(fieldType: string): string {
