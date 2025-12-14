@@ -8,7 +8,7 @@ const meta: Meta<typeof MaskSelector> = {
   args: {
     widgetableId: 'demo-mask-selector',
     value: ['https://picsum.photos/seed/sdppp-mask-1/400/300'],
-    workBoundary: 'uxp://boundary/1/canvas',
+    workBoundary: 'uxp://boundary/9527/canvas',
   },
   argTypes: {
     value: {

@@ -1,7 +1,9 @@
+import { sdpppSDK } from '@sdppp/common';
 import type { WidgetableImagesWidget, WidgetableWidget } from '@sdppp/common/schemas/schemas';
 import type { WidgetRenderer, WidgetRendererProps } from '@sdppp/widgetable-ui';
 import React from 'react';
-import { useWorkBoundary } from 'sdppp-photoshop-widgets/context/WidgetImageMaskContext';
+import { useWorkBoundary } from 'sdppp-photoshop-widgets/context/PhotoshopWidgetContext';
+import { AutoImageSelector, type AutoImageSelectorSourceHints } from '../components/selectors/AutoImageSelector';
 import { ImageSelector } from '../components/selectors/ImageSelector';
 import { LocalImagePackSelector } from '../components/selectors/LocalImagePackSelector';
 import { MaskSelector } from '../components/selectors/MaskSelector';
@@ -13,7 +15,8 @@ type SelectorKind =
   | 'multi-image'
   | 'masks'
   | 'local-image-pack'
-  | 'single-video';
+  | 'single-video'
+  | 'auto-image';
 
 type AnyWidget = WidgetableWidget & { options?: Record<string, any> };
 
@@ -30,6 +33,13 @@ const resolveSelectorKind = (
   if (widget.outputType === 'masks') return 'masks';
   if (widget.outputType === 'images') {
     const maxCount = (widget as WidgetableImagesWidget).options?.maxCount;
+    if (
+      widget.options?.['#sdppp_variant'] &&
+      widget.options['#sdppp_variant'] !== 'default' &&
+      widget.options['#sdppp_variant'] !== 'file'
+    ) {
+      return 'auto-image';
+    }
     if (maxCount === undefined || maxCount <= 1) return 'single-image';
     if (maxCount <= 4) return 'multi-image';
     return 'local-image-pack';
@@ -130,6 +140,38 @@ const renderSelector = (
           }}
         />
       );
+    case 'auto-image': {
+      if (!(value instanceof Array)) value = [value];
+      value = value.map(formatToString).filter(Boolean);
+      const widgetOptions = widget.options ?? {};
+      const sourceHints: AutoImageSelectorSourceHints = {
+        content:
+          typeof widgetOptions['#sdppp_simple_content'] === 'string'
+            ? (widgetOptions['#sdppp_simple_content'] as string)
+            : undefined,
+        mask:
+          typeof widgetOptions['#sdppp_simple_mask'] === 'string'
+            ? (widgetOptions['#sdppp_simple_mask'] as string)
+            : undefined,
+        boundary:
+          typeof widgetOptions['#sdppp_simple_boundary'] === 'string'
+            ? (widgetOptions['#sdppp_simple_boundary'] as string)
+            : undefined,
+      };
+      const labelOption =
+        typeof widgetOptions['#sdppp_label'] === 'string'
+          ? (widgetOptions['#sdppp_label'] as string)
+          : undefined;
+      return (
+        <AutoImageSelector
+          value={value as string[]}
+          workBoundary={workBoundaryUri}
+          onValueChange={onValueChange}
+          sourceHints={sourceHints}
+          label={labelOption}
+        />
+      );
+    }
     default:
       return null;
   }

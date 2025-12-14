@@ -88,7 +88,7 @@ const preview: Preview = {
         <I18nextProvider i18n={i18n}>
           <MockExternalApiProvider
             t={(key, options) => options?.defaultValue ?? key}
-            logger={(...args) => console.log('[WidgetImageMask]', ...args)}
+            logger={(...args) => console.log('[PhotoshopWidgets]', ...args)}
             imageUrls={imageUrls}
             onImageUrlsChange={handleImageUrlsChange}
             panelWidth={320}

@@ -1,13 +1,14 @@
-import type { FileResourceMaterializeResult } from '../../../src/context/WidgetImageMaskContext';
-import { MockResourceStore, type StageRect } from '../resource-store';
+import { snapshotToDataUrl, type StageRect } from '@sdppp/cbm-calculator';
+import type { FileResourceMaterializeResult } from '../../../src/context/PhotoshopWidgetContext';
+import { MockResourceStore } from '../resource-store';
 import type { MaskSnapshot, Snapshot } from './types';
 
-export const snapshotToResource = (
+export const snapshotToResource = async (
   snapshot: Snapshot | MaskSnapshot,
   store: MockResourceStore,
   options?: { maskRegion?: StageRect | null }
-): FileResourceMaterializeResult => {
-  const record = store.createFromDataUrl(snapshot.dataUrl, {
+): Promise<FileResourceMaterializeResult> => {
+  const record = store.createFromDataUrl(await snapshotToDataUrl(snapshot), {
     width: snapshot.rect.width,
     height: snapshot.rect.height,
     mime: 'image/png',
@@ -16,7 +17,6 @@ export const snapshotToResource = (
   });
   return {
     resource: record.resource,
-    thumbnail: record.dataUrl,
     width: record.width,
     height: record.height,
     mime: record.mime,

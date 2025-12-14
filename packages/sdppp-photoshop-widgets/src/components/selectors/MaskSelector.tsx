@@ -4,12 +4,12 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { v4 } from 'uuid';
 
 import {
-  useWidgetImageMaskActions,
-  useWidgetLogger,
+  usePhotoshopWidgetActions,
   useWidgetText,
   useWidgetUploadPassHandlers,
+  useResourceHandleManager,
   type WidgetUploadPass,
-} from '../../context/WidgetImageMaskContext';
+} from '../../context/PhotoshopWidgetContext';
 import { useManagedUploadTracker } from '../../hooks/useManagedUploadTracker';
 import { useMaskPreviewParams } from '../../hooks/useMaskPreviewParams';
 import { useThumbnail } from '../../hooks/useThumbnail';
@@ -17,6 +17,8 @@ import type { BoundaryUri, ContentUri, MaskUri } from '../../hooks/useThumbnail/
 import { useUploadCopy } from '../../hooks/useUploadCopy';
 import { useWidgetValueEmitter } from '../../hooks/useWidgetValueEmitter';
 import { resolveDocContext, resolveDocIdFromBoundary } from '../../utils/docContext';
+import { useManagedResourceHandle } from '../../hooks/useManagedResourceHandle';
+import type { ResourceHandle } from '../../context/PhotoshopWidgetContext';
 import { UploadableImagePreviewSplit } from '../shared/UploadableImagePreviewSplit';
 import { UploadIndicator } from '../shared/UploadIndicator';
 
@@ -32,9 +34,9 @@ type MaskSourceKind = 'selection' | 'curlayer' | 'canvas';
 
 export const MaskSelector: React.FC<MaskSelectorProps> = ({ widgetableId, value = [], workBoundary, onValueChange }) => {
   const t = useWidgetText();
-  const actions = useWidgetImageMaskActions();
-  const logger = useWidgetLogger();
+  const actions = usePhotoshopWidgetActions();
   const { runUploadPassOnce } = useWidgetUploadPassHandlers();
+  const resourceHandles = useResourceHandleManager();
 
   const { errorLabel: uploadErrorLabel } = useUploadCopy();
   const selectionMaskLabel = useMemo(
@@ -52,14 +54,22 @@ export const MaskSelector: React.FC<MaskSelectorProps> = ({ widgetableId, value 
 
   const imageUrl = useMemo(() => (value?.[0] ?? '').trim(), [value]);
   const [maskResource, setMaskResource] = useState<string>('');
-  const [maskFileUri, _setMaskFileUri] = useState<string>('');
+  const [maskFileUri, setMaskFileUriState] = useState<string>('');
   const [docIdFallback, setDocIdFallback] = useState<number | null>(null);
   const [lastSourceMode, setLastSourceMode] = useState<MaskSourceKind>('selection');
 
-  function setMaskFileUri(uri: string) {
-    console.trace('MaskSelector setMaskFileUri', uri);
-    _setMaskFileUri(uri); 
-  }
+  const {
+    handleRef: maskFileHandleRef,
+    setResource: assignMaskFileResource,
+  } = useManagedResourceHandle();
+
+  const setMaskFileResource = useCallback(
+    (uri: string, handle?: ResourceHandle | null) => {
+      setMaskFileUriState(uri);
+      assignMaskFileResource(uri, handle ?? null);
+    },
+    [assignMaskFileResource],
+  );
 
   const {
     uploadStatus,
@@ -74,7 +84,14 @@ export const MaskSelector: React.FC<MaskSelectorProps> = ({ widgetableId, value 
 
   useEffect(() => {
     setMaskResource(prev => {
-      if (imageUrl && imageUrl !== prev) return imageUrl;
+      if (imageUrl) {
+        if (/\/empty(?:\/|\?|#|$)/.test(imageUrl)) {
+          return '';
+        }
+        if (imageUrl !== prev) {
+          return imageUrl;
+        }
+      }
       if (!imageUrl && prev !== '') return '';
       return prev;
     });
@@ -114,24 +131,32 @@ export const MaskSelector: React.FC<MaskSelectorProps> = ({ widgetableId, value 
 
   const emitValue = useWidgetValueEmitter({
     onValueChange,
-    logger,
-    logLabel: 'MaskSelector emitValue',
   });
 
   const lastRequestedModeRef = useRef<MaskSourceKind>('selection');
 
-  const buildMaskUri = useCallback(
-    (mode: MaskSourceKind, docId: number) => `uxp://mask/${docId}/${mode}`,
-    [],
-  );
+  const buildMaskUri = useCallback((mode: MaskSourceKind, docId: number) => {
+    if (docId <= 0) return '';
+    if (mode === 'canvas') {
+      return `uxp://mask/${docId}/empty`;
+    }
+    return `uxp://mask/${docId}/${mode}`;
+  }, []);
 
   const requestMaskResource = useCallback(
     async (mode: MaskSourceKind, docId: number) => {
+      if (mode === 'canvas') {
+        lastRequestedModeRef.current = mode;
+        setMaskResource('');
+        setMaskFileResource('', null);
+        setLastSourceMode(mode);
+        emitValue([]);
+        return '';
+      }
       const maskUri = buildMaskUri(mode, docId);
       lastRequestedModeRef.current = mode;
-      const result = await actions['resource.file.createFromCBM']({
+      const result = await actions['resource.file.createByMask']({
         maskUri,
-        boundaryUri: boundaryUri || undefined,
       });
       const resource = typeof result?.resource === 'string' ? result.resource.trim() : '';
       const reportedError =
@@ -140,14 +165,23 @@ export const MaskSelector: React.FC<MaskSelectorProps> = ({ widgetableId, value 
           : null;
 
       if (!resource) {
-        throw new Error(reportedError ?? 'resource.file.createFromCBM returned empty resource');
+        const orphanHandle = result?.handle ?? null;
+        orphanHandle?.dispose();
+        if (reportedError) {
+          throw new Error(reportedError);
+        }
+        setMaskResource('');
+        setMaskFileResource('', null);
+        setLastSourceMode(mode);
+        return '';
       }
 
-      setMaskFileUri(resource);
+      const handle = result?.handle ?? resourceHandles.acquire(resource);
+      setMaskFileResource(resource, handle ?? null);
       setLastSourceMode(mode);
       return resource;
     },
-    [actions, boundaryUri, buildMaskUri],
+    [actions, buildMaskUri, emitValue, resourceHandles, setLastSourceMode, setMaskFileResource, setMaskResource],
   );
 
   const applyUploadSuccess = useCallback(
@@ -158,10 +192,9 @@ export const MaskSelector: React.FC<MaskSelectorProps> = ({ widgetableId, value 
       setUploadError(null);
       setLastSourceMode(mode);
       emitValue([normalized]);
-      logger('MaskSelector upload success', JSON.stringify({ mode, resource: normalized }));
       return true;
     },
-    [emitValue, logger, setMaskResource, setUploadError],
+    [emitValue, setMaskResource, setUploadError],
   );
 
   const applyUploadError = useCallback(
@@ -170,9 +203,8 @@ export const MaskSelector: React.FC<MaskSelectorProps> = ({ widgetableId, value 
         error instanceof Error ? error.message : typeof error === 'string' ? error : '';
       const resolved = message && message.trim().length > 0 ? message.trim() : uploadErrorLabel;
       setUploadError(resolved);
-      logger('MaskSelector upload error', JSON.stringify({ mode, message: resolved }));
     },
-    [logger, setUploadError, uploadErrorLabel],
+    [setUploadError, uploadErrorLabel],
   );
 
   const resolveDocIdOrEmitError = useCallback(
@@ -182,13 +214,11 @@ export const MaskSelector: React.FC<MaskSelectorProps> = ({ widgetableId, value 
       }
       setUploadError(uploadErrorLabel);
       setUploadProgress({ current: 0, total: 0 });
-      logger('MaskSelector docId missing', JSON.stringify({ maskType, boundaryUri }));
       return null;
     },
     [
       boundaryUri,
       docContext.docId,
-      logger,
       maskSourceAvailable,
       setUploadError,
       setUploadProgress,

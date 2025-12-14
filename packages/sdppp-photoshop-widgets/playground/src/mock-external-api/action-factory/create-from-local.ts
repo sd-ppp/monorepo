@@ -1,7 +1,7 @@
 import type {
   FileResourceMaterializeRecord,
   FileResourceMaterializeResult,
-} from '../../../src/context/WidgetImageMaskContext';
+} from '../../../src/context/PhotoshopWidgetContext';
 import type { ActionContext } from './types';
 
 type AcceptRecord = Record<string, string[]>;
@@ -381,7 +381,6 @@ export const createFromLocal = async (
 
         items.push({
           resource: record.resource,
-          thumbnail: record.dataUrl,
           width: record.width,
           height: record.height,
           mime: record.mime,

@@ -30,6 +30,22 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
   const autoSendTypeRef = React.useRef<'smartobject' | 'newdoc'>('smartobject');
   const pendingAutoSendRef = React.useRef(new Map<string, { cancel: boolean }>());
 
+  const saveResources = React.useCallback(async (resources: string[]) => {
+    if (!resources.length) {
+      return;
+    }
+    const photoshop = (sdpppSDK?.plugins?.photoshop ?? {}) as Record<string, any>;
+    const saveAction = photoshop?.fileResource?.saveAs;
+    if (typeof saveAction !== 'function') {
+      console.warn('[ImagePreviewWrapper] fileResource.saveAs not available');
+      return;
+    }
+    const result = await saveAction.call(photoshop, { resources });
+    if (result?.error && result.error !== 'cancelled') {
+      console.warn('[ImagePreviewWrapper] saveAs failed', result.error);
+    }
+  }, []);
+
   const normalizedIndex = React.useMemo(() => {
     if (!images.length) {
       return 0;
@@ -46,14 +62,6 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
   const currentItem = images[normalizedIndex];
   const isCurrentItemImage = currentItem ? isImage(currentItem.url) : false;
   const ICON_SIZE = 16;
-
-  // Get boundary display text (similar to WorkBoundary.tsx)
-  const getBoundaryText = (boundary: any): string => {
-    if (!boundary || (boundary.width >= 999999 && boundary.height >= 999999)) {
-      return t('boundary.current_canvas', {defaultMessage: 'Entire Canvas'});
-    }
-    return `(${boundary.leftDistance}, ${boundary.topDistance}, ${boundary.width}, ${boundary.height})`;
-  };
 
   const handlePrev = () => {
     setCurrentIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
@@ -75,8 +83,7 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
       }
       await sdpppSDK.plugins.photoshop.importImage({
         resource,
-        // Pass boundary if available; default to 'canvas'
-        boundary: images[index].boundary ?? 'canvas',
+        boundaryUri: images[index].boundaryUri ?? undefined,
         type: type,
         // Pass through original image dimensions when known
         sourceWidth: (images as any)[index]?.width,
@@ -103,7 +110,7 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
       const type = autoSendTypeRef.current;
       await sdpppSDK.plugins.photoshop.importImage({
         resource: item.resource,
-        boundary: item.boundary ?? 'canvas',
+        boundaryUri: item.boundaryUri ?? undefined,
         type,
         sourceWidth: (item as any)?.width,
         sourceHeight: (item as any)?.height,
@@ -161,7 +168,7 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
         }
         return sdpppSDK.plugins.photoshop.importImage({
           resource: image.resource,
-          boundary: image.boundary ?? 'canvas',
+          boundaryUri: image.boundaryUri ?? undefined,
           type: type,
           sourceWidth: (image as any)?.width,
           sourceHeight: (image as any)?.height
@@ -178,15 +185,13 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
       .map(image => image.resource)
       .filter((res): res is string => !!res);
     if (resources.length) {
-      sdpppSDK.plugins.photoshop.requestAndDoSaveImage({ resources } as any);
+      void saveResources(resources);
     }
   };
 
   const handleSaveCurrent = async () => {
     if (!currentItem?.resource) return;
-    await sdpppSDK.plugins.photoshop.requestAndDoSaveImage({
-      resources: [currentItem.resource]
-    } as any);
+    await saveResources([currentItem.resource]);
   };
 
   const handleJumpToLast = () => {

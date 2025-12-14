@@ -1,7 +1,7 @@
 import { ImagePreviewSplitList } from '@sdppp/ui-library';
 import { Button } from 'antd';
 import React, { useMemo } from 'react';
-import { useWidgetText } from '../../context/WidgetImageMaskContext';
+import { useWidgetText } from '../../context/PhotoshopWidgetContext';
 import { Plus } from 'lucide-react';
 
 interface SingleActionSelectorProps {

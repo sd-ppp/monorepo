@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 
-import { useWidgetText } from '../context/WidgetImageMaskContext';
+import { useWidgetText } from '../context/PhotoshopWidgetContext';
 
 export interface UploadCopy {
   errorLabel: string;

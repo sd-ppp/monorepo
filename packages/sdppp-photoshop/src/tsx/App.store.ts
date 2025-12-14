@@ -2,7 +2,10 @@ import { create } from 'zustand'
 import { Providers } from '../providers'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import { sdpppSDK } from '@sdppp/common'
+import type { ResourceHandle } from '@sdppp/resourcing/src/@sideweb/resource-handles'
+import { createFileResourceFromExternal } from '@sdppp/resourcing/src/@sideweb/file-resource-actions'
 import { loadRemoteConfig } from '@sdppp/vite-remote-config-loader'
+import { buildBoundaryUri } from '@sdppp/resourcing/src/resource-uris'
 
 export const MainStore = create<{
     provider: (keyof typeof Providers) | ''
@@ -11,67 +14,81 @@ export const MainStore = create<{
         resource?: string,
         thumbnail?: string,
         source: string,
+        fileName?: string,
         docId?: number,
-        boundary?: any,
+        boundaryUri?: string | null,
+        maskUri?: string | null,
         width?: number,
         height?: number,
         mimeType?: string,
         downloading?: boolean,
+        handle?: ResourceHandle | null,
+        maskHandle?: ResourceHandle | null,
     }[]
     showingPreview: boolean
     previewError: string
-    downloadAndAppendImage: (image: { url: string, source: string, docId?: number, boundary?: any }) => Promise<void>
+    downloadAndAppendImage: (image: {
+        url: string,
+        source: string,
+        fileName?: string,
+        docId?: number,
+        boundaryUri?: string | null,
+        maskUri?: string | null,
+        maskHandle?: ResourceHandle | null
+    }, options?: { replaceExisting?: boolean }) => Promise<void>
     deletePreviewImages: (keys: string[]) => Promise<void>
     setShowingPreview: (showing: boolean) => void
+    setPreviewError: (error: string) => void
 }>()(persist((set) => ({
     provider: '',
     previewImageList: [
     ],
-    downloadAndAppendImage: async ({ url, source, docId, boundary }: { url: string, source: string, docId?: number, boundary?: any }) => {
-        // Insert a placeholder item to reflect downloading state
-        set({
-            previewImageList: [
-                ...MainStore.getState().previewImageList,
-                {
-                    url,
-                    source,
-                    resource: undefined,
-                    thumbnail: undefined,
-                    docId,
-                    boundary,
-                    width: undefined,
-                    height: undefined,
-                    mimeType: undefined,
-                    downloading: true,
+    downloadAndAppendImage: async (
+        {
+            url,
+            source,
+            fileName,
+            docId,
+            boundaryUri,
+            maskUri,
+            maskHandle
+        },
+        options?: { replaceExisting?: boolean }
+    ) => {
+        const replaceExisting = options?.replaceExisting === true;
+        const disposeHandle = (handle?: ResourceHandle | null) => {
+            if (handle) {
+                try {
+                    handle.dispose()
+                } catch (error) {
+                    console.warn('[MainStore] dispose handle failed', error)
                 }
-            ]
-        })
+            }
+        }
 
-        const res = await sdpppSDK.plugins.photoshop.downloadImage({ url })
-        if ((res as any)?.error) {
-            // On error, remove the placeholder and record the error
-            const currentList = MainStore.getState().previewImageList
-            const idx = currentList.findIndex(item => item.url === url && item.source === source && item.downloading)
-            const nextList = idx >= 0 ? currentList.filter((_, i) => i !== idx) : currentList
+        const photoshopActions = (sdpppSDK.plugins.photoshop as any) ?? {};
+        const res = await createFileResourceFromExternal({ url, fileName });
+        const primary = res && Array.isArray(res.batch) && res.batch.length ? res.batch[0] ?? res : res;
+        const hasError = Boolean((res as any)?.error ?? (primary as any)?.error);
+
+        if (!res || hasError) {
+            disposeHandle(maskHandle ?? null)
             set({
-                previewError: (res as any).error,
-                previewImageList: nextList,
+                previewError: (res as any)?.error ?? (primary as any)?.error ?? 'download failed',
             })
             return
         }
 
-        // On success, update the placeholder to the final data
-        const currentList = MainStore.getState().previewImageList
-        const idx = currentList.findIndex(item => item.url === url && item.source === source && item.downloading)
-
-        const resource = (res as any).resource as string | undefined
-        let thumbnail = (res as any).thumbnail as (string | undefined)
+        const resource = (primary as any)?.resource as string | undefined
+        const handle = (primary as any)?.handle as ResourceHandle | null | undefined
+        let thumbnail = (primary as any)?.thumbnail as (string | undefined)
 
         if (resource && !thumbnail) {
             try {
-                const getThumbnailAction = (sdpppSDK.plugins.photoshop as any)?.getThumbnail
-                if (typeof getThumbnailAction === 'function') {
-                    const thumbRes = await getThumbnailAction({ resource })
+                const thumbnailAction = photoshopActions['fileResource.thumbnail'];
+
+                if (typeof thumbnailAction === 'function') {
+                    const thumbRes = await thumbnailAction.call(photoshopActions, { resource })
                     thumbnail = thumbRes?.thumbnail ?? thumbnail
                 }
             } catch (error) {
@@ -79,42 +96,44 @@ export const MainStore = create<{
             }
         }
 
-        if (idx >= 0) {
-            const updated = {
-                ...currentList[idx],
-                downloading: false,
-                resource: resource ?? currentList[idx].resource,
-                thumbnail: thumbnail ?? currentList[idx].thumbnail,
-                width: (res as any).width ?? currentList[idx].width,
-                height: (res as any).height ?? currentList[idx].height,
-                mimeType: (res as any).mimeType ?? currentList[idx].mimeType,
+        const normalizedHandle = resource ? (handle ?? null) : null
+        if (!resource && handle) {
+            disposeHandle(handle)
+        }
+
+        const previousItems = replaceExisting ? [...MainStore.getState().previewImageList] : [];
+
+        const nextItem = {
+            url,
+            source,
+            fileName,
+            resource,
+            thumbnail,
+            docId,
+            boundaryUri: boundaryUri ?? null,
+            maskUri: maskUri ?? null,
+            width: (primary as any)?.width,
+            height: (primary as any)?.height,
+            mimeType: (primary as any)?.mimeType ?? (primary as any)?.mime,
+            downloading: false,
+            handle: normalizedHandle,
+            maskHandle: maskHandle ?? null,
+        };
+
+        set((state) => ({
+            previewError: '',
+            previewImageList: replaceExisting ? [nextItem] : [...state.previewImageList, nextItem]
+        }))
+
+        if (replaceExisting && previousItems.length) {
+            for (const item of previousItems) {
+                if (item?.handle) {
+                    disposeHandle(item.handle)
+                }
+                if (item?.maskHandle) {
+                    disposeHandle(item.maskHandle)
+                }
             }
-            const nextList = [...currentList]
-            nextList[idx] = updated
-            set({
-                previewError: '',
-                previewImageList: nextList,
-            })
-        } else {
-            // If placeholder not found (e.g., list cleared), append final item
-            set({
-                previewError: '',
-                previewImageList: [
-                    ...currentList,
-                    {
-                        url,
-                        source,
-                        resource,
-                        thumbnail,
-                        docId,
-                        boundary,
-                        width: (res as any).width,
-                        height: (res as any).height,
-                        mimeType: (res as any).mimeType,
-                        downloading: false,
-                    }
-                ]
-            })
         }
     },
     deletePreviewImages: async (resources: string[]) => {
@@ -123,20 +142,41 @@ export const MainStore = create<{
         const normalizedResources = resources.filter((res): res is string => typeof res === 'string' && !!res)
         const resourceSet = new Set(normalizedResources);
 
-        const deleteAction = (sdpppSDK.plugins.photoshop as any)?.deleteDownloadedImage;
+        const photoshopActions = (sdpppSDK.plugins.photoshop as any) ?? {};
+        const deleteAction = photoshopActions['fileResource.delete'];
         if (typeof deleteAction === 'function' && resourceSet.size) {
             try {
-                await deleteAction({ resources: Array.from(resourceSet) });
+                await deleteAction.call(photoshopActions, { resources: Array.from(resourceSet) });
             } catch (error) {
-                console.warn('[MainStore] deleteDownloadedImage resources failed', error);
+                console.warn('[MainStore] fileResource.delete resources failed', error);
             }
         }
 
+        const retained: typeof currentList = []
+        for (const item of currentList) {
+            const key = item.resource;
+            if (key && resourceSet.has(key)) {
+                if (item.handle) {
+                    try {
+                        item.handle.dispose()
+                    } catch (error) {
+                        console.warn('[MainStore] dispose handle failed', error)
+                    }
+                }
+                if (item.maskHandle) {
+                    try {
+                        item.maskHandle.dispose()
+                    } catch (error) {
+                        console.warn('[MainStore] dispose mask handle failed', error)
+                    }
+                }
+                continue
+            }
+            retained.push(item)
+        }
+
         set({
-            previewImageList: currentList.filter(item => {
-                const key = item.resource;
-                return !key || !resourceSet.has(key);
-            })
+            previewImageList: retained,
         })
     },
     showingPreview: false,
@@ -162,10 +202,39 @@ export const MainStore = create<{
     }),
     onRehydrateStorage: () => (state) => {
         if (state?.previewImageList) {
-            state.previewImageList = state.previewImageList.map((item: any) => ({
-                ...item,
-                thumbnail: item.thumbnail ?? undefined,
-            }));
+            state.previewImageList = state.previewImageList.map((item: any) => {
+                const {
+                    boundary: legacyBoundary,
+                    boundaryUri: storedBoundaryUri,
+                    maskUri: storedMaskUri,
+                    ...rest
+                } = item;
+                const docId = typeof rest.docId === 'number' && Number.isFinite(rest.docId) ? rest.docId : 0;
+
+                let normalizedBoundaryUri: string | null = null;
+                if (typeof storedBoundaryUri === 'string' && storedBoundaryUri.length > 0) {
+                    normalizedBoundaryUri = storedBoundaryUri;
+                } else {
+                    let boundarySetting: any = null;
+                    if (legacyBoundary === 'canvas' || legacyBoundary === 'curlayer' || legacyBoundary === 'selection') {
+                        boundarySetting = legacyBoundary;
+                    } else if (legacyBoundary && typeof legacyBoundary === 'object') {
+                        boundarySetting = legacyBoundary;
+                    }
+                    normalizedBoundaryUri = buildBoundaryUri(docId, boundarySetting ?? null);
+                }
+
+                const normalizedMaskUri = typeof storedMaskUri === 'string' && storedMaskUri.length > 0 ? storedMaskUri : null;
+
+                return {
+                    ...rest,
+                    boundaryUri: normalizedBoundaryUri,
+                    maskUri: normalizedMaskUri,
+                    thumbnail: rest.thumbnail ?? undefined,
+                    handle: null,
+                    maskHandle: null,
+                };
+            });
         }
     },
 }))
@@ -184,7 +253,7 @@ MainStore.subscribe((state, prevState) => {
     }
 })
 
-// MainStore.setState({ 
+// MainStore.setState({
 //     showingPreview: true,
 //     previewImageList: [{
 //         url: 'https://sdppp.zombee.tech/img/qr_manga1.jpg',

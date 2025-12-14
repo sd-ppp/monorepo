@@ -1,46 +1,51 @@
 import { useWidgetRenderMeta } from '@sdppp/widgetable-ui';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { Dispatch, MutableRefObject, SetStateAction } from 'react';
 
 import {
   useSelectionBoundary,
-  useWidgetImageMaskActions,
-  useWidgetLogger,
-} from '../../../../context/WidgetImageMaskContext';
-import { resolveDocContext } from '../../../../utils/docContext';
-import { DEFAULT_CONTENT_URI } from '../../../../utils/resolveThumbnailParams';
-import { parseLayerInfoFromUri } from '../utils';
+  usePhotoshopWidgetActions,
+  type ResourceHandle,
+} from '../../../../context/PhotoshopWidgetContext';
 import type { ImageSelectorProps, SourceMode } from '../types';
+import { useImageResourceState, type DocScopedUriSnapshot } from './useImageResourceState';
+import { useAutoState } from './useAutoState';
+import { useLayerModeState } from './useLayerModeState';
+import { useInteractionState } from './useInteractionState';
 
 export interface UseImageSelectorStateParams
   extends Pick<ImageSelectorProps, 'value' | 'defaultAuto' | 'workBoundary'> {}
 
 export interface ImageSelectorState {
-  imageMaskActions: ReturnType<typeof useWidgetImageMaskActions>;
-  logger: ReturnType<typeof useWidgetLogger>;
+  imageMaskActions: ReturnType<typeof usePhotoshopWidgetActions>;
   selectionBoundary: ReturnType<typeof useSelectionBoundary>;
+  hasSelectionBoundary: boolean;
   renderMeta: ReturnType<typeof useWidgetRenderMeta>;
   resolvedDefaultAuto: boolean;
   initialValueUri: string;
   auto: boolean;
   applyAuto: (next: boolean, options?: { manual?: boolean }) => void;
-  autoRef: React.MutableRefObject<boolean>;
-  hasManualAutoChangeRef: React.MutableRefObject<boolean>;
-  setAutoState: React.Dispatch<React.SetStateAction<boolean>>;
-  fileUri: string;
-  setFileUri: React.Dispatch<React.SetStateAction<string>>;
+  autoRef: MutableRefObject<boolean>;
+  hasManualAutoChangeRef: MutableRefObject<boolean>;
+  setAutoState: Dispatch<SetStateAction<boolean>>;
+  diskFileUri: string;
+  setDiskFileResource: (resource: string, handle?: ResourceHandle | null) => void;
   contentUri: string;
-  setContentUri: React.Dispatch<React.SetStateAction<string>>;
+  setContentUri: Dispatch<SetStateAction<string>>;
+  setPreparedContentResource: (resource: string, handle?: ResourceHandle | null) => void;
   boundaryUri: string;
-  setBoundaryUri: React.Dispatch<React.SetStateAction<string>>;
+  setBoundaryUri: Dispatch<SetStateAction<string>>;
   maskUri: string;
-  setMaskUri: React.Dispatch<React.SetStateAction<string>>;
+  setMaskResource: (resource: string, handle?: ResourceHandle | null) => void;
+  resultSnapshotUri: string;
+  setResultSnapshotResource: (resource: string, handle?: ResourceHandle | null) => void;
+  clearResultSnapshot: () => void;
   layerInfo: {
     layerId: string | null;
     layerName: string | null;
     uri: string | null;
   } | null;
-  setLayerInfo: React.Dispatch<
-    React.SetStateAction<{
+  setLayerInfo: Dispatch<
+    SetStateAction<{
       layerId: string | null;
       layerName: string | null;
       uri: string | null;
@@ -48,23 +53,28 @@ export interface ImageSelectorState {
   >;
   sourceMode: SourceMode;
   setSourceMode: (mode: SourceMode, options?: { manual?: boolean }) => void;
-  sourceModeRef: React.MutableRefObject<SourceMode>;
-  layerResolveRequestIdRef: React.MutableRefObject<number>;
+  sourceModeRef: MutableRefObject<SourceMode>;
+  layerResolveRequestIdRef: MutableRefObject<number>;
   isGearButtonHovered: boolean;
-  setIsGearButtonHovered: React.Dispatch<React.SetStateAction<boolean>>;
+  setIsGearButtonHovered: Dispatch<SetStateAction<boolean>>;
   isStatusBarHovered: boolean;
-  setIsStatusBarHovered: React.Dispatch<React.SetStateAction<boolean>>;
+  setIsStatusBarHovered: Dispatch<SetStateAction<boolean>>;
+  isMaskButtonHovered: boolean;
+  setIsMaskButtonHovered: Dispatch<SetStateAction<boolean>>;
   isStatusBarVisible: boolean;
-  gearHoverTimeoutRef: React.MutableRefObject<ReturnType<typeof setTimeout> | null>;
-  pendingManualFileRef: React.MutableRefObject<boolean>;
-  lastKnownValueRef: React.MutableRefObject<string>;
-  effectiveBoundaryUri: string;
-  effectiveFileUri: string;
-  derivedContentUri: string;
-  ensureContentUri: () => string;
-  resolveCurrentLayer: () => Promise<string | null>;
+  gearHoverTimeoutRef: MutableRefObject<ReturnType<typeof setTimeout> | null>;
+  pendingManualFileRef: MutableRefObject<boolean>;
+  lastKnownValueRef: MutableRefObject<string>;
+  resolveCurrentLayer: () => Promise<{ contentUri: string | null; boundaryUri: string | null }>;
   curDocId: number;
-  canvasContentFallback: string;
+  diskFileHandleRef: MutableRefObject<ResourceHandle | null>;
+  contentHandleRef: MutableRefObject<ResourceHandle | null>;
+  maskHandleRef: MutableRefObject<ResourceHandle | null>;
+  maskHandleResourceRef: MutableRefObject<string | null>;
+  workBoundary: string;
+  isInitialState: boolean;
+  setInitialState: Dispatch<SetStateAction<boolean>>;
+  syncDocScopedUrisIfNeeded: () => DocScopedUriSnapshot;
 }
 
 export const useImageSelectorState = ({
@@ -72,242 +82,78 @@ export const useImageSelectorState = ({
   defaultAuto = true,
   workBoundary,
 }: UseImageSelectorStateParams): ImageSelectorState => {
-  const imageMaskActions = useWidgetImageMaskActions();
+  const imageMaskActions = usePhotoshopWidgetActions();
   const selectionBoundary = useSelectionBoundary();
-  const logger = useWidgetLogger();
+  const hasSelectionBoundary = Boolean(
+    selectionBoundary &&
+      Number.isFinite(selectionBoundary.width) &&
+      Number.isFinite(selectionBoundary.height) &&
+      selectionBoundary.width > 0 &&
+      selectionBoundary.height > 0,
+  );
   const renderMeta = useWidgetRenderMeta();
 
-  const resolvedDefaultAuto = useMemo(() => {
-    if (!defaultAuto) {
-      return false;
-    }
-    if (!renderMeta) {
-      return true;
-    }
-    return renderMeta.sameTypeIndex === 0;
-  }, [defaultAuto, renderMeta]);
-
-  const initialValueUri = useMemo(() => (value?.[0] ?? '').trim(), [value]);
-
-  const [fileUri, setFileUri] = useState<string>('');
-  const [contentUri, setContentUri] = useState<string>('');
-  const [boundaryUri, setBoundaryUri] = useState<string>(workBoundary);
-  const [maskUri, setMaskUri] = useState<string>('');
-  const [auto, setAutoState] = useState<boolean>(resolvedDefaultAuto);
-  const [layerInfo, setLayerInfo] = useState<{
-    layerId: string | null;
-    layerName: string | null;
-    uri: string | null;
-  } | null>(null);
-  const [sourceModeInternal, setSourceModeInternal] = useState<SourceMode>('canvas');
-  const [isGearButtonHovered, setIsGearButtonHovered] = useState(false);
-  const [isStatusBarHovered, setIsStatusBarHovered] = useState(false);
-
-  const sourceModeRef = useRef<SourceMode>(sourceModeInternal);
-  const layerResolveRequestIdRef = useRef(0);
-  const gearHoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const setSourceMode = useCallback(
-    (mode: SourceMode, options?: { manual?: boolean }) => {
-      sourceModeRef.current = mode;
-      setSourceModeInternal(mode);
-    },
-    [],
-  );
-
-  const sourceMode = sourceModeInternal;
-
-  useEffect(() => {
-    sourceModeRef.current = sourceModeInternal;
-  }, [sourceModeInternal]);
-
-  const isStatusBarVisible = isGearButtonHovered || isStatusBarHovered;
-
-  useEffect(
-    () => () => {
-      if (gearHoverTimeoutRef.current) {
-        clearTimeout(gearHoverTimeoutRef.current);
-        gearHoverTimeoutRef.current = null;
-      }
-    },
-    [],
-  );
-
-  const autoRef = useRef<boolean>(auto);
-  const hasManualAutoChangeRef = useRef<boolean>(false);
-
-  useEffect(() => {
-    autoRef.current = auto;
-  }, [auto]);
-
-  const applyAuto = useCallback(
-    (next: boolean, options?: { manual?: boolean }) => {
-      if (options?.manual) {
-        hasManualAutoChangeRef.current = true;
-      }
-      autoRef.current = next;
-      setAutoState(next);
-    },
-    [setAutoState],
-  );
-
-  useEffect(() => {
-    if (hasManualAutoChangeRef.current) {
-      return;
-    }
-    const expected = resolvedDefaultAuto;
-    if (autoRef.current !== expected) {
-      autoRef.current = expected;
-      setAutoState(expected);
-    }
-  }, [resolvedDefaultAuto, setAutoState]);
-
-  const pendingManualFileRef = useRef(false);
-  const lastKnownValueRef = useRef<string>(initialValueUri);
-
-  const { docId: curDocId, canvasContentUri: canvasContentFallback } = useMemo(
-    () => resolveDocContext(workBoundary),
-    [workBoundary],
-  );
-
-  useEffect(() => {
-    const incoming = (value?.[0] ?? '').trim();
-    if (!incoming) {
-      return;
-    }
-    if (pendingManualFileRef.current) {
-      if (incoming === lastKnownValueRef.current && incoming.length > 0) {
-        pendingManualFileRef.current = false;
-      } else {
-        return;
-      }
-    }
-    lastKnownValueRef.current = incoming;
-  }, [value]);
-
-  useEffect(() => {
-    setBoundaryUri(workBoundary);
-    setContentUri('');
-  }, [workBoundary]);
-
-  const effectiveBoundaryUri = boundaryUri || workBoundary;
-  const effectiveFileUri = (fileUri || '').trim();
-
-  const derivedContentUri = useMemo(() => {
-    const normalizedContentUri = contentUri.trim();
-    if (normalizedContentUri) return normalizedContentUri;
-    if (!effectiveBoundaryUri) return DEFAULT_CONTENT_URI;
-    return curDocId > 0 ? canvasContentFallback : DEFAULT_CONTENT_URI;
-  }, [contentUri, effectiveBoundaryUri, canvasContentFallback, curDocId]);
-
-  const ensureContentUri = useCallback(() => {
-    const normalized = contentUri.trim();
-    if (normalized) {
-      return normalized;
-    }
-    const fallback = derivedContentUri.trim() ? derivedContentUri : DEFAULT_CONTENT_URI;
-    setContentUri(fallback);
-    return fallback;
-  }, [contentUri, derivedContentUri]);
-
-  const resolveCurrentLayer = useCallback(async (): Promise<string | null> => {
-    let targetUri: string | null = null;
-    if (curDocId > 0) {
-      targetUri = `uxp://content/${curDocId}/curlayer`;
-    }
-    if (!targetUri) {
-      const candidates = [
-        contentUri.trim(),
-        (effectiveBoundaryUri ?? '').trim(),
-        derivedContentUri.trim(),
-      ].filter(Boolean) as string[];
-      targetUri = candidates[0] ?? null;
-    }
-    if (!targetUri) {
-      setLayerInfo(null);
-      return null;
-    }
-    const requestId = ++layerResolveRequestIdRef.current;
-    try {
-      const resolver = imageMaskActions['resource.layer.resolve'];
-      const result = await resolver({ uri: targetUri, type: 'content' });
-      if (layerResolveRequestIdRef.current !== requestId) {
-        return (result?.uri ?? targetUri)?.trim() ?? null;
-      }
-      const resolvedUri = (result?.uri ?? targetUri).trim();
-      const parsed = parseLayerInfoFromUri(resolvedUri);
-      setLayerInfo({
-        layerId: result?.layerId ?? parsed.layerId,
-        layerName: result?.layerName ?? parsed.layerName,
-        uri: resolvedUri || null,
-      });
-      if (resolvedUri && resolvedUri !== contentUri.trim()) {
-        setContentUri(resolvedUri);
-      }
-      return resolvedUri || null;
-    } catch (error) {
-      if (layerResolveRequestIdRef.current === requestId) {
-        setLayerInfo(null);
-        logger(
-          'ImageSelector layer resolve error',
-          JSON.stringify({
-            message: error instanceof Error ? error.message : String(error),
-            stack: error instanceof Error ? error.stack : undefined,
-          }),
-        );
-      }
-      return null;
-    }
-  }, [contentUri, curDocId, derivedContentUri, effectiveBoundaryUri, imageMaskActions, logger]);
-
-  useEffect(() => {
-    if (sourceMode !== 'layer') {
-      setLayerInfo(null);
-      return;
-    }
-    void resolveCurrentLayer();
-  }, [resolveCurrentLayer, sourceMode]);
+  const normalizedWorkBoundary = (workBoundary ?? '').trim();
+  const resourceState = useImageResourceState({ workBoundary });
+  const autoState = useAutoState({ value, defaultAuto, renderMeta });
+  const layerModeState = useLayerModeState({
+    imageMaskActions,
+    contentUri: resourceState.contentUri,
+    setContentUri: resourceState.setContentUri,
+    boundaryForResolution: resourceState.boundaryUri || normalizedWorkBoundary,
+    curDocId: resourceState.curDocId,
+  });
+  const interactionState = useInteractionState();
 
   return {
     imageMaskActions,
-    logger,
     selectionBoundary,
+    hasSelectionBoundary,
     renderMeta,
-    resolvedDefaultAuto,
-    initialValueUri,
-    auto,
-    applyAuto,
-    autoRef,
-    hasManualAutoChangeRef,
-    setAutoState,
-    fileUri,
-    setFileUri,
-    contentUri,
-    setContentUri,
-    boundaryUri,
-    setBoundaryUri,
-    maskUri,
-    setMaskUri,
-    layerInfo,
-    setLayerInfo,
-    sourceMode,
-    setSourceMode,
-    sourceModeRef,
-    layerResolveRequestIdRef,
-    isGearButtonHovered,
-    setIsGearButtonHovered,
-    isStatusBarHovered,
-    setIsStatusBarHovered,
-    isStatusBarVisible,
-    gearHoverTimeoutRef,
-    pendingManualFileRef,
-    lastKnownValueRef,
-    effectiveBoundaryUri,
-    effectiveFileUri,
-    derivedContentUri,
-    ensureContentUri,
-    resolveCurrentLayer,
-    curDocId,
-    canvasContentFallback,
+    resolvedDefaultAuto: autoState.resolvedDefaultAuto,
+    initialValueUri: autoState.initialValueUri,
+    auto: autoState.auto,
+    applyAuto: autoState.applyAuto,
+    autoRef: autoState.autoRef,
+    hasManualAutoChangeRef: autoState.hasManualAutoChangeRef,
+    setAutoState: autoState.setAutoState,
+    diskFileUri: resourceState.diskFileUri,
+    setDiskFileResource: resourceState.setDiskFileResource,
+    contentUri: resourceState.contentUri,
+    setContentUri: resourceState.setContentUri,
+    setPreparedContentResource: resourceState.setPreparedContentResource,
+    boundaryUri: resourceState.boundaryUri,
+    setBoundaryUri: resourceState.setBoundaryUri,
+    maskUri: resourceState.maskUri,
+    setMaskResource: resourceState.setMaskResource,
+    resultSnapshotUri: resourceState.resultSnapshotUri,
+    setResultSnapshotResource: resourceState.setResultSnapshotResource,
+    clearResultSnapshot: resourceState.clearResultSnapshot,
+    isInitialState: resourceState.isInitialState,
+    setInitialState: resourceState.setIsInitialState,
+    layerInfo: layerModeState.layerInfo,
+    setLayerInfo: layerModeState.setLayerInfo,
+    sourceMode: layerModeState.sourceMode,
+    setSourceMode: layerModeState.setSourceMode,
+    sourceModeRef: layerModeState.sourceModeRef,
+    layerResolveRequestIdRef: layerModeState.layerResolveRequestIdRef,
+    isGearButtonHovered: interactionState.isGearButtonHovered,
+    setIsGearButtonHovered: interactionState.setIsGearButtonHovered,
+    isStatusBarHovered: interactionState.isStatusBarHovered,
+    setIsStatusBarHovered: interactionState.setIsStatusBarHovered,
+    isMaskButtonHovered: interactionState.isMaskButtonHovered,
+    setIsMaskButtonHovered: interactionState.setIsMaskButtonHovered,
+    isStatusBarVisible: interactionState.isStatusBarVisible,
+    gearHoverTimeoutRef: interactionState.gearHoverTimeoutRef,
+    pendingManualFileRef: autoState.pendingManualFileRef,
+    lastKnownValueRef: autoState.lastKnownValueRef,
+    resolveCurrentLayer: layerModeState.resolveCurrentLayer,
+    curDocId: resourceState.curDocId,
+    diskFileHandleRef: resourceState.diskFileHandleRef,
+    contentHandleRef: resourceState.contentHandleRef,
+    maskHandleRef: resourceState.maskHandleRef,
+    maskHandleResourceRef: resourceState.maskHandleResourceRef,
+    workBoundary: normalizedWorkBoundary,
+    syncDocScopedUrisIfNeeded: resourceState.syncDocScopedUrisIfNeeded,
   };
 };

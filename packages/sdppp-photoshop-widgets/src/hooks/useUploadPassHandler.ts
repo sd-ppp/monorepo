@@ -1,11 +1,7 @@
 import { useCallback } from 'react';
 import { v4 } from 'uuid';
 
-import {
-  useWidgetUploadPassHandlers,
-  type WidgetImageMaskLogger,
-  type WidgetUploadPass,
-} from '../context/WidgetImageMaskContext';
+import { useWidgetUploadPassHandlers, type WidgetUploadPass } from '../context/PhotoshopWidgetContext';
 
 export interface UploadPassTrackerControls {
   markUploadStart: (total?: number) => void;
@@ -18,14 +14,12 @@ export interface UseUploadPassHandlerOptions extends UploadPassTrackerControls {
   uploadErrorLabel: string;
   onSuccess: (uploaded: string, context: { resource: string }) => void;
   onError?: (message: string, context: { resource: string }) => void;
-  logger?: WidgetImageMaskLogger;
 }
 
 export const useUploadPassHandler = ({
   uploadErrorLabel,
   onSuccess,
   onError,
-  logger,
   markUploadStart,
   markUploadEnd,
   setUploadError,
@@ -61,35 +55,17 @@ export const useUploadPassHandler = ({
         if (!normalizedResult) {
           setUploadError(uploadErrorLabel);
           onError?.(uploadErrorLabel, { resource: normalizedResource });
-          if (logger) {
-            logger(
-              'UploadPass empty result',
-              JSON.stringify({ resource: normalizedResource }),
-            );
-          }
           return undefined;
         }
 
         setUploadProgress({ current: 1, total: 1 });
         onSuccess(normalizedResult, { resource: normalizedResource });
-        if (logger) {
-          logger(
-            'UploadPass success',
-            JSON.stringify({ resource: normalizedResource, uploaded: normalizedResult }),
-          );
-        }
         return normalizedResult;
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         const resolvedMessage = message || uploadErrorLabel;
         setUploadError(resolvedMessage);
         onError?.(resolvedMessage, { resource: normalizedResource });
-        if (logger) {
-          logger(
-            'UploadPass error',
-            JSON.stringify({ resource: normalizedResource, message: resolvedMessage }),
-          );
-        }
         return undefined;
       } finally {
         markUploadEnd();
@@ -100,7 +76,6 @@ export const useUploadPassHandler = ({
       markUploadStart,
       onError,
       onSuccess,
-      logger,
       runUploadPassOnce,
       setUploadError,
       setUploadProgress,

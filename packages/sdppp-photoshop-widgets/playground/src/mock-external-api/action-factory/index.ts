@@ -1,9 +1,11 @@
 import type {
   ResourceThumbnailParams,
   ResourceThumbnailResult,
-  WidgetImageMaskActions,
-} from '../../../src/context/WidgetImageMaskContext';
-import { createFromCBM } from './create-from-cbm';
+  PhotoshopWidgetActions,
+} from '../../../src/context/PhotoshopWidgetContext';
+import { createByContent } from './create-by-content';
+import { createByMask } from './create-by-mask';
+import { combineByCBM } from './combine-by-cbm';
 import { createFromLocal } from './create-from-local';
 import { createFromBuffer } from './create-from-buffer';
 import { createResourceThumbnail } from './resource-thumbnail';
@@ -26,7 +28,7 @@ const createActionContext = (deps: FactoryDeps): ActionContext => ({
   logger: deps.logger,
 });
 
-export const createMockActions = (deps: FactoryDeps): WidgetImageMaskActions => {
+export const createMockActions = (deps: FactoryDeps): PhotoshopWidgetActions => {
   const ctx = createActionContext(deps);
 
   const handleThumbnail = (params: ResourceThumbnailParams): Promise<ResourceThumbnailResult> =>
@@ -36,7 +38,9 @@ export const createMockActions = (deps: FactoryDeps): WidgetImageMaskActions => 
     'resource.layer.resolve': params => resolveLayer(ctx, params),
     'resource.boundary.normalize': payload => normalizeBoundary(ctx, payload),
     'resource.thumbnail': handleThumbnail,
-    'resource.file.createFromCBM': params => createFromCBM(ctx, params),
+    'resource.file.createByContent': params => createByContent(ctx, params),
+    'resource.file.createByMask': params => createByMask(ctx, params),
+    'resource.file.combineByCBM': params => combineByCBM(ctx, params),
     'resource.file.createFromBuffer': params => createFromBuffer(ctx, params),
     'resource.file.createFromLocal': params => createFromLocal(ctx, params),
   };

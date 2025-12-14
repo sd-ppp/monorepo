@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { fn } from '@storybook/test';
 import { NumberWidget } from './number';
 
 const meta: Meta<typeof NumberWidget> = {
@@ -10,7 +9,7 @@ const meta: Meta<typeof NumberWidget> = {
   },
   tags: ['autodocs'],
   args: {
-    onValueChange: fn(),
+    onValueChange: () => undefined,
   },
 };
 

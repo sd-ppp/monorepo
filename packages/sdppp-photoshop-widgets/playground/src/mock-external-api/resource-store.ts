@@ -1,11 +1,5 @@
-import type { FileUri } from '@sdppp/resourcing/resource-uris';
-
-export interface StageRect {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
+import type { StageRect } from '@sdppp/cbm-calculator';
+import type { FileUri } from 'sdppp-photoshop-widgets/hooks/useThumbnail/types';
 
 export interface StoredResource {
   resource: FileUri;
@@ -63,8 +57,6 @@ export class MockResourceStore {
     if (!resource) return null;
     const existing = this.get(resource);
     if (existing) return existing.dataUrl;
-    if (/^data:image\//.test(resource)) return resource;
-    if (/^https?:\/\//.test(resource)) return resource;
     return null;
   }
 

@@ -2,32 +2,31 @@ import { theme } from 'antd';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { v4 } from 'uuid';
 import {
-    useWidgetImageMaskActions,
-    useWidgetLogger,
-    useWidgetText,
-    useWidgetUploadPassHandlers,
-    useWorkBoundary,
-    type WidgetUploadPass,
-} from '../../context/WidgetImageMaskContext';
+  usePhotoshopWidgetActions,
+  useWidgetText,
+  useWidgetUploadPassHandlers,
+  useWorkBoundary,
+  type LocalImagePackPreviewCell,
+  type WidgetUploadPass,
+} from '../../context/PhotoshopWidgetContext';
+import { useManagedResourceCollection } from '../../hooks/useManagedResourceCollection';
+import type { ResourceHandle } from '../../context/PhotoshopWidgetContext';
 import { useFileDropZone } from '../../hooks/useFileDropZone';
 import {
-    useLocalImagePackSelection,
-    type LocalImagePackSelectionResult,
+  useLocalImagePackSelection,
+  type LocalImagePackSelectionResult,
 } from '../../hooks/useLocalImagePackSelection';
 import { useUploadCopy } from '../../hooks/useUploadCopy';
 import { useWidgetValueEmitter } from '../../hooks/useWidgetValueEmitter';
 import { withAlpha } from '../../utils/color';
 import { resolveDocContext } from '../../utils/docContext';
 import {
-    buildBufferPayloadFromFile,
-    getSuccessfulMaterializeRecord,
-    isImageFile,
-    readFileAsDataUrl,
+  buildBufferPayloadFromFile,
+  getSuccessfulMaterializeRecord,
+  isImageFile,
+  readFileAsDataUrl,
 } from '../../utils/fileUtils';
-import {
-    buildUploadFileName,
-    type LocalImagePackPreviewCell,
-} from '../../utils/localImagePackLayout';
+import { buildUploadFileName } from '../../utils/localImagePackLayout';
 import { LocalImagePackLayout } from './local-image-pack/LocalImagePackLayout';
 
 interface LocalImagePackSelectorProps {
@@ -36,26 +35,38 @@ interface LocalImagePackSelectorProps {
   onValueChange?: (value: string[]) => void;
 }
 
+const extractRecordThumbnail = (record: unknown): string | null => {
+  if (record && typeof record === 'object') {
+    const candidate = (record as { thumbnail?: unknown }).thumbnail;
+    if (typeof candidate === 'string' && candidate.length > 0) {
+      return candidate;
+    }
+  }
+  return null;
+};
+
 export const LocalImagePackSelector: React.FC<LocalImagePackSelectorProps> = ({
   widgetableId,
   value,
   onValueChange,
 }) => {
   const t = useWidgetText();
-  const logger = useWidgetLogger();
   const { token } = theme.useToken();
   const dropOverlayBackground = useMemo(() => withAlpha(token.colorPrimary, 0.12), [token.colorPrimary]);
   const dropOverlayBorder = useMemo(() => withAlpha(token.colorPrimary, 0.55), [token.colorPrimary]);
   const dropOverlayText = token.colorText;
   const selectLocalImages = useLocalImagePackSelection();
   const { runUploadPassOnce } = useWidgetUploadPassHandlers();
-  const actions = useWidgetImageMaskActions();
+  const actions = usePhotoshopWidgetActions();
   const workBoundaryUri = useWorkBoundary();
+  const {
+    retain: retainResourceHandle,
+    release: releaseResourceHandle,
+    clear: clearResourceHandles,
+  } = useManagedResourceCollection();
 
   const emitValue = useWidgetValueEmitter({
     onValueChange,
-    logger,
-    logLabel: 'LocalImagePackSelector emitValue',
   });
 
   const [pendingItems, setPendingItems] = useState<LocalImagePackPreviewCell[]>([]);
@@ -114,6 +125,15 @@ export const LocalImagePackSelector: React.FC<LocalImagePackSelectorProps> = ({
       let completedCount = 0;
 
       for (const item of selection.items) {
+        const resourceId = (item.resource ?? '').trim();
+        if (!resourceId) {
+          encounteredError = true;
+          captureError(item, 'resource missing');
+          continue;
+        }
+
+        retainResourceHandle(resourceId, item.handle ?? null);
+
         try {
           const uploadPass: WidgetUploadPass = {
             getUploadFile: async (signal?: AbortSignal) => {
@@ -122,8 +142,8 @@ export const LocalImagePackSelector: React.FC<LocalImagePackSelectorProps> = ({
               }
               return {
                 type: 'resource',
-                resource: item.resource,
-                resourceId: item.resource,
+                resource: resourceId,
+                resourceId,
                 fileName: item.fileName,
                 mimeType: item.mime ?? undefined,
               };
@@ -133,25 +153,22 @@ export const LocalImagePackSelector: React.FC<LocalImagePackSelectorProps> = ({
           const normalized = typeof uploaded === 'string' ? uploaded.trim() : '';
           if (normalized) {
             appended.push(normalized);
-            setPendingItems(curr => curr.filter(entry => entry.id !== item.resource));
+            setPendingItems(curr => curr.filter(entry => entry.id !== resourceId));
             if (item.preview) {
               setPreviewCache(prev => ({ ...prev, [normalized]: item.preview as string }));
             }
             emitValue([...base, ...appended]);
           } else {
             encounteredError = true;
-            setPendingItems(curr => curr.filter(entry => entry.id !== item.resource));
+            setPendingItems(curr => curr.filter(entry => entry.id !== resourceId));
             recordUploadError();
           }
         } catch (error) {
           encounteredError = true;
-          setPendingItems(curr => curr.filter(entry => entry.id !== item.resource));
+          setPendingItems(curr => curr.filter(entry => entry.id !== resourceId));
           recordUploadError(error);
-          logger(
-            'LocalImagePackSelector upload error',
-            error instanceof Error ? error.message : String(error),
-          );
         } finally {
+          releaseResourceHandle(resourceId);
           completedCount += 1;
           if (totalForProgress > 0) {
             const nextCurrent = Math.min(completedCount, totalForProgress);
@@ -171,7 +188,6 @@ export const LocalImagePackSelector: React.FC<LocalImagePackSelectorProps> = ({
     },
     [
       emitValue,
-      logger,
       recordUploadError,
       runUploadPassOnce,
       setPendingItems,
@@ -179,6 +195,8 @@ export const LocalImagePackSelector: React.FC<LocalImagePackSelectorProps> = ({
       setUploadProgress,
       setUploadStatus,
       value,
+      retainResourceHandle,
+      releaseResourceHandle,
     ],
   );
 
@@ -192,16 +210,11 @@ export const LocalImagePackSelector: React.FC<LocalImagePackSelectorProps> = ({
         await processSelection(selection);
       } catch (error) {
         recordUploadError(error);
-        logger(
-          'LocalImagePackSelector selection error',
-          error instanceof Error ? error.message : String(error),
-        );
       } finally {
         setUploadStatus(prev => (prev === 'error' ? 'error' : 'idle'));
       }
     },
     [
-      logger,
       processSelection,
       recordUploadError,
       setUploadErrorMessage,
@@ -254,26 +267,21 @@ export const LocalImagePackSelector: React.FC<LocalImagePackSelectorProps> = ({
       };
 
       for (const file of acceptedFiles) {
+        let handle: ResourceHandle | null = null;
+        let resourceAdded = false;
         try {
           const payload = await buildBufferPayloadFromFile(file);
           const result = await createFromBuffer({ files: [payload] });
           const record = getSuccessfulMaterializeRecord(result);
-          logger(
-            'LocalImagePackSelector createFromBuffer result',
-            JSON.stringify({
-              file: file.name,
-              resource: record?.resource ?? null,
-              error: record?.error ?? (result as any)?.error ?? null,
-              mime: record?.mime ?? payload.mime ?? file.type ?? null,
-            }),
-          );
+          handle = record?.handle ?? null;
           const resource = record?.resource ? record.resource.trim() : '';
           if (!resource) {
             hasError = true;
             captureError(record ?? result, record?.error);
+            handle?.dispose();
             continue;
           }
-          let preview = record?.thumbnail ?? null;
+          let preview = extractRecordThumbnail(record);
           if (!preview) {
             if (typeof getThumbnail === 'function') {
               try {
@@ -285,10 +293,6 @@ export const LocalImagePackSelector: React.FC<LocalImagePackSelectorProps> = ({
                 hasError = true;
                 captureError(
                   thumbnailError,
-                  thumbnailError instanceof Error ? thumbnailError.message : String(thumbnailError),
-                );
-                logger(
-                  'LocalImagePackSelector drop thumbnail error',
                   thumbnailError instanceof Error ? thumbnailError.message : String(thumbnailError),
                 );
               }
@@ -307,14 +311,20 @@ export const LocalImagePackSelector: React.FC<LocalImagePackSelectorProps> = ({
             preview,
             mime,
             fileName: file.name || buildUploadFileName(resource, mime),
+            handle: record?.handle ?? null,
           });
+          resourceAdded = true;
         } catch (error) {
           hasError = true;
           captureError(error, error instanceof Error ? error.message : String(error));
-          logger(
-            'LocalImagePackSelector drop materialize error',
-            error instanceof Error ? error.message : String(error),
-          );
+        } finally {
+          if (!resourceAdded && handle) {
+            try {
+              handle.dispose();
+            } catch {
+              // ignore disposal failure
+            }
+          }
         }
       }
 
@@ -325,7 +335,7 @@ export const LocalImagePackSelector: React.FC<LocalImagePackSelectorProps> = ({
         errorDetail: firstErrorDetail,
       };
     },
-    [actions, logger],
+    [actions],
   );
 
   const handleDropFiles = useCallback(
@@ -350,7 +360,8 @@ export const LocalImagePackSelector: React.FC<LocalImagePackSelectorProps> = ({
     setUploadStatus('idle');
     setUploadProgress({ current: 0, total: 0 });
     emitValue([]);
-  }, [logger, emitValue]);
+    clearResourceHandles();
+  }, [clearResourceHandles, emitValue]);
 
   useEffect(() => {
     if (uploadStatus === 'idle' && uploadErrorMessage === null) {
@@ -394,7 +405,6 @@ export const LocalImagePackSelector: React.FC<LocalImagePackSelectorProps> = ({
     const resolvedContentUri = boundaryContext.hasDocument ? boundaryContext.canvasContentUri : '';
     if (!resolvedBoundaryUri || !resolvedContentUri) {
       recordUploadError(canvasFetchErrorLabel);
-      logger('LocalImagePackSelector canvas invalid boundary', canvasFetchErrorLabel);
       return;
     }
 
@@ -413,7 +423,7 @@ export const LocalImagePackSelector: React.FC<LocalImagePackSelectorProps> = ({
     setUploadProgress({ current: 0, total: 1 });
 
     try {
-      const result = await actions['resource.file.createFromCBM']({
+      const result = await actions['resource.file.combineByCBM']({
         contentUri: resolvedContentUri,
         boundaryUri: resolvedBoundaryUri,
       });
@@ -428,6 +438,8 @@ export const LocalImagePackSelector: React.FC<LocalImagePackSelectorProps> = ({
         recordUploadError(reportedError ?? canvasFetchErrorLabel);
         return;
       }
+
+      retainResourceHandle(resource, result?.handle ?? null);
 
       const uploadPass: WidgetUploadPass = {
         getUploadFile: async (signal?: AbortSignal) => {
@@ -450,10 +462,15 @@ export const LocalImagePackSelector: React.FC<LocalImagePackSelectorProps> = ({
         return;
       }
 
-      const thumbnail =
-        typeof result?.thumbnail === 'string' && result.thumbnail.trim().length > 0
-          ? result.thumbnail.trim()
-          : null;
+      let thumbnail: string | null = null;
+      try {
+        const thumbResult = await actions['resource.thumbnail']({ resource });
+        if (thumbResult?.thumbnail && thumbResult.thumbnail.trim().length > 0) {
+          thumbnail = thumbResult.thumbnail.trim();
+        }
+      } catch (thumbnailError) {
+        // ignore thumbnail fetch errors; UI will fall back to preview
+      }
       const filePreview =
         typeof result?.fileUri === 'string' && result.fileUri.trim().length > 0
           ? result.fileUri.trim()
@@ -467,17 +484,13 @@ export const LocalImagePackSelector: React.FC<LocalImagePackSelectorProps> = ({
       } else if (filePreview) {
         setPreviewCache(prev => ({ ...prev, [normalizedUploaded]: filePreview }));
       }
-      logger('LocalImagePackSelector canvas emitValue', JSON.stringify(nextValue));
       emitValue(nextValue);
       setUploadProgress({ current: 1, total: 1 });
       setUploadStatus('idle');
     } catch (error) {
       recordUploadError(error);
-      logger(
-        'LocalImagePackSelector canvas error',
-        error instanceof Error ? error.message : String(error),
-      );
     } finally {
+      releaseResourceHandle(resource);
       setPendingItems(curr => curr.filter(entry => entry.id !== placeholderId));
       setUploadStatus(prev => (prev === 'error' ? 'error' : 'idle'));
     }
@@ -485,12 +498,13 @@ export const LocalImagePackSelector: React.FC<LocalImagePackSelectorProps> = ({
     actions,
     canvasFetchErrorLabel,
     emitValue,
-    logger,
     recordUploadError,
     setUploadProgress,
     runUploadPassOnce,
     value,
     workBoundaryUri,
+    retainResourceHandle,
+    releaseResourceHandle,
   ]);
 
   return (

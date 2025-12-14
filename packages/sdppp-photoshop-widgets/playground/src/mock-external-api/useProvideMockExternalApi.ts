@@ -2,9 +2,9 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 import type { Stage as KonvaStage } from 'konva/lib/Stage';
 
 import type {
-  WidgetImageMaskActions,
-  WidgetImageMaskLogger,
-} from '../../../src/context/WidgetImageMaskContext';
+  PhotoshopWidgetActions,
+  PhotoshopWidgetLogger,
+} from '../../../src/context/PhotoshopWidgetContext';
 import { createMockActions, MIN_SELECTION_EDGE, roundRect } from './action-factory';
 import { MockResourceStore } from './resource-store';
 import type { MockRealtimeContent, SelectionRect } from './types';
@@ -12,7 +12,7 @@ import type { MockRealtimeContent, SelectionRect } from './types';
 export const MOCK_DOCUMENT_ID = 9527;
 
 export interface ProvideResult {
-  actions: WidgetImageMaskActions;
+  actions: PhotoshopWidgetActions;
   resourceStore: MockResourceStore;
   getCurrentLayerId: () => string | null;
   contextValue: {
@@ -29,7 +29,7 @@ export interface ProvideResult {
   };
 }
 
-export const useProvideMockExternalApi = (logger: WidgetImageMaskLogger): ProvideResult => {
+export const useProvideMockExternalApi = (logger: PhotoshopWidgetLogger): ProvideResult => {
   const stageRef = useRef<KonvaStage | null>(null);
   const resourceStore = useMemo(() => new MockResourceStore(), []);
   const [selectionRect, setSelectionRect] = useState<SelectionRect | null>(null);
@@ -53,16 +53,21 @@ export const useProvideMockExternalApi = (logger: WidgetImageMaskLogger): Provid
       subscribersRef.current.forEach(({ docId, contents, callback }) => {
         if (docId !== MOCK_DOCUMENT_ID) return;
         if (contents.has(content)) {
+          logger('MockExternalApi realtime notify', JSON.stringify({ docId, content }));
           scheduleCallback(callback);
         }
       });
     },
-    [scheduleCallback]
+    [logger, scheduleCallback]
   );
 
   const subscribeToRealtimeChanges = useCallback(
     (docId: number, contents: MockRealtimeContent[], callback: () => void) => {
       if (!contents.length) return () => undefined;
+      logger(
+        'MockExternalApi realtime subscribe',
+        JSON.stringify({ docId, contents }),
+      );
       const id = nextSubscriberId.current++;
       subscribersRef.current.set(id, {
         docId,
@@ -72,7 +77,7 @@ export const useProvideMockExternalApi = (logger: WidgetImageMaskLogger): Provid
       scheduleCallback(callback);
       return () => subscribersRef.current.delete(id);
     },
-    [scheduleCallback]
+    [logger, scheduleCallback]
   );
 
   const updateSelectionRect = useCallback(
@@ -98,7 +103,7 @@ export const useProvideMockExternalApi = (logger: WidgetImageMaskLogger): Provid
     currentLayerIdRef.current = trimmed.length ? trimmed : null;
   }, []);
 
-  const actions = useMemo<WidgetImageMaskActions>(
+  const actions = useMemo<PhotoshopWidgetActions>(
     () =>
       createMockActions({
         stageRef,

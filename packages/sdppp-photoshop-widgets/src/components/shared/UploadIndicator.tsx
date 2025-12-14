@@ -1,6 +1,6 @@
 import { Button } from 'antd';
 import React, { useMemo, useCallback } from 'react';
-import { useWidgetText } from '../../context/WidgetImageMaskContext';
+import { useWidgetText } from '../../context/PhotoshopWidgetContext';
 
 export type UploadIndicatorStatus = 'idle' | 'uploading' | 'error';
 
@@ -119,6 +119,14 @@ export const UploadIndicator: React.FC<UploadIndicatorProps> = ({
   const containerCursor = isError && onDismiss ? 'pointer' : 'default';
 
   const message = isError ? resolvedErrorMessage : resolvedUploadingMessage;
+  const showProgress =
+    normalizedTotal !== undefined &&
+    normalizedCurrent !== undefined &&
+    !(
+      normalizedTotal === 0 &&
+      normalizedCurrent === 0 &&
+      !uploadingMessage
+    );
 
   return (
     <div
@@ -160,7 +168,7 @@ export const UploadIndicator: React.FC<UploadIndicatorProps> = ({
             display: 'inline-block',
           }}
         >
-          {normalizedTotal !== undefined ? `(${normalizedCurrent ?? 0}/${normalizedTotal}) ` : null}
+          {showProgress ? `(${normalizedCurrent ?? 0}/${normalizedTotal}) ` : null}
           {message}
         </span>
         {isError && onRetry ? (

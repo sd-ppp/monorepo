@@ -3,14 +3,10 @@ import type {
   FileResourceCreateFromBufferPayload,
   FileResourceMaterializeRecord,
   FileResourceMaterializeResult,
-} from '../../../src/context/WidgetImageMaskContext';
+} from '../../../src/context/PhotoshopWidgetContext';
 import type { ActionContext } from './types';
 
 const VIDEO_EXTENSIONS = new Set(['.mp4', '.avi', '.mov', '.mkv', '.webm', '.flv', '.wmv']);
-const GENERIC_FILE_THUMBNAIL =
-  'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iOTYiIGhlaWdodD0iOTYiIHZpZXdCb3g9IjAgMCA5NiA5NiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iOTYiIGhlaWdodD0iOTYiIHJ4PSIxMiIgZmlsbD0iI0ZGRiIvPjx0ZXh0IHg9IjQ4IiB5PSI1MiIgZmlsbD0iI0EwQTAxMSIgZm9udC1mYW1pbHk9IkFyaWFsLCBIZWx2ZXRpY2EsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTYiIGZvbnQtd2VpZ2h0PSI3MDAiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkZJTEU8L3RleHQ+PC9zdmc+';
-const VIDEO_PLACEHOLDER_DATA_URL =
-  'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iOTYiIGhlaWdodD0iOTYiIHZpZXdCb3g9IjAgMCA5NiA5NiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iOTYiIGhlaWdodD0iOTYiIHJ4PSIxMiIgZmlsbD0iI0YwRjJGNSIvPjxwYXRoIGQ9Ik0zNyAzMmgyMmMyLjIgMCA0IDEuOCA0IDR2MjRjMCAyLjItMS44IDQtNCA0SDM3Yy0yLjIgMC00LTEuOC00LTRWMzZjMC0yLjIgMS44LTQgNC00Wm0yNCAxMi0xMiA4LTEyLTh2LTRsMTIgOCAxMi04djRaIiBmaWxsPSIjOEM4QzhDIi8+PC9zdmc+';
 
 const EXTENSION_MIME_FALLBACK: Record<string, string> = {
   '.png': 'image/png',
@@ -156,28 +152,6 @@ const normaliseMime = (mime?: string | null, extension?: string | null): string 
   return 'application/octet-stream';
 };
 
-const buildGenericThumbnail = (extension?: string | null): string => {
-  if (extension && VIDEO_EXTENSIONS.has(extension)) {
-    return VIDEO_PLACEHOLDER_DATA_URL;
-  }
-  return GENERIC_FILE_THUMBNAIL;
-};
-
-const resolveThumbnail = (
-  provided: string | null | undefined,
-  dataUrl: string,
-  mime: string,
-  extension: string | null,
-): string | null => {
-  if (provided && typeof provided === 'string' && provided.trim().length) {
-    return provided;
-  }
-  if (mime.startsWith('image/')) {
-    return dataUrl;
-  }
-  return buildGenericThumbnail(extension);
-};
-
 const resolveDimensions = async (
   dataUrl: string,
   mime: string,
@@ -243,8 +217,6 @@ export const createFromBuffer = async (
         ensureNumeric(descriptor.height ?? null),
       );
 
-      const thumbnail = resolveThumbnail(descriptor.thumbnail, dataUrl, mime, extension);
-
       const record = ctx.resourceStore.createFromDataUrl(dataUrl, {
         width: resolvedDimensions.width,
         height: resolvedDimensions.height,
@@ -253,7 +225,6 @@ export const createFromBuffer = async (
 
       results.push({
         resource: record.resource,
-        thumbnail,
         width: record.width,
         height: record.height,
         mime,

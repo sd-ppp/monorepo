@@ -55,6 +55,7 @@ export interface SyncButtonProps extends React.HTMLAttributes<HTMLDivElement> {
   mainButtonType?: ButtonProps['type'];
   mainButtonStyle?: React.CSSProperties;
   autoSyncButtonStyle?: React.CSSProperties;
+  mainButtonDisabled?: boolean;
   tooltipPlacement?: TooltipPlacement;
   autoTooltipPlacement?: TooltipPlacement;
   direction?: 'horizontal' | 'vertical';
@@ -80,6 +81,7 @@ export const SyncButton: React.FC<SyncButtonProps> = ({
   mainButtonType = 'default',
   mainButtonStyle,
   autoSyncButtonStyle,
+  mainButtonDisabled = false,
   tooltipPlacement = 'top',
   autoTooltipPlacement = 'top',
   direction = 'horizontal',
@@ -105,28 +107,10 @@ export const SyncButton: React.FC<SyncButtonProps> = ({
   }, [autoSyncIcon]);
 
   const autoSyncButtonIcon = useMemo(() => {
-    const baseStyle = resolvedAutoSyncIcon.props.style ?? {};
-    const nextStyle: React.CSSProperties = { ...baseStyle };
-
-    if (isAutoSync) {
-      if (typeof document !== 'undefined') {
-        ensureSpinStyle();
-      }
-      if (!nextStyle.animation) {
-        nextStyle.animation = 'sdppp-sync-button-spin 1s linear infinite';
-      }
-      if (!nextStyle.transformOrigin) {
-        nextStyle.transformOrigin = 'center';
-      }
-    } else if (nextStyle.animation === 'sdppp-sync-button-spin 1s linear infinite') {
-      delete nextStyle.animation;
-    }
-
     const baseClassName = resolvedAutoSyncIcon.props.className ?? '';
     const mergedClassName = [
       'sync-button-auto-icon',
       baseClassName,
-      isAutoSync ? 'sync-button-auto-icon--spinning' : null,
     ]
       .filter(Boolean)
       .join(' ')
@@ -134,11 +118,8 @@ export const SyncButton: React.FC<SyncButtonProps> = ({
 
     return React.cloneElement(resolvedAutoSyncIcon, {
       className: mergedClassName || undefined,
-      style: nextStyle,
-      spin: isAutoSync,
-      'data-spinning': isAutoSync || undefined,
     });
-  }, [resolvedAutoSyncIcon, isAutoSync]);
+  }, [resolvedAutoSyncIcon]);
 
   const handleSyncClick = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
     onSync({ altKey: e.altKey, shiftKey: e.shiftKey });
@@ -189,7 +170,7 @@ export const SyncButton: React.FC<SyncButtonProps> = ({
       data-testid="sync-button-main"
       type={mainButtonType}
       size="middle"
-      disabled={disabled}
+      disabled={disabled || mainButtonDisabled}
       onClick={handleSyncClick}
       block={isVertical}
       style={{
@@ -267,6 +248,7 @@ export const SyncButton: React.FC<SyncButtonProps> = ({
     </Button>
   ), [
     disabled,
+    mainButtonDisabled,
     handleSyncClick,
     children,
     mainButtonType,
@@ -280,7 +262,7 @@ export const SyncButton: React.FC<SyncButtonProps> = ({
   const autoSyncButton = useMemo(() => (
     <Button
       data-testid="sync-button-auto-sync"
-      type={isAutoSync ? 'default' : 'dashed'}
+      type={isAutoSync ? 'primary' : 'dashed'}
       icon={autoSyncButtonIcon}
       size="middle"
       disabled={disabled}

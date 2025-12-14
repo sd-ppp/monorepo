@@ -1,18 +1,22 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { v4 } from 'uuid';
 
 import {
+  useWidgetText,
   useWidgetUploadPassHandlers,
+  type MaterializedResourceRef,
   type WidgetUploadPass,
-} from '../../../../context/WidgetImageMaskContext';
-import { useImageCbmActions } from '../../../../hooks/useImageCbmActions';
+  type ResourceHandle,
+} from '../../../../context/PhotoshopWidgetContext';
 import { useManagedUploadTracker } from '../../../../hooks/useManagedUploadTracker';
 import { useUploadCopy } from '../../../../hooks/useUploadCopy';
 import { useWidgetValueEmitter } from '../../../../hooks/useWidgetValueEmitter';
-import { DEFAULT_CONTENT_URI } from '../../../../utils/resolveThumbnailParams';
-import { inferSourceModeFromContent } from '../utils';
+import { getSuccessfulMaterializeRecord } from '../../../../utils/fileUtils';
+import type { UploadIndicatorStatus } from '../../../shared/UploadIndicator';
 import type { ImageSelectorProps, SourceMode } from '../types';
 import type { ImageSelectorState } from './useImageSelectorState';
+import type { DocScopedUriSnapshot } from './useImageResourceState';
+import { buildBoundaryRectUri } from '../utils';
 
 interface UseImageUploadWorkflowParams
   extends Pick<
@@ -20,17 +24,23 @@ interface UseImageUploadWorkflowParams
     'onValueChange' | 'onUploadStateChange' | 'externalErrorDismissSignal'
   > {
   state: ImageSelectorState;
+  onPreviewInvalidate?: () => void;
 }
 
 export interface ImageUploadWorkflow {
+  indicatorStatus: UploadIndicatorStatus;
+  uploadingMessage?: string | null;
   uploadError: string | null;
   uploadProgress: { current: number; total: number };
   uploadStatus: 'idle' | 'uploading' | 'error';
   handleDismissError: () => void;
-  sync: ReturnType<typeof useImageCbmActions>['sync'];
-  rebuildMask: ReturnType<typeof useImageCbmActions>['rebuildMask'];
-  normalizeBoundary: ReturnType<typeof useImageCbmActions>['normalizeBoundary'];
-  handleResourceUpload: (resource?: string | null) => Promise<boolean>;
+  withUploadIndicator: <T>(operation: () => Promise<T>, options?: { message?: string }) => Promise<T>;
+  sync: (
+    overrides?: { contentUri?: string | null; maskUri?: string | null; boundaryUri?: string | null },
+    docSyncContext?: Pick<DocScopedUriSnapshot, 'contentUri' | 'maskUri' | 'boundaryUri'>,
+  ) => Promise<MaterializedResourceRef | undefined>;
+  rebuildMask: () => Promise<MaterializedResourceRef | undefined>;
+  handleResourceUpload: (resource?: MaterializedResourceRef | null) => Promise<boolean>;
   handleSync: (
     overrides?: {
       contentUri?: string | null;
@@ -49,33 +59,55 @@ export const useImageUploadWorkflow = ({
   onValueChange,
   onUploadStateChange,
   externalErrorDismissSignal,
+  onPreviewInvalidate,
 }: UseImageUploadWorkflowParams): ImageUploadWorkflow => {
+  const t = useWidgetText();
   const {
     imageMaskActions: actions,
-    logger,
     applyAuto,
     auto,
     autoRef,
-    setFileUri,
-    setMaskUri,
+    setDiskFileResource,
+    diskFileUri,
+    setResultSnapshotResource,
+    clearResultSnapshot,
+    setPreparedContentResource,
+    setMaskResource,
     setBoundaryUri,
+    selectionBoundary,
     layerInfo,
     setLayerInfo,
     setContentUri,
     contentUri,
+    boundaryUri,
     setSourceMode,
     sourceModeRef,
     pendingManualFileRef,
     lastKnownValueRef,
-    ensureContentUri,
     resolveCurrentLayer,
-    derivedContentUri,
-    effectiveBoundaryUri,
     maskUri,
     curDocId,
+    diskFileHandleRef,
+    contentHandleRef,
+    maskHandleRef,
+    workBoundary,
+    setInitialState,
+    syncDocScopedUrisIfNeeded,
   } = state;
 
+  const markInitialized = useCallback(() => {
+    setInitialState(false);
+  }, [setInitialState]);
+
   const { errorLabel: uploadErrorLabel } = useUploadCopy();
+
+  const makePerfLogger = useCallback(
+    (label: string) => {
+      void label;
+      return () => undefined;
+    },
+    [],
+  );
 
   const {
     uploadError,
@@ -90,25 +122,7 @@ export const useImageUploadWorkflow = ({
 
   const emitValue = useWidgetValueEmitter({
     onValueChange,
-    logger,
-    logLabel: 'ImageSelector emitValue',
   });
-
-  const { sync, rebuildMask, normalizeBoundary } = useImageCbmActions({
-    actions,
-    contentUri: derivedContentUri,
-    boundaryUri: effectiveBoundaryUri,
-    maskUri,
-    documentId: curDocId,
-    onFileResource: setFileUri,
-    onMaskUri: setMaskUri,
-    onBoundaryUri: setBoundaryUri,
-    setUploadError,
-    logger,
-  });
-
-  const syncRef = useRef(sync);
-  syncRef.current = sync;
 
   const pendingAutoOverridesRef = useRef<{
     contentUri?: string | null;
@@ -117,8 +131,10 @@ export const useImageUploadWorkflow = ({
   } | null>(null);
 
   const { addUploadPass, removeUploadPass, runUploadPassOnce } = useWidgetUploadPassHandlers();
-  const autoUploadPassRef = useRef<{ pass: WidgetUploadPass } | null>(null);
-  const autoUploadInFlightRef = useRef<boolean>(false);
+  const autoUploadPassRef = useRef<{ pass: WidgetUploadPass } | null>(null);  const autoUploadInFlightRef = useRef<boolean>(false);
+  const lastResolvedHandleRef = useRef<ResourceHandle | null>(null);
+  const preparedContentResourceRef = useRef<string | null>(null);
+  const preparedMaskResourceRef = useRef<string | null>(null);
 
   const handleDismissError = useCallback(() => {
     dismissUploadError();
@@ -137,14 +153,212 @@ export const useImageUploadWorkflow = ({
     autoUploadInFlightRef.current = false;
   }, [markUploadEnd, removeUploadPass, setUploadProgress]);
 
+  const prepareContentHandle = useCallback(
+    async (rawUri: string): Promise<string> => {
+      const normalized = (rawUri ?? '').trim();
+      if (!normalized) {
+        throw new Error('Content source unavailable');
+      }
+      if (normalized === preparedContentResourceRef.current) {
+        return normalized;
+      }
+      if (normalized.startsWith('uxp://file/')) {
+        preparedContentResourceRef.current = normalized;
+        setPreparedContentResource(normalized, contentHandleRef.current ?? null);
+        return normalized;
+      }
+      const fn = actions['resource.file.createByContent'];
+      if (typeof fn !== 'function') {
+        throw new Error('resource.file.createByContent unavailable');
+      }
+      const result = await fn({ contentUri: normalized });
+      const resource = typeof result?.resource === 'string' ? result.resource.trim() : '';
+      if (!resource) {
+        throw new Error('Content handle unavailable');
+      }
+      preparedContentResourceRef.current = resource;
+      setPreparedContentResource(resource, result?.handle ?? null);
+      return resource;
+    },
+    [actions, contentHandleRef, setPreparedContentResource],
+  );
+
+  const prepareMaskHandle = useCallback(
+    async (rawUri?: string | null): Promise<string | null> => {
+      const normalized = (rawUri ?? '').trim();
+      if (!normalized) {
+        preparedMaskResourceRef.current = null;
+        setMaskResource('', null);
+        return null;
+      }
+      if (/\/empty(?:\/|\?|#|$)/.test(normalized)) {
+        preparedMaskResourceRef.current = null;
+        setMaskResource('', null);
+        return null;
+      }
+      if (normalized === preparedMaskResourceRef.current) {
+        return normalized;
+      }
+      if (normalized.startsWith('uxp://file/')) {
+        preparedMaskResourceRef.current = normalized;
+        setMaskResource(normalized, maskHandleRef.current ?? null);
+        return normalized;
+      }
+      const fn = actions['resource.file.createByMask'];
+      if (typeof fn !== 'function') {
+        throw new Error('resource.file.createByMask unavailable');
+      }
+      const result = await fn({ maskUri: normalized });
+      const resource = typeof result?.resource === 'string' ? result.resource.trim() : '';
+      if (!resource) {
+        preparedMaskResourceRef.current = null;
+        setMaskResource('', null);
+        return null;
+      }
+      preparedMaskResourceRef.current = resource;
+      setMaskResource(resource, result?.handle ?? null);
+      return resource;
+    },
+    [actions, maskHandleRef, setMaskResource],
+  );
+
+  const combineComposite = useCallback(
+    async (params: {
+      contentUri: string;
+      boundaryUri: string;
+      maskUri?: string | null;
+      meta?: Record<string, unknown>;
+    }) => {
+      const fn = actions['resource.file.combineByCBM'];
+      if (typeof fn !== 'function') {
+        throw new Error('resource.file.combineByCBM unavailable');
+      }
+      const payload = {
+        contentUri: params.contentUri,
+        boundaryUri: params.boundaryUri,
+        maskUri: params.maskUri ? params.maskUri : undefined,
+        meta: params.meta,
+      };
+      const result = await fn(payload);
+      if ((result as any)?.error) {
+        throw new Error((result as any)?.error ?? 'combine failed');
+      }
+      return result ?? null;
+    },
+    [actions],
+  );
+
+  const rebuildMask = useCallback(async (): Promise<MaterializedResourceRef | undefined> => {
+    const selectionUri = curDocId > 0 ? `uxp://mask/${curDocId}/selection` : '';
+    if (!selectionUri) {
+      return undefined;
+    }
+    const resource = await prepareMaskHandle(selectionUri);
+    if (!resource) {
+      return undefined;
+    }
+    return {
+      resource,
+      handle: maskHandleRef.current ?? undefined,
+    };
+  }, [curDocId, maskHandleRef, prepareMaskHandle]);
+
+  useEffect(() => {
+    preparedContentResourceRef.current = null;
+  }, [contentUri]);
+
+  useEffect(() => {
+    preparedMaskResourceRef.current = null;
+  }, [maskUri]);
+
+  const sync = useCallback(
+    async (
+      overrides?: { contentUri?: string | null; maskUri?: string | null; boundaryUri?: string | null },
+      docSyncContext?: Pick<DocScopedUriSnapshot, 'contentUri' | 'maskUri' | 'boundaryUri'>,
+    ) => {
+      try {
+        const snapshot = docSyncContext ?? syncDocScopedUrisIfNeeded();
+        const normalizedOverrides = overrides ?? undefined;
+        const overrideContent =
+          typeof normalizedOverrides?.contentUri === 'string'
+            ? normalizedOverrides.contentUri.trim()
+            : undefined;
+        const overrideBoundary =
+          typeof normalizedOverrides?.boundaryUri === 'string'
+            ? normalizedOverrides.boundaryUri.trim()
+            : undefined;
+        const overrideMaskRaw =
+          Object.prototype.hasOwnProperty.call(normalizedOverrides ?? {}, 'maskUri') &&
+          normalizedOverrides
+            ? normalizedOverrides.maskUri
+            : undefined;
+
+        const baseContent = (snapshot.contentUri ?? '').trim();
+        const baseBoundary = (snapshot.boundaryUri ?? '').trim();
+        const fallbackBoundary =
+          baseBoundary || (boundaryUri ?? '').trim() || (workBoundary ?? '').trim();
+        const fallbackMask = (snapshot.maskUri ?? '').trim();
+
+        const effectiveContent = (
+          overrideContent && overrideContent.length > 0
+            ? overrideContent
+            : baseContent
+        );
+        const effectiveBoundary = (overrideBoundary ?? fallbackBoundary).trim();
+
+        let effectiveMask: string | null | undefined;
+        if (overrideMaskRaw === null) {
+          effectiveMask = null;
+        } else if (typeof overrideMaskRaw === 'string') {
+          effectiveMask = overrideMaskRaw.trim();
+        } else {
+          const maskFallback = fallbackMask.length ? fallbackMask : (maskUri ?? '').trim();
+          effectiveMask = maskFallback.length ? maskFallback : undefined;
+        }
+
+        if (!effectiveContent) {
+          return undefined;
+        }
+        if (!effectiveBoundary) {
+          return undefined;
+        }
+
+        const result = await combineComposite({
+          contentUri: effectiveContent,
+          boundaryUri: effectiveBoundary,
+          maskUri: effectiveMask ?? null,
+        });
+
+        lastResolvedHandleRef.current = result?.handle ?? null;
+
+        if (result?.resource) {
+          setResultSnapshotResource(result.resource, result?.handle ?? null);
+        }
+        return result ?? undefined;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        setUploadError(message);
+        return undefined;
+      }
+    },
+    [
+      boundaryUri,
+      combineComposite,
+      maskUri,
+      setResultSnapshotResource,
+      setUploadError,
+      syncDocScopedUrisIfNeeded,
+      workBoundary,
+    ],
+  );
+
+  const syncRef = useRef(sync);
+  syncRef.current = sync;
+
   const applyUploadSuccess = useCallback(
     (uploaded: string | null | undefined, resource: string, mode: 'auto' | 'manual') => {
       const normalizedUploaded = typeof uploaded === 'string' ? uploaded.trim() : '';
       if (!normalizedUploaded) {
-        logger(
-          'ImageSelector upload pass empty result',
-          JSON.stringify({ resource, mode }),
-        );
         return false;
       }
 
@@ -153,15 +367,17 @@ export const useImageUploadWorkflow = ({
       }
       setUploadError(null);
       lastKnownValueRef.current = normalizedUploaded;
-      setFileUri(resource);
+      const pendingHandle = lastResolvedHandleRef.current;
+      if (sourceModeRef.current === 'file' || pendingManualFileRef.current) {
+        setDiskFileResource(resource, pendingHandle ?? undefined);
+      }
+      if (pendingHandle) {
+        lastResolvedHandleRef.current = null;
+      }
       emitValue([normalizedUploaded]);
-      logger(
-        'ImageSelector upload pass success',
-        JSON.stringify({ resource, uploaded: normalizedUploaded, mode }),
-      );
       return true;
     },
-    [emitValue, lastKnownValueRef, logger, setFileUri, setUploadError, setUploadProgress],
+    [emitValue, lastKnownValueRef, pendingManualFileRef, setDiskFileResource, setUploadError, setUploadProgress, lastResolvedHandleRef, sourceModeRef],
   );
 
   const applyUploadError = useCallback(
@@ -169,38 +385,76 @@ export const useImageUploadWorkflow = ({
       const message = error instanceof Error ? error.message : String(error);
       const resolvedMessage = message?.trim() ? message.trim() : uploadErrorLabel;
       setUploadError(resolvedMessage);
-      logger(
-        'ImageSelector upload pass error',
-        JSON.stringify({
-          resource,
-          mode,
-          message: resolvedMessage,
-          stack: error instanceof Error ? error.stack : undefined,
-        }),
+      if (lastResolvedHandleRef.current) {
+        lastResolvedHandleRef.current.dispose();
+        lastResolvedHandleRef.current = null;
+      }
+    },
+    [setUploadError, uploadErrorLabel, lastResolvedHandleRef],
+  );
+
+  const [customUploadingMessage, setCustomUploadingMessage] = useState<string | null>(null);
+  const [customUploading, setCustomUploading] = useState<boolean>(false);
+  const beginCustomUploading = useCallback(
+    (message?: string | null) => {
+      setCustomUploading(true);
+      setCustomUploadingMessage(
+        message ?? t('image.upload.syncing', { defaultValue: '素材同步中' }),
       );
     },
-    [logger, setUploadError, uploadErrorLabel],
+    [t],
+  );
+  const endCustomUploading = useCallback(() => {
+    setCustomUploading(false);
+    setCustomUploadingMessage(null);
+  }, []);
+
+  const withUploadIndicator = useCallback(
+    async <T,>(
+      operation: () => Promise<T>,
+      options?: { message?: string },
+    ): Promise<T> => {
+      beginCustomUploading(options?.message ?? null);
+      try {
+        return await operation();
+      } finally {
+        endCustomUploading();
+      }
+    },
+    [beginCustomUploading, endCustomUploading],
   );
 
   const createUploadPass = useCallback(
-    (resolveResource: () => Promise<string | null | undefined>, mode: 'auto' | 'manual'): WidgetUploadPass => {
+    (
+      resolveResource: () => Promise<MaterializedResourceRef | null | undefined>,
+      mode: 'auto' | 'manual',
+    ): WidgetUploadPass => {
+      const passLog = makePerfLogger(`ImageSelector uploadPass.${mode}`);
       let lastResolvedResource = '';
       const uploadPass: WidgetUploadPass = {
         getUploadFile: async (signal?: AbortSignal) => {
+          passLog('getUploadFile.start');
           if (signal?.aborted) {
+            passLog('getUploadFile.aborted');
             throw new DOMException('Upload aborted', 'AbortError');
           }
           if (mode === 'auto') {
+            beginCustomUploading();
             markUploadStart(1);
             setUploadProgress({ current: 0, total: 1 });
             autoUploadInFlightRef.current = true;
           }
+          passLog('resolveResource.start');
           const resolved = await resolveResource();
-          const normalizedResource = typeof resolved === 'string' ? resolved.trim() : '';
+          const normalizedResource =
+            typeof resolved?.resource === 'string' ? resolved.resource.trim() : '';
           lastResolvedResource = normalizedResource;
+          lastResolvedHandleRef.current = resolved?.handle ?? null;
           if (!normalizedResource) {
+            passLog('resolveResource.empty');
             throw new Error('Upload resource unavailable');
           }
+          passLog('resolveResource.completed', { resource: normalizedResource });
           return {
             type: 'resource',
             resource: normalizedResource,
@@ -212,34 +466,36 @@ export const useImageUploadWorkflow = ({
 
       if (mode === 'auto') {
         uploadPass.onUploaded = async uploaded => {
+          passLog('onUploaded', { uploaded });
           const isCurrentPass = autoUploadPassRef.current?.pass === uploadPass;
           if (!isCurrentPass) {
-            logger(
-              'ImageSelector auto upload pass ignored',
-              JSON.stringify({ resource: lastResolvedResource, uploaded }),
-            );
             return;
           }
 
           const handled = applyUploadSuccess(uploaded, lastResolvedResource, 'auto');
           if (!handled) {
             applyUploadError(uploadErrorLabel, lastResolvedResource, 'auto');
+            passLog('onUploaded.applyFailed', { resource: lastResolvedResource });
+          } else {
+            passLog('onUploaded.completed', { resource: lastResolvedResource });
           }
+          endCustomUploading();
           markUploadEnd();
           setUploadProgress(prev => (prev.total === 0 ? prev : { current: 0, total: 0 }));
           autoUploadInFlightRef.current = false;
         };
 
         uploadPass.onUploadError = error => {
+          passLog('onUploadError', {
+            resource: lastResolvedResource,
+            message: error instanceof Error ? error.message : String(error),
+          });
           const isCurrentPass = autoUploadPassRef.current?.pass === uploadPass;
           if (!isCurrentPass) {
-            logger(
-              'ImageSelector auto upload pass error ignored',
-              JSON.stringify({ resource: lastResolvedResource, error }),
-            );
             return;
           }
           applyUploadError(error, lastResolvedResource, 'auto');
+          endCustomUploading();
           markUploadEnd();
           setUploadProgress(prev => (prev.total === 0 ? prev : { current: 0, total: 0 }));
           autoUploadInFlightRef.current = false;
@@ -251,7 +507,9 @@ export const useImageUploadWorkflow = ({
     [
       applyUploadError,
       applyUploadSuccess,
-      logger,
+      beginCustomUploading,
+      endCustomUploading,
+      makePerfLogger,
       markUploadEnd,
       markUploadStart,
       setUploadProgress,
@@ -263,45 +521,68 @@ export const useImageUploadWorkflow = ({
     if (!autoRef.current) return;
     if (autoUploadPassRef.current) return;
 
-    const resolveResource = async () => {
+    const resolveResource = async (): Promise<MaterializedResourceRef | null> => {
       const overrides = pendingAutoOverridesRef.current ?? undefined;
       pendingAutoOverridesRef.current = null;
-      const resource = await syncRef.current(overrides);
-      return resource ?? '';
+      const maskOverride = maskHandleRef.current?.resourceId ?? undefined;
+      const nextOverrides =
+        overrides || maskOverride
+          ? {
+              ...(overrides ?? {}),
+              maskUri: overrides?.maskUri ?? maskOverride,
+            }
+          : undefined;
+      const resource = await syncRef.current(nextOverrides);
+      return resource ?? null;
     };
 
     const uploadPass = createUploadPass(resolveResource, 'auto');
     autoUploadPassRef.current = { pass: uploadPass };
     addUploadPass(uploadPass);
-    logger('ImageSelector auto upload pass added');
-  }, [addUploadPass, createUploadPass, logger]);
+  }, [addUploadPass, createUploadPass, maskHandleRef]);
 
   const handleResourceUpload = useCallback(
-    async (resource?: string | null) => {
-      const normalizedResource = (resource ?? '').trim();
+    async (resource?: MaterializedResourceRef | null) => {
+      const normalizedResource = (resource?.resource ?? '').trim();
       if (!normalizedResource) return false;
 
       if (autoRef.current) {
         return false;
       }
 
-      setFileUri(normalizedResource);
+      const uploadLog = makePerfLogger('ImageSelector manualUpload');
+      uploadLog('start', { resource: normalizedResource });
+      endCustomUploading();
+      const incomingHandle = resource?.handle ?? null;
+      if (pendingManualFileRef.current) {
+        setDiskFileResource(normalizedResource, incomingHandle ?? undefined);
+      }
+      uploadLog('resourceRegistered', { hasHandle: Boolean(incomingHandle) });
 
-      const uploadPass = createUploadPass(async () => normalizedResource, 'manual');
+      const uploadPass = createUploadPass(async () => resource ?? { resource: normalizedResource, handle: incomingHandle ?? null }, 'manual');
       markUploadStart(1);
       setUploadProgress({ current: 0, total: 1 });
+      uploadLog('uploadPass.created');
       let success = false;
       try {
+        uploadLog('runUploadPassOnce.start');
         const uploaded = await runUploadPassOnce(uploadPass);
+        uploadLog('runUploadPassOnce.completed', {
+          uploaded: typeof uploaded === 'string' ? uploaded : null,
+        });
         const handled = applyUploadSuccess(uploaded, normalizedResource, 'manual');
         success = handled;
         if (!handled) {
           applyUploadError(uploadErrorLabel, normalizedResource, 'manual');
         }
       } catch (error) {
+        uploadLog('runUploadPassOnce.error', {
+          message: error instanceof Error ? error.message : String(error),
+        });
         applyUploadError(error, normalizedResource, 'manual');
       } finally {
         markUploadEnd();
+        uploadLog('completed', { success });
       }
       return success;
     },
@@ -310,11 +591,140 @@ export const useImageUploadWorkflow = ({
       applyUploadSuccess,
       autoRef,
       createUploadPass,
+      endCustomUploading,
+      makePerfLogger,
       markUploadEnd,
       markUploadStart,
       runUploadPassOnce,
       setUploadProgress,
+      setDiskFileResource,
+      pendingManualFileRef,
       uploadErrorLabel,
+    ],
+  );
+
+  const runManualComposite = useCallback(
+    async (
+      overrides?: { contentUri?: string | null; maskUri?: string | null; boundaryUri?: string | null } | null,
+      options?: { refreshMask?: boolean; maskOverride?: string | null },
+      docSyncContext?: Pick<DocScopedUriSnapshot, 'contentUri' | 'maskUri' | 'boundaryUri'>,
+    ) => {
+      const normalizedOverrides = overrides ?? undefined;
+      const overrideBoundary =
+        typeof normalizedOverrides?.boundaryUri === 'string'
+          ? normalizedOverrides.boundaryUri.trim()
+          : undefined;
+      const normalizedWorkBoundary = (workBoundary ?? '').trim();
+      const baseBoundary = (docSyncContext?.boundaryUri ?? boundaryUri ?? '').trim();
+      const fallbackBoundary = baseBoundary || normalizedWorkBoundary;
+      const effectiveBoundary = (overrideBoundary ?? fallbackBoundary).trim();
+      if (!effectiveBoundary) {
+        throw new Error('Boundary unavailable');
+      }
+
+      if (sourceModeRef.current === 'file') {
+        const normalizedUpload = (diskFileUri ?? '').trim();
+        if (!normalizedUpload) {
+          throw new Error('Upload resource unavailable');
+        }
+        await handleResourceUpload({
+          resource: normalizedUpload,
+          handle: diskFileHandleRef.current ?? undefined,
+        });
+        return;
+      }
+
+      const overrideContentValue =
+        typeof normalizedOverrides?.contentUri === 'string'
+          ? normalizedOverrides.contentUri.trim()
+          : undefined;
+
+      const baseContentCandidate = (docSyncContext?.contentUri ?? contentUri).trim();
+      const targetContentCandidate =
+        overrideContentValue && overrideContentValue.length > 0
+          ? overrideContentValue
+          : baseContentCandidate;
+      if (!targetContentCandidate) {
+        throw new Error('Content source unavailable');
+      }
+
+      const preparedContentResource = await prepareContentHandle(targetContentCandidate);
+
+      const hasMaskOverride =
+        normalizedOverrides &&
+        Object.prototype.hasOwnProperty.call(normalizedOverrides, 'maskUri');
+      const hasMaskOption =
+        options && Object.prototype.hasOwnProperty.call(options, 'maskOverride');
+
+      let maskResource: string | null | undefined;
+
+      if (hasMaskOption) {
+        const override = (options?.maskOverride ?? '').trim();
+        if (override) {
+          maskResource = override;
+          preparedMaskResourceRef.current = override;
+          setMaskResource(override, maskHandleRef.current ?? null);
+        } else {
+          maskResource = null;
+          preparedMaskResourceRef.current = null;
+          setMaskResource('', null);
+        }
+      } else if (hasMaskOverride) {
+        const overrideValue = normalizedOverrides?.maskUri ?? undefined;
+        if (overrideValue === null) {
+          maskResource = null;
+          preparedMaskResourceRef.current = null;
+          setMaskResource('', null);
+        } else if (typeof overrideValue === 'string') {
+          maskResource = await prepareMaskHandle(overrideValue);
+        }
+      } else if (preparedMaskResourceRef.current) {
+        maskResource = preparedMaskResourceRef.current;
+      } else if (maskHandleRef.current?.resourceId) {
+        maskResource = maskHandleRef.current.resourceId.trim();
+      } else {
+        const baseMaskUri = (docSyncContext?.maskUri ?? maskUri ?? '').trim();
+        if (baseMaskUri) {
+          maskResource = await prepareMaskHandle(baseMaskUri);
+        } else {
+          maskResource = null;
+        }
+      }
+
+      if (options?.refreshMask) {
+        const refreshed = await prepareMaskHandle(`uxp://mask/${curDocId}/selection`);
+        maskResource = refreshed ?? maskResource;
+      }
+
+      const finalResult = await combineComposite({
+        contentUri: preparedContentResource,
+        boundaryUri: effectiveBoundary,
+        maskUri: maskResource ?? null,
+      });
+
+      lastResolvedHandleRef.current = finalResult?.handle ?? null;
+
+      if (finalResult?.resource) {
+        setResultSnapshotResource(finalResult.resource, finalResult?.handle ?? null);
+      }
+      await handleResourceUpload(finalResult);
+    },
+    [
+      boundaryUri,
+      combineComposite,
+      contentUri,
+      curDocId,
+      diskFileHandleRef,
+      diskFileUri,
+      handleResourceUpload,
+      maskHandleRef,
+      maskUri,
+      prepareContentHandle,
+      prepareMaskHandle,
+      setMaskResource,
+      setResultSnapshotResource,
+      sourceModeRef,
+      workBoundary,
     ],
   );
 
@@ -375,6 +785,19 @@ export const useImageUploadWorkflow = ({
       maskUri?: string | null;
       boundaryUri?: string | null;
     }) => {
+      const flowLog = makePerfLogger('ImageSelector syncFlow');
+      flowLog('invoked', { auto, trigger: overrides ? 'override' : 'default' });
+      markInitialized();
+      const docSnapshot = syncDocScopedUrisIfNeeded();
+
+      const hasPreviewOverride =
+        overrides &&
+        (Object.prototype.hasOwnProperty.call(overrides, 'maskUri') ||
+          Object.prototype.hasOwnProperty.call(overrides, 'boundaryUri'));
+      if (hasPreviewOverride) {
+        onPreviewInvalidate?.();
+      }
+
       if (auto) {
         if (overrides) {
           pendingAutoOverridesRef.current = {
@@ -383,12 +806,36 @@ export const useImageUploadWorkflow = ({
           };
         }
         tryRegisterAutoUploadPass();
+        flowLog('delegatedToAuto', { hasOverrides: Boolean(overrides) });
         return;
       }
-      const resource = await sync(overrides);
-      await handleResourceUpload(resource);
+
+      try {
+        await withUploadIndicator(
+          () => runManualComposite(overrides ?? null, { refreshMask: false }, docSnapshot),
+          { message: t('image.upload.syncing', { defaultValue: '素材同步中' }) },
+        );
+        onPreviewInvalidate?.();
+        flowLog('uploadCompleted', { success: true });
+        flowLog('completed');
+      } catch (error) {
+        flowLog('failed', {
+          message: error instanceof Error ? error.message : String(error),
+        });
+        throw error;
+      }
     },
-    [auto, handleResourceUpload, sync, tryRegisterAutoUploadPass],
+    [
+      auto,
+      makePerfLogger,
+      runManualComposite,
+      syncDocScopedUrisIfNeeded,
+      t,
+      tryRegisterAutoUploadPass,
+      onPreviewInvalidate,
+      markInitialized,
+      withUploadIndicator,
+    ],
   );
 
   const flushAutoModeOnce = useCallback(async () => {
@@ -398,79 +845,105 @@ export const useImageUploadWorkflow = ({
     pendingAutoOverridesRef.current = null;
     clearAutoUploadPass();
     try {
-      const resource = await sync(overrides ?? undefined);
+      const maskOverride = maskHandleRef.current?.resourceId ?? undefined;
+      const nextOverrides =
+        overrides || maskOverride
+          ? {
+              ...(overrides ?? {}),
+              maskUri: overrides?.maskUri ?? maskOverride,
+            }
+          : undefined;
+      const docSnapshot = syncDocScopedUrisIfNeeded();
+      const resource = await withUploadIndicator(() => sync(nextOverrides ?? undefined, docSnapshot));
       await handleResourceUpload(resource);
-    } catch (error) {
-      logger(
-        'ImageSelector flushAutoModeOnce error',
-        JSON.stringify({
-          message: error instanceof Error ? error.message : String(error),
-          stack: error instanceof Error ? error.stack : undefined,
-        }),
-      );
+    } catch (_error) {
+      // ignore errors after best-effort flush
     }
-  }, [clearAutoUploadPass, handleResourceUpload, logger, sync]);
+  }, [clearAutoUploadPass, handleResourceUpload, maskHandleRef, sync, syncDocScopedUrisIfNeeded, withUploadIndicator]);
 
   const handleAutoToggle = useCallback(() => {
     const wasAuto = autoRef.current;
     const nextAuto = !wasAuto;
+    markInitialized();
     applyAuto(nextAuto, { manual: true });
-    if (nextAuto && sourceModeRef.current === 'file') {
-      const inferredMode = inferSourceModeFromContent({
-        contentUri,
-        derivedContentUri,
-      });
-      if (inferredMode !== 'file') {
-        setSourceMode(inferredMode);
-      }
-    }
     if (wasAuto && !nextAuto) {
       void flushAutoModeOnce();
     }
-  }, [applyAuto, autoRef, contentUri, derivedContentUri, flushAutoModeOnce, setSourceMode, sourceModeRef]);
+  }, [applyAuto, autoRef, flushAutoModeOnce, markInitialized]);
 
   const handleMaskRebuildWithSync = useCallback(async () => {
-    ensureContentUri();
-    const updatedMaskUri = await rebuildMask();
+    markInitialized();
+    const docSnapshot = syncDocScopedUrisIfNeeded();
+    const updatedMask = await withUploadIndicator(() => rebuildMask(), {
+      message: t('image.upload.syncing', { defaultValue: '素材同步中' }),
+    });
+    const updatedMaskUri = updatedMask?.resource ?? null;
     if (auto) {
       const overrides = pendingAutoOverridesRef.current ?? {};
       pendingAutoOverridesRef.current = { ...overrides, maskUri: updatedMaskUri };
       tryRegisterAutoUploadPass();
+      onPreviewInvalidate?.();
       return;
     }
-    const resource = await sync({ maskUri: updatedMaskUri });
-    await handleResourceUpload(resource);
+    await withUploadIndicator(
+      () =>
+        runManualComposite(
+          { maskUri: updatedMaskUri },
+          { refreshMask: false, maskOverride: updatedMaskUri ?? null },
+          docSnapshot,
+        ),
+      { message: t('image.upload.syncing', { defaultValue: '素材同步中' }) },
+    );
+    onPreviewInvalidate?.();
   }, [
     auto,
-    ensureContentUri,
-    handleResourceUpload,
+    onPreviewInvalidate,
     rebuildMask,
-    sync,
     tryRegisterAutoUploadPass,
+    runManualComposite,
+    syncDocScopedUrisIfNeeded,
+    withUploadIndicator,
+    t,
   ]);
 
   const handleBoundaryNormalizeWithSync = useCallback(async () => {
-    ensureContentUri();
-    const updatedBoundaryUri = await normalizeBoundary();
+    markInitialized();
+    const docSnapshot = syncDocScopedUrisIfNeeded();
+    if (!selectionBoundary) {
+      return;
+    }
+    const updatedBoundaryUri = buildBoundaryRectUri(selectionBoundary, curDocId);
+    setBoundaryUri(updatedBoundaryUri);
+
     if (auto) {
       const overrides = pendingAutoOverridesRef.current ?? {};
       pendingAutoOverridesRef.current = { ...overrides, boundaryUri: updatedBoundaryUri };
       tryRegisterAutoUploadPass();
+      onPreviewInvalidate?.();
       return;
     }
-    const resource = await sync({ boundaryUri: updatedBoundaryUri });
-    await handleResourceUpload(resource);
+
+    await withUploadIndicator(
+      () =>
+        runManualComposite({ boundaryUri: updatedBoundaryUri }, { refreshMask: false }, docSnapshot),
+      { message: t('image.upload.syncing', { defaultValue: '素材同步中' }) },
+    );
+    onPreviewInvalidate?.();
   }, [
     auto,
-    ensureContentUri,
-    handleResourceUpload,
-    normalizeBoundary,
-    sync,
+    onPreviewInvalidate,
+    runManualComposite,
+    selectionBoundary,
+    setBoundaryUri,
+    syncDocScopedUrisIfNeeded,
     tryRegisterAutoUploadPass,
+    withUploadIndicator,
+    t,
   ]);
 
   const handleSourceModeChange = useCallback(
     async (nextMode: SourceMode) => {
+      markInitialized();
       const previousMode = sourceModeRef.current;
       if (nextMode === 'file') {
         const previousPendingManual = pendingManualFileRef.current;
@@ -478,38 +951,36 @@ export const useImageUploadWorkflow = ({
         lastKnownValueRef.current = '';
         const createFromLocal = actions['resource.file.createFromLocal'];
         if (typeof createFromLocal !== 'function') {
-          logger(
-            'ImageSelector createFromLocal unavailable',
-            JSON.stringify({ reason: 'handler_missing' }),
-          );
           pendingManualFileRef.current = previousPendingManual;
           return;
         }
         try {
           const result = await createFromLocal();
-          const normalized =
-            typeof result?.resource === 'string' ? result.resource.trim() : '';
+          const record = getSuccessfulMaterializeRecord(result);
+          const normalized = record?.resource ? record.resource.trim() : '';
+          const handle = record?.handle ?? null;
           if (!normalized) {
+            handle?.dispose();
             pendingManualFileRef.current = previousPendingManual;
             return;
           }
           applyAuto(false, { manual: true });
-          const success = await handleResourceUpload(normalized);
+          const success = await handleResourceUpload({
+            resource: normalized,
+            handle: handle ?? undefined,
+          });
           if (success) {
             setLayerInfo(null);
-            setContentUri('');
             setSourceMode('file', { manual: true });
+            clearResultSnapshot();
+            markInitialized();
+            pendingManualFileRef.current = previousPendingManual;
           } else {
+            handle?.dispose();
             pendingManualFileRef.current = previousPendingManual;
           }
         } catch (error) {
-          logger(
-            'ImageSelector createFromLocal error',
-            JSON.stringify({
-              message: error instanceof Error ? error.message : String(error),
-              stack: error instanceof Error ? error.stack : undefined,
-            }),
-          );
+          // consume errors silently; UI will remain on previous mode
           pendingManualFileRef.current = previousPendingManual;
         }
         return;
@@ -519,58 +990,48 @@ export const useImageUploadWorkflow = ({
         return;
       }
 
+      markInitialized();
       setSourceMode(nextMode, { manual: true });
 
       if (nextMode === 'canvas') {
         pendingManualFileRef.current = false;
         setLayerInfo(null);
-        setFileUri('');
-        const canvasUri =
-          curDocId && String(curDocId).trim()
-            ? `uxp://content/${curDocId}/canvas`
-            : DEFAULT_CONTENT_URI;
+        setDiskFileResource('', null);
+        const normalizedDocId =
+          typeof curDocId === 'number' && Number.isFinite(curDocId) && curDocId > 0
+            ? Math.trunc(curDocId)
+            : 0;
+        const canvasUri = `uxp://content/${normalizedDocId}/canvas`;
         setContentUri(canvasUri);
         void handleSync({ contentUri: canvasUri });
         return;
       }
       if (nextMode === 'layer') {
         pendingManualFileRef.current = false;
-        setFileUri('');
-        console.debug(
-          '[ImageSelector] layer mode resolve start',
-          JSON.stringify({
-            boundaryUri: effectiveBoundaryUri,
-            contentUri,
-          }),
-        );
-        logger(
-          'ImageSelector layer mode resolve start',
-          JSON.stringify({
-            boundaryUri: effectiveBoundaryUri,
-            contentUri,
-          }),
-        );
-        const resolved = await resolveCurrentLayer();
-        console.debug(
-          '[ImageSelector] layer mode resolve result',
-          JSON.stringify({ resolved, layerInfo }),
-        );
-        logger(
-          'ImageSelector layer mode resolve result',
-          JSON.stringify({
-            resolved,
-            layerInfo,
-          }),
-        );
-        if (resolved) {
-          void handleSync({ contentUri: resolved });
+        setDiskFileResource('', null);
+        const {
+          contentUri: resolvedContent,
+          boundaryUri: resolvedBoundary,
+        } = await resolveCurrentLayer();
+        if (resolvedContent) {
+          await handleSync({
+            contentUri: resolvedContent,
+            boundaryUri: resolvedBoundary ?? undefined,
+            maskUri: maskUri ?? null,
+          });
           if (sourceModeRef.current === 'layer') {
-            void resolveCurrentLayer();
+            const refresh = await resolveCurrentLayer();
+            if (refresh.contentUri) {
+              setContentUri(refresh.contentUri);
+            }
           }
         } else {
-          void handleSync({});
+          await handleSync({});
           if (sourceModeRef.current === 'layer') {
-            void resolveCurrentLayer();
+            const refresh = await resolveCurrentLayer();
+            if (refresh.contentUri) {
+              setContentUri(refresh.contentUri);
+            }
           }
         }
         return;
@@ -584,27 +1045,48 @@ export const useImageUploadWorkflow = ({
       handleSync,
       lastKnownValueRef,
       contentUri,
-      effectiveBoundaryUri,
-      logger,
+      maskUri,
       pendingManualFileRef,
       layerInfo,
       resolveCurrentLayer,
       setContentUri,
-      setFileUri,
+      setDiskFileResource,
+      clearResultSnapshot,
       setLayerInfo,
       setSourceMode,
       sourceModeRef,
+      setBoundaryUri,
+      markInitialized,
     ],
   );
 
+  useEffect(() => {
+    if (uploadStatus === 'uploading') {
+      if (customUploading) {
+        setCustomUploading(false);
+      }
+      if (customUploadingMessage) {
+        setCustomUploadingMessage(null);
+      }
+    }
+  }, [uploadStatus, customUploading, customUploadingMessage]);
+
+  const indicatorStatus: UploadIndicatorStatus =
+    uploadStatus !== 'idle' ? uploadStatus : customUploading ? 'uploading' : 'idle';
+
+  const uploadingMessage =
+    indicatorStatus === 'uploading' && uploadStatus === 'idle' ? customUploadingMessage : null;
+
   return {
+    indicatorStatus,
+    uploadingMessage,
     uploadError,
     uploadProgress,
     uploadStatus,
     handleDismissError,
+    withUploadIndicator,
     sync,
     rebuildMask,
-    normalizeBoundary,
     handleResourceUpload,
     handleSync,
     handleAutoToggle,

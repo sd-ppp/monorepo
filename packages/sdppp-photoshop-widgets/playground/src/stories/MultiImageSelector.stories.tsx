@@ -8,7 +8,7 @@ const meta: Meta<typeof MultiImageSelector> = {
   args: {
     widgetableId: 'demo-multi-image-selector',
     maxCount: 3,
-    workBoundary: 'uxp://boundary/0/canvas',
+    workBoundary: 'uxp://boundary/9527/canvas',
     value: [
       'https://picsum.photos/seed/sdppp-2/400/300',
       'https://picsum.photos/seed/sdppp-3/400/300',

@@ -6,3 +6,5 @@ export { I18nextProvider } from 'react-i18next'
 export { default as i18n } from './i18n/react'
 
 export { sdpppSDK } from './sdk/sdppp-ps-sdk'
+
+export * from './schemas/schemas'

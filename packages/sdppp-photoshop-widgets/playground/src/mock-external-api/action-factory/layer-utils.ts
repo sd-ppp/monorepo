@@ -1,7 +1,7 @@
 import type { Stage as KonvaStage } from 'konva/lib/Stage';
 
-import type { StageRect } from '../resource-store';
-import { fullStageRect, intersectRect, normalizeRect } from './stage-utils';
+import { intersectRect, normalizeRect, type StageRect } from '@sdppp/cbm-calculator';
+import { fullStageRect } from './stage-utils';
 
 const roundRect = (rect: { x: number; y: number; width: number; height: number }): StageRect =>
   normalizeRect({

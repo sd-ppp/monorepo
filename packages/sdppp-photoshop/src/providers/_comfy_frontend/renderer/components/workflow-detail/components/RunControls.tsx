@@ -3,6 +3,7 @@ import { Button, Tooltip } from 'antd';
 import { CircleX, FastForward, PlayCircle } from 'lucide-react';
 import { useStore } from 'zustand';
 import { sdpppSDK } from '@sdppp/common';
+import { buildBoundaryUri } from '@sdppp/resourcing/src/resource-uris';
 import { useTranslation } from '@sdppp/common';
 import { useUploadPasses } from '../../../../../base/upload-pass-context';
 import { ComfyTask } from '../../../../ComfyTask';
@@ -12,10 +13,21 @@ const ICON_SIZE = 16;
 const PRIMARY_ICON_SIZE = 32;
 
 const runAndWaitResult = async (multi: number, currentWorkflow: string): Promise<ComfyTask> => {
-  const activeDocumentID = sdpppSDK.stores.PhotoshopStore.getState().activeDocumentID;
-  const boundary = sdpppSDK.stores.WebviewStore.getState().workBoundaries[activeDocumentID];
+  const activeDocumentID = sdpppSDK.stores.PhotoshopStore.getState().activeDocumentID ?? 0;
+  const webviewState = sdpppSDK.stores.WebviewStore.getState();
+  const boundaryRect = webviewState?.workBoundaries?.[activeDocumentID] ?? null;
+  const sizeLimit = webviewState?.workBoundaryMaxSizes?.[activeDocumentID];
+  const imageQuality = webviewState?.workBoundaryImageQualities?.[activeDocumentID];
+  const boundaryUri = buildBoundaryUri(activeDocumentID, boundaryRect ?? null, {
+    imageSize: typeof sizeLimit === 'number' && Number.isFinite(sizeLimit) && sizeLimit > 0
+      ? Math.round(sizeLimit)
+      : undefined,
+    imageQuality: typeof imageQuality === 'number' && Number.isFinite(imageQuality)
+      ? Math.round(imageQuality)
+      : undefined
+  });
 
-  const task = new ComfyTask({ size: multi }, currentWorkflow, activeDocumentID, boundary);
+  const task = new ComfyTask({ size: multi }, currentWorkflow, activeDocumentID, boundaryUri, null);
 
   task.promise.catch(error => {
     console.error('ComfyUI task failed:', error);

@@ -1,8 +1,5 @@
 import { useCallback } from 'react';
-import {
-  useWidgetImageMaskActions,
-  useWidgetLogger,
-} from '../context/WidgetImageMaskContext';
+import { usePhotoshopWidgetActions, type ResourceHandle } from '../context/PhotoshopWidgetContext';
 import { buildUploadFileName } from '../utils/localImagePackLayout';
 
 export interface LocalResourceSelectionItem {
@@ -11,6 +8,7 @@ export interface LocalResourceSelectionItem {
   mime?: string | null;
   fileName: string;
   nativePath?: string | null;
+  handle?: ResourceHandle | null;
 }
 
 export interface LocalResourceSelectionResult {
@@ -43,11 +41,20 @@ const sanitizeNativePath = (value?: string | null): string | null => {
   return trimmed;
 };
 
+const extractLegacyThumbnail = (entry: unknown): string | null => {
+  if (entry && typeof entry === 'object') {
+    const candidate = (entry as { thumbnail?: unknown }).thumbnail;
+    if (typeof candidate === 'string' && candidate.length > 0) {
+      return candidate;
+    }
+  }
+  return null;
+};
+
 export const useLocalResourceSelection = (
   options?: LocalResourceSelectionOptions,
 ) => {
-  const actions = useWidgetImageMaskActions();
-  const logger = useWidgetLogger();
+  const actions = usePhotoshopWidgetActions();
   const { actionParams, maxItems, disablePreviewCapture } = options ?? {};
 
   return useCallback(async (): Promise<LocalResourceSelectionResult> => {
@@ -72,8 +79,6 @@ export const useLocalResourceSelection = (
     try {
       const result = await actions['resource.file.createFromLocal'](actionParams);
       if (!result) return { items, hasError: false };
-
-      logger('LocalResourceSelection createFromLocal', result);
 
       if (result.error && !result.batch?.length) {
         captureError(result, result.error);
@@ -109,7 +114,7 @@ export const useLocalResourceSelection = (
         }
 
         const mime = entry.mime ?? null;
-        let preview = entry.thumbnail ?? null;
+        let preview = extractLegacyThumbnail(entry);
 
         if (!disablePreviewCapture) {
           if (!preview) {
@@ -117,15 +122,15 @@ export const useLocalResourceSelection = (
               const thumb = await actions['resource.thumbnail']({ resource });
               if (thumb?.thumbnail) {
                 preview = thumb.thumbnail;
+              } else if (thumb?.error) {
+                captureError(thumb, thumb.error);
+                hasError = true;
               }
             } catch (thumbnailError) {
-              logger(
-                'LocalResourceSelection thumbnail error',
-                thumbnailError instanceof Error
-                  ? thumbnailError.message
-                  : String(thumbnailError),
+              captureError(
+                thumbnailError,
+                thumbnailError instanceof Error ? thumbnailError.message : String(thumbnailError),
               );
-              captureError(thumbnailError, thumbnailError instanceof Error ? thumbnailError.message : String(thumbnailError));
               hasError = true;
             }
           }
@@ -137,13 +142,10 @@ export const useLocalResourceSelection = (
           mime,
           fileName: buildUploadFileName(resource, mime ?? undefined),
           nativePath: sanitizeNativePath(entry.nativePath),
+          handle: entry.handle ?? null,
         });
       }
     } catch (error) {
-      logger(
-        'LocalResourceSelection createFromLocal error',
-        error instanceof Error ? error.message : String(error),
-      );
       captureError(error, error instanceof Error ? error.message : String(error));
       hasError = true;
     }
@@ -154,5 +156,5 @@ export const useLocalResourceSelection = (
       errorMessage: firstErrorMessage,
       errorDetail: firstErrorDetail,
     };
-  }, [actions, logger, actionParams, maxItems, disablePreviewCapture]);
+  }, [actions, actionParams, maxItems, disablePreviewCapture]);
 };

@@ -10,7 +10,7 @@
 
 ## UI 组件
 - `AutoSyncColumn.tsx`：左侧 auto/sync 控制列，包裹两个 Antd 按钮。
-- `PreviewPanel.tsx`：中部预览区域，负责图像展示与状态栏（来源模式切换按钮、当前状态文案）。
+- `PreviewPanelPresentation.tsx`：中部预览区域的纯展示组件，负责显示主图与可选的遮罩预览。
 - `ActionButtons.tsx`：右侧操作按钮堆栈，处理裁剪、扫描及兜底上传按钮。
 
 ## 公共定义

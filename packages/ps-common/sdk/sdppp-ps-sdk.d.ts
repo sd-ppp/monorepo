@@ -44,8 +44,6 @@ export declare const sdpppSDK: {
 			token: string;
 			userInfo: Record<string, any>;
 			taskLastRun: number;
-			canvasThumbnail: string;
-			curlayerThumbnail: string;
 			canvasStateID?: number | undefined;
 			selectionStateID?: string | undefined;
 			selectionBoundary?: {
@@ -239,6 +237,7 @@ export declare const sdpppSDK: {
 			}>;
 			run: (data: {
 				size: number;
+				mode?: "app" | "api" | undefined;
 			}, signal?: AbortSignal) => Promise<StreamActionIterator<{
 				success: boolean;
 				images?: {
@@ -328,16 +327,10 @@ export declare const sdpppSDK: {
 			importImage: (data: {
 				type: "canvas" | "curlayer" | "newdoc" | "smartobject";
 				resource: string;
-				boundary?: {
-					leftDistance: number;
-					topDistance: number;
-					rightDistance: number;
-					bottomDistance: number;
-					width: number;
-					height: number;
-				} | "canvas" | "curlayer" | "selection" | undefined;
+				boundaryUri?: string | null | undefined;
 				sourceWidth?: number | undefined;
 				sourceHeight?: number | undefined;
+				maskUri?: string | null | undefined;
 			}, signal?: AbortSignal) => Promise<{
 				success: boolean;
 				message?: string | undefined;
@@ -577,6 +570,7 @@ export declare const sdpppSDK: {
 			}>;
 			"fileResource.createFromExternal": (data: {
 				url: string;
+				fileName?: string | undefined;
 			}, signal?: AbortSignal) => Promise<{
 				error?: string | undefined;
 				width?: number | undefined;
@@ -619,11 +613,36 @@ export declare const sdpppSDK: {
 				resource?: string | undefined;
 				mime?: string | undefined;
 			}>;
-			"fileResource.createFromCBM": (data: {
+			"fileResource.createByContent": (data: {
+				contentUri: string;
 				options?: Record<string, unknown> | undefined;
-				contentUri?: string | undefined;
 				boundaryUri?: string | undefined;
-				maskUri?: string | undefined;
+			}, signal?: AbortSignal) => Promise<{
+				error?: string | undefined;
+				width?: number | undefined;
+				height?: number | undefined;
+				thumbnail?: string | undefined;
+				resource?: string | undefined;
+				mime?: string | undefined;
+			}>;
+			"fileResource.createByMask": (data: {
+				maskUri: string;
+				options?: Record<string, unknown> | undefined;
+				boundaryUri?: string | undefined;
+			}, signal?: AbortSignal) => Promise<{
+				error?: string | undefined;
+				width?: number | undefined;
+				height?: number | undefined;
+				thumbnail?: string | undefined;
+				resource?: string | undefined;
+				mime?: string | undefined;
+			}>;
+			"fileResource.combineByCBM": (data: {
+				boundaryUri: string;
+				contentUri: string;
+				options?: Record<string, unknown> | undefined;
+				thumbnail?: boolean | undefined;
+				maskUri?: string | null | undefined;
 			}, signal?: AbortSignal) => Promise<{
 				error?: string | undefined;
 				width?: number | undefined;
@@ -681,16 +700,6 @@ export declare const sdpppSDK: {
 				width?: number | undefined;
 				height?: number | undefined;
 				thumbnail?: string | undefined;
-			}>;
-			deleteDownloadedImage: (data: {
-				resources: string[];
-			}, signal?: AbortSignal) => Promise<{
-				error?: string | undefined;
-			}>;
-			requestAndDoSaveImage: (data: {
-				resources: string[];
-			}, signal?: AbortSignal) => Promise<{
-				error?: string | undefined;
 			}>;
 		};
 		fetchProxy: {

@@ -1,4 +1,5 @@
 import { AUTO_SPIN_STYLE_ID } from './constants';
+import type { WidgetSelectionBoundaryRect } from '../../../context/PhotoshopWidgetContext';
 import type { ParsedLayerInfo, SourceMode, TranslateFn } from './types';
 
 export const ensureAutoSpinStyle = () => {
@@ -125,4 +126,71 @@ export const inferSourceModeFromContent = ({
   }
 
   return 'canvas';
+};
+
+const parseNumericParam = (value?: string | null): number | null => {
+  if (typeof value !== 'string') return null;
+  if (!value.trim()) return null;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    return null;
+  }
+  return parsed;
+};
+
+export const parseBoundaryRectFromUri = (uri?: string | null): WidgetSelectionBoundaryRect | null => {
+  const normalized = uri?.trim();
+  if (!normalized) {
+    return null;
+  }
+  try {
+    const parsed = new URL(normalized);
+    if (parsed.protocol !== 'uxp:' || parsed.hostname !== 'boundary') {
+      return null;
+    }
+    const [, target] = parsed.pathname.split('/').filter(Boolean);
+    if (target !== 'rect') {
+      return null;
+    }
+    const params = parsed.searchParams;
+    const leftDistance = parseNumericParam(params.get('leftDistance'));
+    const topDistance = parseNumericParam(params.get('topDistance'));
+    const rightDistance = parseNumericParam(params.get('rightDistance'));
+    const bottomDistance = parseNumericParam(params.get('bottomDistance'));
+    const width = parseNumericParam(params.get('width'));
+    const height = parseNumericParam(params.get('height'));
+    if (
+      leftDistance === null ||
+      topDistance === null ||
+      rightDistance === null ||
+      bottomDistance === null ||
+      width === null ||
+      height === null
+    ) {
+      return null;
+    }
+    return {
+      leftDistance,
+      topDistance,
+      rightDistance,
+      bottomDistance,
+      width,
+      height,
+    };
+  } catch {
+    return null;
+  }
+};
+
+export const buildBoundaryRectUri = (rect: WidgetSelectionBoundaryRect, docId: number = 0): string => {
+  const params = new URLSearchParams({
+    leftDistance: String(rect.leftDistance),
+    topDistance: String(rect.topDistance),
+    rightDistance: String(rect.rightDistance),
+    bottomDistance: String(rect.bottomDistance),
+    width: String(rect.width),
+    height: String(rect.height),
+  });
+  const resolvedDocId = Number.isFinite(docId) && docId > 0 ? Math.trunc(docId) : 0;
+  return `uxp://boundary/${resolvedDocId}/rect?${params.toString()}`;
 };

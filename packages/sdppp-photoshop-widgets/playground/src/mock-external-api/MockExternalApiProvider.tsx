@@ -1,16 +1,19 @@
 import React, { useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import {
-  WidgetImageMaskProvider,
+  PhotoshopWidgetProvider,
   type TranslateFn,
-  type WidgetImageMaskLogger,
+  type PhotoshopWidgetLogger,
   type WidgetUploadPass,
   type WidgetUploadPassHandlers,
-} from '../../../src/context/WidgetImageMaskContext';
+  type ResourceHandleManager,
+  type WidgetSelectionBoundary,
+  type BoundaryHoverChangeHandler,
+} from '../../../src/context/PhotoshopWidgetContext';
 import { MockExternalApiPlayground } from './MockExternalApiPlayground';
 import { readBlobAsDataUrl } from './upload-helpers';
 import { MOCK_DOCUMENT_ID, useProvideMockExternalApi } from './useProvideMockExternalApi';
-import type { UploadPassRunSummary } from './types';
+import type { SelectionRect, UploadPassRunSummary } from './types';
 
 const extractLayerMetadata = (
   identify: string | null | undefined,
@@ -40,7 +43,7 @@ const extractLayerMetadata = (
 export interface MockExternalApiProviderProps {
   children: ReactNode;
   t: TranslateFn;
-  logger: WidgetImageMaskLogger;
+  logger: PhotoshopWidgetLogger;
   imageUrls?: string[] | null;
   onImageUrlsChange?: (next: string[]) => void;
   panelWidth?: number | string;
@@ -431,16 +434,97 @@ export const MockExternalApiProvider: React.FC<MockExternalApiProviderProps> = (
     };
   }, [getCurrentLayerId, logger]);
 
+  const resourceHandleManager = useMemo<ResourceHandleManager>(
+    () => ({
+      acquire: () => null,
+    }),
+    [],
+  );
+
+  const selectionBoundary = useMemo<WidgetSelectionBoundary>(() => {
+    const stage = contextValue.stageRef.current;
+    const rect = contextValue.selectionRect;
+    if (!stage || !rect) {
+      return null;
+    }
+    const stageWidth = stage.width();
+    const stageHeight = stage.height();
+    const leftDistance = Math.max(0, Math.round(rect.x));
+    const topDistance = Math.max(0, Math.round(rect.y));
+    const width = Math.max(1, Math.round(rect.width));
+    const height = Math.max(1, Math.round(rect.height));
+    const rightDistance = Math.max(0, Math.round(stageWidth - (leftDistance + width)));
+    const bottomDistance = Math.max(0, Math.round(stageHeight - (topDistance + height)));
+    return {
+      leftDistance,
+      topDistance,
+      rightDistance,
+      bottomDistance,
+      width,
+      height,
+    };
+  }, [contextValue.selectionRect, contextValue.stageRef]);
+
+  const [hoverBoundaryRect, setHoverBoundaryRect] = useState<WidgetSelectionBoundary>(null);
+
+  const boundaryPreviewRect = useMemo<SelectionRect | null>(() => {
+    if (!hoverBoundaryRect) {
+      return null;
+    }
+    const stage = contextValue.stageRef.current;
+    const stageWidth = stage ? stage.width() : undefined;
+    const stageHeight = stage ? stage.height() : undefined;
+    const widthFromDistances =
+      typeof stageWidth === 'number'
+        ? stageWidth - hoverBoundaryRect.leftDistance - hoverBoundaryRect.rightDistance
+        : hoverBoundaryRect.width;
+    const heightFromDistances =
+      typeof stageHeight === 'number'
+        ? stageHeight - hoverBoundaryRect.topDistance - hoverBoundaryRect.bottomDistance
+        : hoverBoundaryRect.height;
+    const width = Math.max(
+      1,
+      Math.round(
+        Math.min(
+          hoverBoundaryRect.width,
+          Number.isFinite(widthFromDistances) ? widthFromDistances : hoverBoundaryRect.width,
+        ),
+      ),
+    );
+    const height = Math.max(
+      1,
+      Math.round(
+        Math.min(
+          hoverBoundaryRect.height,
+          Number.isFinite(heightFromDistances) ? heightFromDistances : hoverBoundaryRect.height,
+        ),
+      ),
+    );
+    return {
+      x: Math.max(0, Math.round(hoverBoundaryRect.leftDistance)),
+      y: Math.max(0, Math.round(hoverBoundaryRect.topDistance)),
+      width,
+      height,
+    };
+  }, [contextValue.stageRef, hoverBoundaryRect]);
+
+  const handleBoundaryHoverChange = useCallback<BoundaryHoverChangeHandler>(rect => {
+    setHoverBoundaryRect(rect);
+  }, []);
+
   return (
-    <WidgetImageMaskProvider
+    <PhotoshopWidgetProvider
       actions={actions}
       t={t}
       logger={logger}
       debug
       workBoundaryUri={`uxp://boundary/${MOCK_DOCUMENT_ID}/canvas`}
+      selectionBoundary={selectionBoundary}
       subscribeToRealtimeChanges={contextValue.subscribeToRealtimeChanges}
       uploadPassHandlers={uploadPassHandlers}
       selectAdvancedContentSource={selectAdvancedContentSource}
+      resourceHandles={resourceHandleManager}
+      onBoundaryHoverChange={handleBoundaryHoverChange}
     >
       <MockExternalApiPlayground
         stageRef={contextValue.stageRef}
@@ -460,9 +544,10 @@ export const MockExternalApiProvider: React.FC<MockExternalApiProviderProps> = (
         registeredUploadPassCount={registeredUploadPassCount}
         lastUploadRunSummary={lastUploadRunSummary}
         panelWidth={panelWidth}
+        boundaryPreviewRect={boundaryPreviewRect}
       >
         {children}
       </MockExternalApiPlayground>
-    </WidgetImageMaskProvider>
+    </PhotoshopWidgetProvider>
   );
 };

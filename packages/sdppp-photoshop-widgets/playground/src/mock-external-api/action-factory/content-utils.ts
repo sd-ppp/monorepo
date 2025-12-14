@@ -1,8 +1,8 @@
 import type { Stage as KonvaStage } from 'konva/lib/Stage';
 
+import { normalizeRect, type Snapshot, type StageRect } from '@sdppp/cbm-calculator';
 import type { SelectionRect } from '../types';
-import type { StageRect } from '../resource-store';
-import { captureStageArea, fullStageRect, normalizeRect } from './stage-utils';
+import { captureStageArea, fullStageRect } from './stage-utils';
 import { resolveLayerRect } from './layer-utils';
 
 export interface ResolvedContentArea {
@@ -57,8 +57,8 @@ export const resolveContentArea = (
   }
 };
 
-export const createContentSnapshot = (
+export const createContentSnapshot = async (
   stage: KonvaStage,
   contentRect: StageRect | null,
   options?: { isolateLayerId?: string | null }
-) => captureStageArea(stage, contentRect, false, options);
+): Promise<Snapshot> => captureStageArea(stage, contentRect, false, options);

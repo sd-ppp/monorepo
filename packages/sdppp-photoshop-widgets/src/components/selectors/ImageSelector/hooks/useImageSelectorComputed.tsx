@@ -1,23 +1,23 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useMemo } from 'react';
 
+import { MoreHorizontal } from 'lucide-react';
 import { useImageSelectorDebug } from '../../../../hooks/useImageSelectorDebug';
-import { useThumbnail, type UseThumbnailParams } from '../../../../hooks/useThumbnail';
-import { resolveThumbnailParams, DEFAULT_CONTENT_URI } from '../../../../utils/resolveThumbnailParams';
-import { MoreHorizontal, RefreshCw } from 'lucide-react';
 
-import { ensureAutoSpinStyle } from '../utils';
-import type { ImageSelectorState } from './useImageSelectorState';
 import type { ImageSelectorProps, TranslateFn } from '../types';
+import type { ImageSelectorState } from './useImageSelectorState';
+import { useThumbnailPreview } from './useThumbnailPreview';
 
 export interface ImageSelectorComputed {
   cutLabel: string;
   scanLabel: string;
   cutTooltipText: string;
   scanTooltipText: string;
+  autoButtonTooltipText: string;
+  autoStatusLabel: string;
   statusCurrentLabel: string;
-  renderTooltipLines: (text: string) => React.ReactNode;
-  shouldShowFallbackActionButton: boolean;
+  manualSyncTooltipText: string;
   displayUrl: string;
+  overlayDisplayUrl: string;
   debugDetails: ReturnType<typeof useImageSelectorDebug>['debugDetails'];
   autoButtonIcon: React.ReactElement;
   syncButtonIcon: React.ReactElement;
@@ -27,6 +27,7 @@ interface UseImageSelectorComputedParams
   extends Pick<ImageSelectorProps, 'value' | 'workBoundary'> {
   state: ImageSelectorState;
   translate: TranslateFn;
+  previewRevision: number;
 }
 
 export const useImageSelectorComputed = ({
@@ -34,19 +35,29 @@ export const useImageSelectorComputed = ({
   translate,
   value,
   workBoundary,
+  previewRevision,
 }: UseImageSelectorComputedParams): ImageSelectorComputed => {
   const imageUrl = value?.[0] ?? '';
   const {
     auto,
-    derivedContentUri,
-    effectiveBoundaryUri,
-    effectiveFileUri,
+    contentUri,
+    diskFileUri,
     maskUri,
-    selectionBoundary,
     boundaryUri,
     renderMeta,
-    logger,
+    sourceMode,
+    contentHandleRef,
+    maskHandleRef,
+    maskHandleResourceRef,
+    isInitialState,
   } = state;
+  const normalizedWorkBoundary = (workBoundary ?? '').trim();
+  const defaultBoundaryForMode = useMemo(
+    () => normalizedWorkBoundary,
+    [normalizedWorkBoundary],
+  );
+  const resolvedBoundaryUri = (boundaryUri ?? '').trim() || normalizedWorkBoundary;
+  const resolvedDiskFileUri = (diskFileUri ?? '').trim();
 
   const cutLabel = translate('image.upload.primary.cut', { defaultValue: 'Crop' });
   const scanLabel = translate('image.upload.primary.scan', { defaultValue: 'Scan' });
@@ -56,37 +67,34 @@ export const useImageSelectorComputed = ({
   const scanTooltipText = translate('image.upload.tooltip.scan_action', {
     defaultValue: 'Fetch image +\nLimit image boundary',
   });
+  const manualSyncTooltipText = translate('image.upload.tooltip.sync_action', {
+    defaultValue: '同步当前内容',
+  });
+  const autoButtonTooltipText = auto
+    ? translate('image.upload.tooltip.autosync.on', { defaultValue: 'Auto Sync: on' })
+    : translate('image.upload.tooltip.autosync.off', { defaultValue: 'Auto Sync: off' });
 
-  const thumbnailParams = useMemo<UseThumbnailParams>(
-    () =>
-      resolveThumbnailParams({
-        isAutoEnabled: auto,
-        contentUri: derivedContentUri,
-        boundaryUri: effectiveBoundaryUri,
-        maskUri,
-        fileUri: effectiveFileUri,
-        defaultContentUri: DEFAULT_CONTENT_URI,
-      }),
-    [auto, derivedContentUri, effectiveBoundaryUri, maskUri, effectiveFileUri],
-  );
+  const autoStatusLabel = auto
+    ? translate('image.upload.autosync.status.enabled', { defaultValue: '自动同步中...' })
+    : translate('image.upload.autosync.status.disabled', { defaultValue: '自动同步未打开' });
 
-  const { data: previewUrl } = useThumbnail(thumbnailParams);
+  const { thumbnailParams, previewUrl, overlayPreviewUrl } = useThumbnailPreview({
+    auto,
+    sourceMode,
+    contentUri,
+    boundaryUri: resolvedBoundaryUri,
+    maskUri,
+    diskFileUri: resolvedDiskFileUri,
+    lastKnownValueRef: state.lastKnownValueRef,
+    contentHandleRef,
+    maskHandleRef,
+    invalidationKey: previewRevision,
+  });
 
-  const displayUrl = previewUrl ?? imageUrl ?? '';
-
-  const renderTooltipLines = useCallback((text: string) => {
-    const lines = text.split('\n');
-    return (
-      <>
-        {lines.map((line, index) => (
-          <React.Fragment key={`${line}-${index}`}>
-            {line}
-            {index < lines.length - 1 && <br />}
-          </React.Fragment>
-        ))}
-      </>
-    );
-  }, []);
+  const displayUrl = isInitialState ? imageUrl : previewUrl ?? imageUrl ?? '';
+  const overlayDisplayUrl = isInitialState
+    ? imageUrl
+    : overlayPreviewUrl ?? '';
 
   const statusCurrentLabel = useMemo(() => {
     const { layerInfo, sourceMode } = state;
@@ -113,26 +121,19 @@ export const useImageSelectorComputed = ({
     });
   }, [state, translate]);
 
-  const shouldShowFallbackActionButton = useMemo(() => {
-    const noMask = !(maskUri?.trim());
-    const normalizedBoundaryUri = (boundaryUri ?? '').trim();
-    const normalizedWorkBoundary = (workBoundary ?? '').trim();
-    const isBoundaryUnchanged = normalizedBoundaryUri === normalizedWorkBoundary;
-    const noSelection = selectionBoundary == null;
-    return noMask && isBoundaryUnchanged && noSelection;
-  }, [boundaryUri, maskUri, selectionBoundary, workBoundary]);
-
   const { debugDetails } = useImageSelectorDebug({
     auto,
     displayUrl,
     imageUrl,
-    fileUri: effectiveFileUri,
-    contentUri: derivedContentUri,
-    boundaryUri: effectiveBoundaryUri,
+    fileUri: resolvedDiskFileUri,
+    contentUri,
+    boundaryUri: resolvedBoundaryUri,
     maskUri,
+    contentHandleUri: contentHandleRef.current?.resourceId ?? null,
+    maskHandleUri: maskHandleResourceRef.current ?? null,
     thumbnailParams,
-    logger,
     renderMeta,
+    defaultBoundaryUri: defaultBoundaryForMode,
   });
 
   const syncButtonIcon = useMemo(
@@ -140,27 +141,38 @@ export const useImageSelectorComputed = ({
     [],
   );
 
-  const autoButtonIcon = useMemo(() => {
-    const style: React.CSSProperties = {
-      transition: 'transform 0.2s ease',
-    };
-    if (auto) {
-      ensureAutoSpinStyle();
-      style.animation = 'sdppp-sync-button-spin 1s linear infinite';
-      style.transformOrigin = 'center';
-    }
-    return <RefreshCw size={18} strokeWidth={2} style={style} />;
-  }, [auto]);
+  const autoButtonIcon = useMemo(
+    () => (
+      <span
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: 24,
+          height: 24,
+          fontSize: 11,
+          fontWeight: 600,
+          letterSpacing: 0.6,
+          lineHeight: 1,
+        }}
+      >
+        AUTO
+      </span>
+    ),
+    [],
+  );
 
   return {
     cutLabel,
     scanLabel,
     cutTooltipText,
     scanTooltipText,
+    autoButtonTooltipText,
     statusCurrentLabel,
-    renderTooltipLines,
-    shouldShowFallbackActionButton,
+    autoStatusLabel,
+    manualSyncTooltipText,
     displayUrl,
+    overlayDisplayUrl,
     debugDetails,
     autoButtonIcon,
     syncButtonIcon,

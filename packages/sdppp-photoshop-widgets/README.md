@@ -1,6 +1,6 @@
 # sdppp-photoshop-widgets
 
-轻量的、无交互的 Photoshop Widget 组件集合，聚焦图片 / 遮罩 / 视频 / 本地图片包的选择与预览。所有组件均通过 `WidgetImageMaskProvider` 注入外部 API，无需依赖全局 Store。
+轻量的、无交互的 Photoshop Widget 组件集合，聚焦图片 / 遮罩 / 视频 / 本地图片包的选择与预览。所有组件均通过 `PhotoshopWidgetProvider` 注入外部 API，无需依赖全局 Store。
 
 ## 目录结构
 
@@ -8,7 +8,7 @@
   - `selectors/`：核心业务组件（Image/Multi/Masks/Video/LocalPack 等）。
   - `shared/`：复用的 UI 片段（DebugBadge、UploadIndicator 等）。
 - `context/`：Provider 及其快捷 hooks。
-- `hooks/`：可复用逻辑（缩略图、上传、CBM 动作、本地文件选择等）。
+- `hooks/`：可复用逻辑（缩略图、上传、本地文件选择等）。
 - `router/`：`createImageMaskWidgetRouter` 及默认路由器。
 - `utils/`：通用函数（缩略图参数规整、本地图片包布局计算等）。
 
@@ -22,11 +22,13 @@
 
 ## Provider 与 Context
 
-组件通过 `WidgetImageMaskProvider` 注入所需的外部 API、文案函数以及日志/调试选项，接口命名与 `@sdppp/resourcing` 中的 action/resolver 保持一致：
+组件通过 `PhotoshopWidgetProvider` 注入所需的外部 API、文案函数以及日志/调试选项，接口命名与 `@sdppp/resourcing` 中的 action/resolver 保持一致：
 
 - `'resource.thumbnail'(params)`：生成、缓存缩略图。
 - `'resource.file.createFromLocal'(params?)`：调起本地文件选择，生成资源。
-- `'resource.file.createFromCBM'(params)`：基于内容/边界/遮罩句柄合成资源。
+- `'resource.file.createByContent'({ contentUri })`：根据内容句柄生成文件资源并返回句柄。
+- `'resource.file.createByMask'({ maskUri })`：根据遮罩句柄生成文件资源（`uxp://mask/{docId}/empty` 将返回空遮罩）。
+- `'resource.file.combineByCBM'(params)`：将内容/遮罩句柄在指定边界内合成最终资源。
 - `'resource.boundary.normalize'({ boundary })`：将边界句柄归一化为矩形。
 - `'resource.layer.resolve'({ uri, type })`：将内容/遮罩句柄解析为具体图层。
 - `'selectAdvancedContentSource'()`：打开高级内容选择器，返回 `{ contentUri }` 或 `{ fileUri }`。
@@ -42,16 +44,16 @@
 ```tsx
 import React from 'react';
 import {
-  WidgetImageMaskProvider,
-  type WidgetImageMaskActions,
-} from 'sdppp-photoshop-widgets/context/WidgetImageMaskContext';
+  PhotoshopWidgetProvider,
+  type PhotoshopWidgetActions,
+} from 'sdppp-photoshop-widgets/context/PhotoshopWidgetContext';
 import { ImageSelector } from 'sdppp-photoshop-widgets/components/selectors/ImageSelector';
 import { LocalImagePackSelector } from 'sdppp-photoshop-widgets/components/selectors/LocalImagePackSelector';
 import { MaskSelector } from 'sdppp-photoshop-widgets/components/selectors/MaskSelector';
 import { MultiImageSelector } from 'sdppp-photoshop-widgets/components/selectors/MultiImageSelector';
 import { SingleVideoSelector } from 'sdppp-photoshop-widgets/components/selectors/SingleVideoSelector';
 
-const actions: WidgetImageMaskActions = {
+const actions: PhotoshopWidgetActions = {
   'resource.thumbnail': async ({ resource }) => {
     // TODO: 调用 resource.thumbnail
     return { thumbnail: null, width: undefined, height: undefined };
@@ -60,8 +62,16 @@ const actions: WidgetImageMaskActions = {
     // TODO: 调起 resource.file.createFromLocal
     return { resource: 'uxp://file/example', thumbnail: null };
   },
-  'resource.file.createFromCBM': async ({ contentUri, boundaryUri, maskUri }) => {
-    // TODO: 调起 resource.file.createFromCBM
+  'resource.file.createByContent': async ({ contentUri }) => {
+    // TODO: 调起 resource.file.createByContent
+    return { resource: contentUri ?? null };
+  },
+  'resource.file.createByMask': async ({ maskUri }) => {
+    // TODO: 调起 resource.file.createByMask
+    return { resource: maskUri ?? null };
+  },
+  'resource.file.combineByCBM': async ({ contentUri, boundaryUri, maskUri }) => {
+    // TODO: 调起 resource.file.combineByCBM
     return { resource: contentUri ?? maskUri ?? boundaryUri ?? null };
   },
   'resource.boundary.normalize': async ({ boundary }) => {
@@ -80,17 +90,17 @@ const t = (key: string, options?: Record<string, unknown>) => {
 };
 
 const logger = (...args: string[]) => {
-  console.log('[WidgetImageMask]', ...args);
+  console.log('[PhotoshopWidget]', ...args);
 };
 
 export default function Demo() {
   return (
-    <WidgetImageMaskProvider
+    <PhotoshopWidgetProvider
       actions={actions}
       t={t}
       logger={logger}
       debug
-      selectAdvancedContentSource={async () => ({ contentUri: 'uxp://content/canvas' })}
+      selectAdvancedContentSource={async () => ({ contentUri: 'uxp://content/123/canvas' })}
       uploadPassHandlers={{
         runUploadPassOnce: async pass => {
           console.log('[mock upload] run once', pass);
@@ -143,7 +153,7 @@ export default function Demo() {
         widgetableId="local-pack-1"
         value={['https://picsum.photos/seed/sdppp-local-pack/400/300']}
       />
-    </WidgetImageMaskProvider>
+    </PhotoshopWidgetProvider>
   );
 }
 ```

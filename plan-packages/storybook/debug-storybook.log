@@ -1,0 +1,18 @@
+[23:47:40.868] [INFO] storybook v10.1.2
+[23:47:45.924] [DEBUG] Getting package.json info for /apdcephfs/txcfs/sdppp/official/plan-packages/storybook/package.json...
+[23:47:55.556] [INFO] Starting...
+[23:47:56.534] [DEBUG] Starting preview..
+[23:47:56.943] [ERROR] Failed to build the preview
+[23:47:56.944] [ERROR] [38;2;241;97;97mError: Cannot find module @rollup/rollup-linux-x64-gnu. npm has a bug related to optional dependencies (https://github.com/npm/cli/issues/4828). Please try `npm i` again after removing both package-lock.json and node_modules directory.[39m
+    at requireWithFriendlyError (/apdcephfs/txcfs/sdppp/official/node_modules/.pnpm/rollup@4.53.3/node_modules/rollup/dist/native.js:83:9)
+    at Object.<anonymous> (/apdcephfs/txcfs/sdppp/official/node_modules/.pnpm/rollup@4.53.3/node_modules/rollup/dist/native.js:92:76)
+    at Module._compile (node:internal/modules/cjs/loader:1692:14)
+    at Object..js (node:internal/modules/cjs/loader:1824:10)
+    at Module.load (node:internal/modules/cjs/loader:1427:32)
+    at Module._load (node:internal/modules/cjs/loader:1250:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:235:24)
+    at cjsLoader (node:internal/modules/esm/translators:316:5)
+    at ModuleWrap.<anonymous> (node:internal/modules/esm/translators:208:7)
+[23:47:56.946] [WARN] Broken build, fix the error above.
+You may need to refresh the browser.

@@ -1,16 +1,25 @@
 import { sdpppSDK } from '@sdppp/common';
 import { useTranslation } from '@sdppp/common/i18n/react';
+import {
+    combineFileResourceByCBM,
+    createFileResourceByContent,
+    createFileResourceByMask,
+    createFileResourceFromBuffer,
+    createFileResourceFromLocal,
+} from '@sdppp/resourcing/src/@sideweb/file-resource-actions';
 import { subscribeToRealtimeChanges as resourcingRealtimeSubscriber } from '@sdppp/resourcing/src/@sideweb/realtime-thumbnail';
+import { sidewebResourceHandleRegistry } from '@sdppp/resourcing/src/@sideweb/resource-handles';
 import type { ContentType } from '@sdppp/resourcing/src/resource-uris';
 import { buildBoundaryUri } from '@sdppp/resourcing/src/resource-uris';
 import type { WidgetRegistry, WidgetRenderer } from '@sdppp/widgetable-ui';
 import React, { useCallback, useMemo, useSyncExternalStore } from 'react';
 import {
-    WidgetImageMaskProvider,
-    type WidgetImageMaskActions,
-    type WidgetImageMaskLogger,
+    PhotoshopWidgetProvider,
+    type PhotoshopWidgetActions,
+    type PhotoshopWidgetLogger,
+    type ResourceHandleManager,
     type WidgetRealtimeSubscriber,
-} from 'sdppp-photoshop-widgets/context/WidgetImageMaskContext';
+} from 'sdppp-photoshop-widgets/context/PhotoshopWidgetContext';
 import { imageMaskWidgetRouter } from 'sdppp-photoshop-widgets/widget-router';
 import { useUploadPasses } from '../upload-pass-context';
 import { resolveWorkBoundaryContext } from './work-boundary';
@@ -31,7 +40,7 @@ export const createImageMaskWidgetRegistry = (): WidgetRegistry => {
     };
 };
 
-const fallbackLogger: WidgetImageMaskLogger = () => undefined;
+const fallbackLogger: PhotoshopWidgetLogger = () => undefined;
 
 const fallbackRealtimeSubscriber: WidgetRealtimeSubscriber = () => () => undefined;
 
@@ -127,46 +136,55 @@ const useSelectionBoundary = (): PhotoshopSelectionBoundary => {
     return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 };
 
-const createActions = (): WidgetImageMaskActions => {
+const createActions = (): PhotoshopWidgetActions => {
     const photoshopActions = sdpppSDK?.plugins?.photoshop as Record<string, any> | undefined;
 
-    const createFromBuffer: WidgetImageMaskActions['resource.file.createFromBuffer'] = async params => {
-        const fn = photoshopActions?.['fileResource.createFromBuffer'];
-        if (typeof fn !== 'function') {
-            return { error: 'fileResource.createFromBuffer unavailable' };
-        }
-        try {
-            return await fn(params);
-        } catch (error) {
-            return { error: error instanceof Error ? error.message : String(error) };
-        }
+    const createFromBuffer: PhotoshopWidgetActions['resource.file.createFromBuffer'] = async params => {
+        return await createFileResourceFromBuffer(params);
     };
 
-    const createFromCBM: WidgetImageMaskActions['resource.file.createFromCBM'] = async params => {
-        const fn = photoshopActions?.['fileResource.createFromCBM'];
-        if (typeof fn !== 'function') {
-            return { error: 'fileResource.createFromCBM unavailable' };
+    const createByContent: PhotoshopWidgetActions['resource.file.createByContent'] = async params => {
+        const prepared = params ?? { contentUri: '' };
+        if (!prepared.contentUri || !prepared.contentUri.trim()) {
+            return { resource: null, error: 'contentUri unavailable' };
         }
-        try {
-            return await fn(params);
-        } catch (error) {
-            return { error: error instanceof Error ? error.message : String(error) };
-        }
+        return await createFileResourceByContent({
+            contentUri: prepared.contentUri,
+            options: prepared.options,
+        });
     };
 
-    const createFromLocal: WidgetImageMaskActions['resource.file.createFromLocal'] = async params => {
-        const fn = photoshopActions?.['fileResource.createFromLocal'];
-        if (typeof fn !== 'function') {
-            return { error: 'fileResource.createFromLocal unavailable' };
+    const createByMask: PhotoshopWidgetActions['resource.file.createByMask'] = async params => {
+        const prepared = params ?? { maskUri: '' };
+        const maskUri = prepared.maskUri?.trim() ?? '';
+        if (!maskUri || /\/empty(?:[/?#]|$)/.test(maskUri)) {
+            return { resource: null, handle: null, width: null, height: null, mime: null };
         }
-        try {
-            return await fn(params);
-        } catch (error) {
-            return { error: error instanceof Error ? error.message : String(error) };
-        }
+        return await createFileResourceByMask({
+            maskUri,
+            options: prepared.options,
+        });
     };
 
-    const createThumbnail: WidgetImageMaskActions['resource.thumbnail'] = async params => {
+    const combineByCBM: PhotoshopWidgetActions['resource.file.combineByCBM'] = async params => {
+        const prepared = params ?? {
+            contentUri: '',
+            boundaryUri: '',
+        };
+        return await combineFileResourceByCBM({
+            contentUri: prepared.contentUri,
+            boundaryUri: prepared.boundaryUri,
+            maskUri: prepared.maskUri ?? undefined,
+            thumbnail: prepared.thumbnail,
+            options: prepared.options,
+        });
+    };
+
+    const createFromLocal: PhotoshopWidgetActions['resource.file.createFromLocal'] = async params => {
+        return await createFileResourceFromLocal(params);
+    };
+
+    const createThumbnail: PhotoshopWidgetActions['resource.thumbnail'] = async params => {
         const fn = photoshopActions?.['fileResource.thumbnail'];
         if (typeof fn !== 'function') {
             return { error: 'fileResource.thumbnail unavailable' };
@@ -178,7 +196,7 @@ const createActions = (): WidgetImageMaskActions => {
         }
     };
 
-    const normalizeBoundary: WidgetImageMaskActions['resource.boundary.normalize'] = async params => {
+    const normalizeBoundary: PhotoshopWidgetActions['resource.boundary.normalize'] = async params => {
         const fn = photoshopActions?.['boundary.normalize'];
         if (typeof fn !== 'function') {
             return { error: 'boundary.normalize unavailable' };
@@ -190,7 +208,7 @@ const createActions = (): WidgetImageMaskActions => {
         }
     };
 
-    const resolveLayer: WidgetImageMaskActions['resource.layer.resolve'] = async params => {
+    const resolveLayer: PhotoshopWidgetActions['resource.layer.resolve'] = async params => {
         const fn = photoshopActions?.['layer.resolve'];
         if (typeof fn !== 'function') {
             return { error: 'layer.resolve unavailable' };
@@ -203,7 +221,9 @@ const createActions = (): WidgetImageMaskActions => {
     };
 
     return {
-        'resource.file.createFromCBM': createFromCBM,
+        'resource.file.combineByCBM': combineByCBM,
+        'resource.file.createByContent': createByContent,
+        'resource.file.createByMask': createByMask,
         'resource.file.createFromBuffer': createFromBuffer,
         'resource.file.createFromLocal': createFromLocal,
         'resource.thumbnail': createThumbnail,
@@ -232,7 +252,7 @@ export const WidgetablePhotoshopProvider: React.FC<WidgetablePhotoshopProviderPr
         [t],
     );
 
-    const logger = useMemo<WidgetImageMaskLogger>(() => {
+    const logger = useMemo<PhotoshopWidgetLogger>(() => {
         try {
             return sdpppSDK?.logger?.extend?.('widgetable-photoshop') ?? fallbackLogger;
         } catch {
@@ -284,8 +304,18 @@ export const WidgetablePhotoshopProvider: React.FC<WidgetablePhotoshopProviderPr
             resourcingRealtimeSubscriber(docId, contents as ContentType[], callback) ?? (() => undefined);
     }, []);
 
+    const resourceHandleManager = useMemo<ResourceHandleManager>(
+        () => ({
+            acquire: resourceId => {
+                const existing = sidewebResourceHandleRegistry.acquire(resourceId);
+                return existing;
+            },
+        }),
+        [],
+    );
+
     return (
-        <WidgetImageMaskProvider
+        <PhotoshopWidgetProvider
             actions={actions}
             t={translate}
             logger={logger}
@@ -295,9 +325,10 @@ export const WidgetablePhotoshopProvider: React.FC<WidgetablePhotoshopProviderPr
             subscribeToRealtimeChanges={realtimeSubscriber}
             uploadPassHandlers={uploadHandlers}
             selectAdvancedContentSource={selectAdvancedContentSource}
+            resourceHandles={resourceHandleManager}
         >
             {children}
-        </WidgetImageMaskProvider>
+        </PhotoshopWidgetProvider>
     );
 };
 

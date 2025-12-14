@@ -2,12 +2,11 @@ import { Button, Spin, theme } from 'antd';
 import { FileVideo, Plus, Trash2 } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  useWidgetImageMaskActions,
-  useWidgetLogger,
+  usePhotoshopWidgetActions,
   useWidgetText,
   useWidgetUploadPassHandlers,
   type WidgetUploadPass,
-} from '../../context/WidgetImageMaskContext';
+} from '../../context/PhotoshopWidgetContext';
 import {
   useLocalResourceSelection,
   type LocalResourceSelectionItem,
@@ -16,6 +15,8 @@ import { useUploadCopy } from '../../hooks/useUploadCopy';
 import { useWidgetValueEmitter } from '../../hooks/useWidgetValueEmitter';
 import { UploadIndicator } from '../shared/UploadIndicator';
 import { useFileDropZone } from '../../hooks/useFileDropZone';
+import { useManagedResourceHandle } from '../../hooks/useManagedResourceHandle';
+import { useManagedResourceCollection } from '../../hooks/useManagedResourceCollection';
 import {
   buildBufferPayloadFromFile,
   getSuccessfulMaterializeRecord,
@@ -51,7 +52,6 @@ const PANEL_HEIGHT = 128;
 const ADD_BUTTON_HEIGHT = 100;
 const TRASH_BUTTON_HEIGHT = 28;
 const CONTROL_COLUMN_WIDTH = 120;
-const BORDER_COLOR = 'var(--sdppp-widget-border-color, var(--ant-color-border, #d9d9d9))';
 const BORDER_RADIUS = 'var(--sdppp-widget-border-radius, 4px)';
 
 const PREVIEW_CONTENT_STYLE: React.CSSProperties = {
@@ -73,101 +73,37 @@ const sanitizeText = (input?: string | null): string | undefined => {
   return trimmed;
 };
 
-const safeJsonStringify = (value: unknown): string => {
-  const seen = new WeakSet<object>();
-  const replacer = (_: string, val: unknown) => {
-    if (typeof val === 'bigint') {
-      return val.toString();
-    }
-  if (val instanceof Error) {
-      const base: Record<string, unknown> = {
-        name: val.name,
-        message: val.message,
-      };
-      if (typeof val.stack === 'string') {
-        base.stack = val.stack;
-      }
-      try {
-        const ownKeys = Object.getOwnPropertyNames(val);
-        for (const key of ownKeys) {
-          const descriptor = (val as Record<string, unknown>)[key];
-          if (!(key in base) && descriptor !== undefined) {
-            base[key] = descriptor;
-          }
-        }
-      } catch {
-        // ignore descriptor failures
-      }
-      return base;
-    }
-    if (typeof val === 'object' && val !== null) {
-      if (seen.has(val as object)) {
-        return '[Circular]';
-      }
-      seen.add(val as object);
-    }
-    return val;
-  };
-  try {
-    return JSON.stringify(value, replacer);
-  } catch {
-    try {
-      return String(value);
-    } catch {
-      return '[Unserializable]';
-    }
-  }
-};
-
-const buildErrorPayload = (reason: unknown): unknown => {
-  if (!reason) return null;
-  if (reason instanceof Error) {
-    const payload: Record<string, unknown> = {
-      name: reason.name,
-      message: reason.message,
-    };
-    if (typeof reason.stack === 'string') {
-      payload.stack = reason.stack;
-    }
-    const errorAsRecord = reason as Record<string, unknown>;
-    for (const key of Object.keys(errorAsRecord)) {
-      payload[key] = errorAsRecord[key];
-    }
-    const cause = (reason as unknown as { cause?: unknown }).cause;
-    if (cause !== undefined) {
-      payload.cause = cause;
-    }
-    return payload;
-  }
-  if (typeof reason === 'object') {
-    return reason;
-  }
-  return { value: reason };
-};
-
 export const SingleVideoSelector: React.FC<{
   widgetableId: string;
   value: string[];
   onValueChange?: (value: string[]) => void;
 }> = ({ widgetableId, value = [], onValueChange }) => {
   const t = useWidgetText();
-  const logger = useWidgetLogger();
-  const actions = useWidgetImageMaskActions();
+  const actions = usePhotoshopWidgetActions();
   const { token } = theme.useToken();
   const dropOverlayBackground = useMemo(() => withAlpha(token.colorPrimary, 0.12), [token.colorPrimary]);
   const dropOverlayBorder = useMemo(() => withAlpha(token.colorPrimary, 0.55), [token.colorPrimary]);
   const dropOverlayText = token.colorText;
+  const borderColor = token.colorBorder;
+  const borderStyle = `1px solid ${borderColor}`;
   const selectLocalVideo = useLocalResourceSelection({
     actionParams: VIDEO_SELECTION_PARAMS as unknown as Record<string, unknown>,
     maxItems: 1,
     disablePreviewCapture: true,
   });
   const { runUploadPassOnce } = useWidgetUploadPassHandlers();
+  const {
+    setResource: setPendingResourceHandle,
+    clear: clearPendingResourceHandle,
+  } = useManagedResourceHandle();
+  const {
+    retain: retainSelectionHandle,
+    release: releaseSelectionHandle,
+    clear: clearSelectionHandles,
+  } = useManagedResourceCollection();
 
   const emitValue = useWidgetValueEmitter({
     onValueChange,
-    logger,
-    logLabel: 'SingleVideoSelector emitValue',
   });
 
   const { errorLabel: uploadErrorLabel } = useUploadCopy();
@@ -212,33 +148,6 @@ export const SingleVideoSelector: React.FC<{
       return '';
     }
   }, []);
-
-  const logErrorDetail = useCallback(
-    (reason?: unknown, fallback?: string) => {
-      const detail = extractErrorMessage(reason) || fallback || uploadErrorLabel;
-       const payload = buildErrorPayload(reason);
-       const serialized = payload ? safeJsonStringify(payload) : '';
-      try {
-        if (serialized && serialized !== '{}') {
-          logger('SingleVideoSelector upload error detail', detail, serialized);
-        } else {
-          logger('SingleVideoSelector upload error detail', detail);
-        }
-      } catch {
-        // ignore logger failures
-      }
-      const consolePayload = payload
-        ? {
-            message: detail,
-            payload,
-            original: reason,
-          }
-        : detail;
-      // eslint-disable-next-line no-console
-      console.error('SingleVideoSelector upload error detail:', consolePayload);
-    },
-    [extractErrorMessage, logger, uploadErrorLabel],
-  );
 
   const parseExtension = useCallback((fileName?: string | null): string => {
     if (!fileName) return '';
@@ -295,19 +204,14 @@ export const SingleVideoSelector: React.FC<{
         if (normalizedMessage.trim().length) return normalizedMessage;
         return uploadErrorLabel;
       });
-      logErrorDetail(reason, normalizedMessage);
     },
-    [extractErrorMessage, logErrorDetail, uploadErrorLabel],
+    [extractErrorMessage, uploadErrorLabel],
   );
 
   const handleDropFiles = useCallback(
     async (files: File[]) => {
       const createFromBuffer = actions['resource.file.createFromBuffer'];
       if (typeof createFromBuffer !== 'function') {
-        logger(
-          'SingleVideoSelector createFromBuffer unavailable',
-          JSON.stringify({ reason: 'handler_missing' }),
-        );
         return;
       }
       const accepted = files.filter(isVideoFile);
@@ -324,19 +228,14 @@ export const SingleVideoSelector: React.FC<{
         const result = await createFromBuffer({ files: [payload] });
         const record = getSuccessfulMaterializeRecord(result);
         const resource = record?.resource ? record.resource.trim() : '';
-        logger(
-          'SingleVideoSelector createFromBuffer result',
-          JSON.stringify({
-            file: file.name,
-            resource,
-            error: record?.error ?? (result as any)?.error ?? null,
-            mime: record?.mime ?? payload.mime ?? file.type ?? null,
-          }),
-        );
+        const handle = record?.handle ?? null;
         if (!resource) {
+          handle?.dispose();
           recordUploadError('视频处理失败');
           return;
         }
+
+        setPendingResourceHandle(resource, handle ?? null);
 
         const previousValue = currentResource;
         const uploadPass: WidgetUploadPass = {
@@ -377,11 +276,8 @@ export const SingleVideoSelector: React.FC<{
         }
       } catch (error) {
         recordUploadError(error);
-        logger(
-          'SingleVideoSelector drop upload error',
-          extractErrorMessage(error) || (error instanceof Error ? error.message : String(error)),
-        );
       } finally {
+        clearPendingResourceHandle();
         setUploadStatus(prev => (prev === 'error' ? 'error' : 'idle'));
       }
     },
@@ -390,13 +286,14 @@ export const SingleVideoSelector: React.FC<{
       currentResource,
       emitValue,
       extractErrorMessage,
-      logger,
       recordUploadError,
       runUploadPassOnce,
       setDisplayInfoCache,
       setUploadErrorMessage,
       setUploadProgress,
       setUploadStatus,
+      clearPendingResourceHandle,
+      setPendingResourceHandle,
     ],
   );
 
@@ -416,6 +313,9 @@ export const SingleVideoSelector: React.FC<{
     setUploadProgress({ current: 0, total: 1 });
     try {
       const selection = await selectLocalVideo();
+      selection.items.forEach(item => {
+        retainSelectionHandle(item.resource, item.handle ?? null);
+      });
       const validItems = selection.items.filter(isSupportedVideo);
       const invalidItems = selection.items.filter(item => !validItems.includes(item));
       const totalForProgress = Math.max(validItems.length, selection.hasError ? 1 : 0);
@@ -426,23 +326,7 @@ export const SingleVideoSelector: React.FC<{
       }
 
       if (selection.hasError) {
-        const errorPayload = selection.errorDetail ? safeJsonStringify(selection.errorDetail) : '';
-        try {
-          if (errorPayload && errorPayload !== '{}') {
-            logger(
-              'SingleVideoSelector selection error detail',
-              selection.errorMessage ?? uploadErrorLabel,
-              errorPayload,
-            );
-          } else {
-            logger(
-              'SingleVideoSelector selection error detail',
-              selection.errorMessage ?? uploadErrorLabel,
-            );
-          }
-        } catch {
-          // ignore logger failures
-        }
+        recordUploadError(selection.errorDetail ?? selection.errorMessage);
       }
 
       if (invalidItems.length) {
@@ -451,9 +335,10 @@ export const SingleVideoSelector: React.FC<{
           invalidNames.length > 0
             ? `不支持的视频格式：${invalidNames.join(', ')}`
             : '所选文件不是支持的视频格式';
+        invalidItems.forEach(item => releaseSelectionHandle(item.resource));
         recordUploadError(invalidMessage);
-        logger('SingleVideoSelector invalid video selection', invalidMessage);
         setUploadStatus('error');
+        clearSelectionHandles();
         return;
       }
 
@@ -464,6 +349,7 @@ export const SingleVideoSelector: React.FC<{
         } else {
           setUploadStatus('error');
         }
+        selectionHandles.clear();
         return;
       }
 
@@ -474,12 +360,17 @@ export const SingleVideoSelector: React.FC<{
       const [item] = validItems;
       if (!item) {
         setUploadStatus(selection.hasError ? 'error' : 'idle');
+        clearSelectionHandles();
         return;
       }
 
       const previousValue = currentResource;
 
       try {
+        setPendingResourceHandle(
+          item.resource,
+          retainSelectionHandle(item.resource, item.handle ?? null),
+        );
         const uploadPass: WidgetUploadPass = {
           getUploadFile: async (signal?: AbortSignal) => {
             if (signal?.aborted) {
@@ -520,18 +411,14 @@ export const SingleVideoSelector: React.FC<{
         }
       } catch (error) {
         recordUploadError(error);
-        logger(
-          'SingleVideoSelector upload error',
-          extractErrorMessage(error) || (error instanceof Error ? error.message : String(error)),
-        );
+      } finally {
+        releaseSelectionHandle(item.resource);
       }
     } catch (err) {
       recordUploadError(err);
-      logger(
-        'SingleVideoSelector selection error',
-        extractErrorMessage(err) || (err instanceof Error ? err.message : String(err)),
-      );
     } finally {
+      clearSelectionHandles();
+      clearPendingResourceHandle();
       setUploadStatus(prev => (prev === 'error' ? 'error' : 'idle'));
     }
   }, [
@@ -539,11 +426,15 @@ export const SingleVideoSelector: React.FC<{
     isSupportedVideo,
     recordUploadError,
     runUploadPassOnce,
-    logger,
     extractErrorMessage,
     emitValue,
     currentResource,
     setUploadProgress,
+    retainSelectionHandle,
+    releaseSelectionHandle,
+    clearSelectionHandles,
+    setPendingResourceHandle,
+    clearPendingResourceHandle,
   ]);
 
   const buttonLabel = t('video.local.button', { defaultValue: '本地视频' });
@@ -554,9 +445,8 @@ export const SingleVideoSelector: React.FC<{
     setUploadErrorMessage(null);
     setUploadStatus('idle');
     setUploadProgress({ current: 0, total: 0 });
-    logger('SingleVideoSelector clearVideo');
     emitValue([]);
-  }, [emitValue, logger, setUploadProgress]);
+  }, [emitValue, setUploadProgress]);
 
   useEffect(() => {
     if (uploadStatus === 'idle' && uploadErrorMessage === null) {
@@ -606,11 +496,11 @@ export const SingleVideoSelector: React.FC<{
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      border: `1px solid ${BORDER_COLOR}`,
-      borderColor: BORDER_COLOR,
+      border: borderStyle,
+      borderColor,
       borderRadius: hasVideo ? `${BORDER_RADIUS} ${BORDER_RADIUS} 0 0` : BORDER_RADIUS,
     }),
-    [hasVideo],
+    [borderColor, borderStyle, hasVideo],
   );
 
   const trashButtonStyle = useMemo<React.CSSProperties>(
@@ -621,12 +511,12 @@ export const SingleVideoSelector: React.FC<{
       alignItems: 'center',
       justifyContent: 'center',
       padding: 0,
-      border: `1px solid ${BORDER_COLOR}`,
-      borderColor: BORDER_COLOR,
+      border: borderStyle,
+      borderColor,
       borderTop: 'none',
       borderRadius: `0 0 ${BORDER_RADIUS} ${BORDER_RADIUS}`,
     }),
-    [],
+    [borderColor, borderStyle],
   );
 
   const previewWrapperStyle = useMemo<React.CSSProperties>(
@@ -635,7 +525,7 @@ export const SingleVideoSelector: React.FC<{
       flex: '1 1 0%',
       height: PANEL_HEIGHT,
       minHeight: PANEL_HEIGHT,
-      border: `1px solid ${BORDER_COLOR}`,
+      border: borderStyle,
       borderRadius: BORDER_RADIUS,
       padding: 16,
       background: '#fff',
@@ -644,7 +534,7 @@ export const SingleVideoSelector: React.FC<{
       justifyContent: 'center',
       boxSizing: 'border-box',
     }),
-    [],
+    [borderStyle],
   );
 
   const uploadingOverlayStyle = useMemo<React.CSSProperties>(

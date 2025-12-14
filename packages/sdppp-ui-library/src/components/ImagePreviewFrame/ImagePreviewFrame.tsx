@@ -1,4 +1,4 @@
-import { Image } from 'antd';
+import { Image, theme } from 'antd';
 import {
   memo,
   useEffect,
@@ -37,6 +37,7 @@ const ImagePreviewFrameComponent: FC<ImagePreviewFrameProps> = ({
     width: 0,
     height: 0,
   });
+  const { token } = theme.useToken();
 
   useEffect(() => {
     // ResizeObserver is unavailable in some test environments; guard accordingly.
@@ -93,8 +94,7 @@ const ImagePreviewFrameComponent: FC<ImagePreviewFrameProps> = ({
         position: 'absolute',
         inset: 0,
         overflow: 'hidden',
-        border:
-          '1px solid var(--sdppp-widget-border-color, var(--ant-color-border, #d9d9d9))',
+        border: `1px solid ${token.colorBorder}`,
         borderRadius: 'var(--sdppp-widget-border-radius, 4px)',
         cursor: imageUrl ? 'pointer' : 'default',
         display: 'flex',

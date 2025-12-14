@@ -1,0 +1,16 @@
+{
+  "name": "@sdppp/cbm-calculator",
+  "version": "0.0.0",
+  "private": false,
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*"
+  },
+  "sideEffects": false,
+  "dependencies": {
+    "buffer": "^6.0.3",
+    "jimp": "^1.6.0"
+  }
+}

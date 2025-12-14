@@ -25,12 +25,9 @@ export const resolveDocContext = (
   const docId = parsedBoundaryId > 0 ? parsedBoundaryId : parsedFallbackId;
   const hasDocument = docId > 0;
 
-  const canvasBoundaryUri = hasDocument
-    ? `uxp://boundary/${docId}/canvas`
-    : 'uxp://boundary/0/canvas';
-  const canvasContentUri = hasDocument
-    ? `uxp://content/${docId}/canvas`
-    : 'uxp://content/canvas';
+  const normalizedDocId = docId > 0 ? docId : 0;
+  const canvasBoundaryUri = `uxp://boundary/${normalizedDocId}/canvas`;
+  const canvasContentUri = `uxp://content/${normalizedDocId}/canvas`;
 
   return {
     docId,
@@ -44,4 +41,3 @@ export const resolveDocContext = (
 export const resolveDocIdFromBoundary = (
   boundaryUri?: string | null,
 ): number => resolveDocContext(boundaryUri).docId;
-

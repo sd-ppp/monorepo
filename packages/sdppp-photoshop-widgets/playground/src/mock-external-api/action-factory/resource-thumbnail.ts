@@ -1,4 +1,4 @@
-import type { ResourceThumbnailParams, ResourceThumbnailResult } from '../../../src/context/WidgetImageMaskContext';
+import type { ResourceThumbnailParams, ResourceThumbnailResult } from '../../../src/context/PhotoshopWidgetContext';
 import type { ActionContext } from './types';
 
 export const createResourceThumbnail = async (

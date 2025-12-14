@@ -23,6 +23,7 @@ interface SimulationCanvasProps {
   updateSelectionRect: (rect: SelectionRect | null) => void;
   notifyContentChange: (content: MockRealtimeContent) => void;
   onLayerIdChange?: (layerId: string | null) => void;
+  boundaryPreviewRect?: SelectionRect | null;
 }
 
 export const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
@@ -31,6 +32,7 @@ export const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
   updateSelectionRect,
   notifyContentChange,
   onLayerIdChange,
+  boundaryPreviewRect,
 }) => {
   const [shapes, setShapes] = useState<ShapeDefinition[]>(() =>
     generateShapes(SHAPE_COUNT, CANVAS_DIMENSIONS.width, CANVAS_DIMENSIONS.height)
@@ -77,6 +79,7 @@ export const SimulationCanvas: React.FC<SimulationCanvasProps> = ({
       selectedLayerId={selectedLayerId}
       onLayerSelect={handleLayerSelect}
       onShuffleShapes={handleShuffleShapes}
+      boundaryPreviewRect={boundaryPreviewRect}
     />
   );
 };

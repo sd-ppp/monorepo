@@ -1,25 +1,17 @@
 import type { MutableRefObject } from 'react';
 import type { Stage as KonvaStage } from 'konva/lib/Stage';
 
-import type { WidgetImageMaskLogger } from '../../../src/context/WidgetImageMaskContext';
+import type { MaskSnapshot, Snapshot, StageRect } from '@sdppp/cbm-calculator';
+import type { PhotoshopWidgetLogger } from '../../../src/context/PhotoshopWidgetContext';
 import type { SelectionRect } from '../types';
-import { MockResourceStore, type StageRect } from '../resource-store';
-
-export interface Snapshot {
-  dataUrl: string;
-  rect: StageRect;
-}
-
-export interface MaskSnapshot extends Snapshot {
-  maskRegion?: StageRect | null;
-}
+import { MockResourceStore } from '../resource-store';
 
 export interface FactoryDeps {
   stageRef: MutableRefObject<KonvaStage | null>;
   selectionRef: MutableRefObject<SelectionRect | null>;
   resourceStore: MockResourceStore;
   currentLayerIdRef: MutableRefObject<string | null>;
-  logger: WidgetImageMaskLogger;
+  logger: PhotoshopWidgetLogger;
 }
 
 export interface ActionContext {
@@ -27,7 +19,7 @@ export interface ActionContext {
   getSelection: () => SelectionRect | null;
   getCurrentLayerId: () => string | null;
   resourceStore: MockResourceStore;
-  logger: WidgetImageMaskLogger;
+  logger: PhotoshopWidgetLogger;
 }
 
-export type { StageRect, SelectionRect, MockResourceStore };
+export type { StageRect, SelectionRect, MockResourceStore, Snapshot, MaskSnapshot };

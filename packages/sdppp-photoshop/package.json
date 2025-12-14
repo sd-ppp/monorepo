@@ -32,7 +32,7 @@
     "vite-plugin-singlefile": "^2.3.0",
     "zod": "^3.25.76",
     "zustand": "^5.0.5",
-    "@google/genai": "^1.20.0"
+    "@google/genai": "1.20.0"
   },
   "devDependencies": {
     "@types/debug": "^4.1.12",

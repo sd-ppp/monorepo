@@ -10,10 +10,9 @@
   "workspaces": [
     "playground"
   ],
-  "scripts": {
-    "storybook": "storybook dev -p 6007 -c playground/.storybook"
-  },
+  "scripts": {},
   "dependencies": {
+    "@sdppp/cbm-calculator": "workspace:*",
     "@sdppp/common": "workspace:*",
     "@sdppp/mock-photoshop": "workspace:*",
     "@sdppp/resourcing": "workspace:*",
@@ -25,25 +24,20 @@
     "uuid": "^11.1.0"
   },
   "devDependencies": {
-    "@chromatic-com/storybook": "^4.1.2",
-    "@storybook/addon-a11y": "^9.1.10",
-    "@storybook/addon-docs": "^9.1.10",
-    "@storybook/addon-onboarding": "^9.1.10",
-    "@storybook/addon-vitest": "^9.1.10",
-    "@storybook/react": "^9.1.10",
-    "@storybook/react-vite": "^9.1.10",
     "@types/react": "^18.3.1",
     "@types/react-dom": "^18.3.1",
     "konva": "^9.3.3",
     "react-konva": "^18.0.5",
-    "storybook": "^9.1.10",
     "typescript": "~5.8.3",
     "vite": "^7.1.9",
     "vitest": "^3.2.4"
   },
   "peerDependencies": {
-    "antd": "^5.25.4",
+    "antd": "5.25.4",
     "react": "18.3.1",
     "react-dom": "18.3.1"
+  },
+  "sdpppStorybook": {
+    "exclude": true
   }
 }

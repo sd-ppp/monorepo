@@ -1,7 +1,6 @@
-import { ImageSelector } from 'sdppp-photoshop-widgets/components/selectors/ImageSelector';
+import { ImageSelector } from 'sdppp-photoshop-widgets/components/selectors/ImageSelector/index';
 import type { Meta, StoryObj } from '@storybook/react';
 import React from 'react';
-
 const meta: Meta<typeof ImageSelector> = {
   title: 'Components/Image/Single',
   component: ImageSelector,
@@ -9,7 +8,7 @@ const meta: Meta<typeof ImageSelector> = {
     widgetableId: 'demo-image-selector',
     value: ['https://picsum.photos/seed/sdppp-1/400/300'],
     showActionButtons: true,
-    workBoundary: 'uxp://boundary/0/canvas',
+    workBoundary: 'uxp://boundary/9527/canvas',
   },
   argTypes: {
     value: {

@@ -2,7 +2,7 @@ import type {
   FileResourceCreateFromBufferPayload,
   FileResourceMaterializeRecord,
   FileResourceMaterializeResult,
-} from '../context/WidgetImageMaskContext';
+} from '../context/PhotoshopWidgetContext';
 
 const IMAGE_EXTENSIONS = new Set([
   '.jpg',

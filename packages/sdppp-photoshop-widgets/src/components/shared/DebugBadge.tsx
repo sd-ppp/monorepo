@@ -1,7 +1,7 @@
 import { Button, Tooltip } from 'antd';
 import type { TooltipPlacement } from 'antd/es/tooltip';
 import React, { useMemo } from 'react';
-import { useWidgetDebug } from '../../context/WidgetImageMaskContext';
+import { useWidgetDebug } from '../../context/PhotoshopWidgetContext';
 
 export interface DebugBadgeProps {
   details: Record<string, React.ReactNode>;
@@ -19,6 +19,11 @@ const DEFAULT_CONTAINER_STYLE: React.CSSProperties = {
   position: 'absolute',
   right: 4,
   bottom: 4,
+  zIndex: 10,
+};
+
+const DEFAULT_TOOLTIP_OVERLAY_STYLE: React.CSSProperties = {
+  maxWidth: 280,
 };
 
 const renderDetails = (details: Record<string, React.ReactNode>): React.ReactNode => (
@@ -45,6 +50,12 @@ export const DebugBadge: React.FC<DebugBadgeProps> = ({
   const debug = useWidgetDebug();
 
   const resolvedTooltip = useMemo(() => tooltip ?? renderDetails(details), [tooltip, details]);
+  const popupContainer = useMemo<(() => HTMLElement) | undefined>(() => {
+    if (typeof window === 'undefined') {
+      return undefined;
+    }
+    return () => document.body;
+  }, []);
 
   if (!debug) return null;
 
@@ -57,7 +68,12 @@ export const DebugBadge: React.FC<DebugBadgeProps> = ({
 
   return (
     <div className={className} style={mergedContainerStyle}>
-      <Tooltip title={resolvedTooltip} placement={placement}>
+      <Tooltip
+        title={resolvedTooltip}
+        placement={placement}
+        overlayStyle={DEFAULT_TOOLTIP_OVERLAY_STYLE}
+        getPopupContainer={popupContainer}
+      >
         <Button
           type="default"
           size={size}

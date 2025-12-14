@@ -1,17 +1,14 @@
 import type { UseThumbnailParams } from '../hooks/useThumbnail';
-import type {
-  BoundaryUri,
-  ContentUri,
-  FileUri,
-  MaskUri,
-} from '../hooks/useThumbnail/types';
+import type { BoundaryUri, ContentUri, FileUri, MaskUri } from '../hooks/useThumbnail/types';
+import { resolveDocContext } from './docContext';
 
-export const DEFAULT_CONTENT_URI = 'uxp://content/canvas';
+export const DEFAULT_CONTENT_URI = 'uxp://content/0/canvas';
+export const DEFAULT_BOUNDARY_URI = 'uxp://boundary/0/canvas';
 
 const IMAGE_SIZE_LIMIT = 192;
 const DEFAULT_IMAGE_QUALITY = 1;
 
-const ensureImageSizeParams = (uri: string): string => {
+export const ensureImageSizeParams = (uri: string): string => {
   if (!uri.trim()) {
     return uri;
   }
@@ -47,18 +44,30 @@ export const resolveThumbnailParams = ({
   fileUri,
   defaultContentUri = DEFAULT_CONTENT_URI,
 }: ResolveThumbnailParamsInput): UseThumbnailParams => {
-  const normalizedContentUri = (contentUri.trim() || defaultContentUri) as ContentUri;
+  const docContext = resolveDocContext(boundaryUri);
+  const fallbackContentUri = docContext.canvasContentUri || defaultContentUri;
+  const fallbackBoundaryUri =
+    docContext.normalizedBoundaryUri || docContext.canvasBoundaryUri || DEFAULT_BOUNDARY_URI;
+
+  const normalizedContentUri = (contentUri.trim() || fallbackContentUri) as ContentUri;
   const normalizedBoundaryUri = boundaryUri.trim();
   const normalizedMaskUri = maskUri.trim() as MaskUri | string;
   const normalizedFileUri = fileUri.trim();
+  const boundaryCandidate = normalizedBoundaryUri || fallbackBoundaryUri;
+  const boundaryWithSize = ensureImageSizeParams(boundaryCandidate) as BoundaryUri;
 
   if (!isAutoEnabled) {
+    if (normalizedFileUri) {
+      return {
+        fileUri: normalizedFileUri as FileUri,
+      };
+    }
     return {
-      fileUri: normalizedFileUri as FileUri,
+      contentUri: normalizedContentUri,
+      boundaryUri: boundaryWithSize,
+      maskUri: normalizedMaskUri,
     };
   }
-
-  const boundaryWithSize = ensureImageSizeParams(normalizedBoundaryUri) as BoundaryUri;
 
   return {
     contentUri: normalizedContentUri,

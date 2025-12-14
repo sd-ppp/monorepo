@@ -17,6 +17,7 @@ export const MockExternalApiPlayground: React.FC<MockExternalApiPlaygroundProps>
   registeredUploadPassCount,
   lastUploadRunSummary,
   panelWidth,
+  boundaryPreviewRect,
 }) => {
   const normalizedImageUrls = useMemo(() => {
     if (!Array.isArray(imageUrls)) return [];
@@ -88,6 +89,7 @@ export const MockExternalApiPlayground: React.FC<MockExternalApiPlaygroundProps>
           updateSelectionRect={updateSelectionRect}
           notifyContentChange={notifyContentChange}
           onLayerIdChange={setCurrentLayerId}
+          boundaryPreviewRect={boundaryPreviewRect}
         />
       </div>
     </div>

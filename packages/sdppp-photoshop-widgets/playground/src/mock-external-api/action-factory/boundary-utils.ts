@@ -1,9 +1,9 @@
 import type { Stage as KonvaStage } from 'konva/lib/Stage';
 
+import { normalizeRect, type StageRect } from '@sdppp/cbm-calculator';
 import type { SelectionRect } from '../types';
-import type { StageRect } from '../resource-store';
 import type { ActionContext } from './types';
-import { fullStageRect, normalizeRect } from './stage-utils';
+import { fullStageRect } from './stage-utils';
 import { resolveLayerRect } from './layer-utils';
 
 const sanitizeLayerId = (raw: string | null | undefined): string | null => {
@@ -74,8 +74,16 @@ export const parseBoundaryRect = (ctx: ActionContext, boundaryUri: string): Stag
         sanitizeLayerId(url.searchParams.get('layername')) ??
         sanitizeLayerId(url.searchParams.get('layerid')) ??
         ctx.getCurrentLayerId();
+      if (!layerId) {
+        ctx.logger('mock resource.file.combineByCBM boundary fallback', JSON.stringify({ reason: 'layer_id_missing', boundaryUri }));
+        return fallback;
+      }
       const rect = resolveLayerRect(stage, layerId);
-      return rect ?? fallback;
+      if (!rect) {
+        ctx.logger('mock resource.file.combineByCBM boundary fallback', JSON.stringify({ reason: 'layer_rect_missing', boundaryUri, layerId }));
+        return fallback;
+      }
+      return rect;
     }
     return fallback;
   } catch {

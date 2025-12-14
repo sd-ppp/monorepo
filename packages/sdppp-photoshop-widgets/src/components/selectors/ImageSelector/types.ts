@@ -20,7 +20,6 @@ export interface ImageSelectorProps {
   showActionButtons?: boolean;
   workBoundary: string;
   onValueChange?: (value: string[]) => void;
-  showUploadIndicator?: boolean;
   defaultAuto?: boolean;
   externalErrorDismissSignal?: number;
   onUploadStateChange?: (state: {

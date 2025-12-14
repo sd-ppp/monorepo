@@ -2,7 +2,7 @@ import { Button, Tooltip } from 'antd';
 import { Minus, Plus } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { useWidgetText } from '../../context/WidgetImageMaskContext';
+import { useWidgetText } from '../../context/PhotoshopWidgetContext';
 import { ImageSelector } from './ImageSelector';
 import { UploadIndicator } from '../shared/UploadIndicator';
 

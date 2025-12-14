@@ -95,7 +95,7 @@ entrypoints.setup({
                             // 创建或获取日志文件
                             const logFile = await pluginDataFolder.createFile(`${logFileName}`, { type: "file", overwrite: true});
                             
-                            alert(`日志已保存到文件: ${logFile.nativePath}\n\n\n` + logContent);
+                            alert(`日志已保存到文件: ${logFile.nativePath}\n\n\n`);
 
                             // 写入日志内容
                             await logFile.write(logContent, {append: false});

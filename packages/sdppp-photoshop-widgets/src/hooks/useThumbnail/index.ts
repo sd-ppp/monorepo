@@ -1,17 +1,68 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import {
-  useWidgetDebug,
-  useWidgetImageMaskActions,
-  useWidgetLogger,
-  useWidgetRealtimeSubscriber,
-} from '../../context/WidgetImageMaskContext';
+import { usePhotoshopWidgetActions, useWidgetRealtimeSubscriber } from '../../context/PhotoshopWidgetContext';
 import type { BoundaryUri, ContentType, ContentUri, FileUri, MaskUri } from './types';
 import {
   parseBoundaryUri,
   parseContentUri,
   parseMaskUri,
 } from './uri-utils';
+
+const DEFAULT_IMAGE_SIZE_LIMIT = 192;
+const DEFAULT_IMAGE_QUALITY = 1;
+const EMPTY_MASK_PLACEHOLDER_PATTERN = /^uxp:\/\/mask\/[^/]+\/empty(?:[/?#]|$)/i;
+
+const summarizeParamsForLog = (params: {
+  fileUri?: string | null;
+  contentUri?: string | null;
+  boundaryUri?: string | null;
+  maskUri?: string | null;
+}): string => {
+  const parts: string[] = [];
+  const fileUri = typeof params.fileUri === 'string' ? params.fileUri.trim() : '';
+  const contentUri = typeof params.contentUri === 'string' ? params.contentUri.trim() : '';
+  const boundaryUri = typeof params.boundaryUri === 'string' ? params.boundaryUri.trim() : '';
+  const maskUri = typeof params.maskUri === 'string' ? params.maskUri.trim() : '';
+
+  if (fileUri) parts.push(`文件URI=${fileUri}`);
+  if (contentUri) parts.push(`内容URI=${contentUri}`);
+  if (boundaryUri) parts.push(`边界URI=${boundaryUri}`);
+  if (maskUri) parts.push(`遮罩URI=${maskUri}`);
+
+  return parts.length > 0 ? parts.join('，') : '没有可用的输入参数';
+};
+
+const isEmptyMaskPlaceholder = (uri: string): boolean => {
+  if (!uri.trim()) {
+    return false;
+  }
+  return EMPTY_MASK_PLACEHOLDER_PATTERN.test(uri.trim());
+};
+
+const enforceBoundaryImageParams = (uri: string): string => {
+  const trimmed = uri.trim();
+  if (!trimmed) {
+    return trimmed;
+  }
+  try {
+    const normalized = new URL(trimmed);
+    normalized.searchParams.set('imageSize', String(DEFAULT_IMAGE_SIZE_LIMIT));
+    if (!normalized.searchParams.has('imageQuality')) {
+      normalized.searchParams.set('imageQuality', String(DEFAULT_IMAGE_QUALITY));
+    }
+    return normalized.toString();
+  } catch {
+    const separator = trimmed.includes('?') ? '&' : '?';
+    const withSize = trimmed.includes('imageSize=')
+      ? trimmed.replace(/imageSize=\d+/i, `imageSize=${DEFAULT_IMAGE_SIZE_LIMIT}`)
+      : `${trimmed}${separator}imageSize=${DEFAULT_IMAGE_SIZE_LIMIT}`;
+    if (withSize.includes('imageQuality=')) {
+      return withSize;
+    }
+    const qualitySeparator = withSize.includes('?') ? '&' : '?';
+    return `${withSize}${qualitySeparator}imageQuality=${DEFAULT_IMAGE_QUALITY}`;
+  }
+};
 
 type ThumbnailVariant =
   | {
@@ -52,10 +103,8 @@ export interface UseThumbnailResult extends UseThumbnailSnapshot {
 }
 
 export const useThumbnail = (params: UseThumbnailParams): UseThumbnailResult => {
-  const actions = useWidgetImageMaskActions();
-  const logger = useWidgetLogger();
+  const actions = usePhotoshopWidgetActions();
   const realtimeSubscriber = useWidgetRealtimeSubscriber();
-  const debug = useWidgetDebug();
 
   const {
     fileUri,
@@ -63,6 +112,17 @@ export const useThumbnail = (params: UseThumbnailParams): UseThumbnailResult => 
     boundaryUri,
     maskUri,
   } = params;
+
+  const inputSummary = useMemo(
+    () =>
+      summarizeParamsForLog({
+        fileUri: fileUri ?? null,
+        contentUri: contentUri ?? null,
+        boundaryUri: boundaryUri ?? null,
+        maskUri: maskUri ?? null,
+      }),
+    [fileUri, contentUri, boundaryUri, maskUri],
+  );
 
   const parsed = useMemo<{
     value: ThumbnailVariant | null;
@@ -81,33 +141,43 @@ export const useThumbnail = (params: UseThumbnailParams): UseThumbnailResult => 
         throw new Error('contentUri and boundaryUri are required when fileUri is not provided.');
       }
 
-      const normalizedBoundaryUri = boundaryUri.trim() as BoundaryUri;
-      const normalizedContentUri = contentUri.trim() as ContentUri;
+      const normalizedBoundaryUri = enforceBoundaryImageParams(boundaryUri) as BoundaryUri;
+      const trimmedContentUri = contentUri.trim();
 
-      if (!normalizedBoundaryUri || !normalizedContentUri) {
+      if (!normalizedBoundaryUri || !trimmedContentUri) {
         throw new Error('contentUri and boundaryUri must be non-empty strings.');
       }
 
+      const isContentUri = trimmedContentUri.startsWith('uxp://content/');
+      const normalizedContentUri = trimmedContentUri as ContentUri;
+      if (!isContentUri) {
+        // non-content URIs are forwarded without validation
+      }
+
       const maskString = typeof maskUri === 'string' ? maskUri.trim() : '';
-      const sanitizedMaskUri = maskString.length > 0 ? maskString : null;
+      const sanitizedMaskUri =
+        maskString.length > 0 && !isEmptyMaskPlaceholder(maskString) ? maskString : null;
 
       const boundary = parseBoundaryUri(normalizedBoundaryUri);
-      const content = parseContentUri(normalizedContentUri);
+      const content = isContentUri ? parseContentUri(normalizedContentUri) : null;
       const isMaskUri = sanitizedMaskUri?.startsWith('uxp://mask/');
-      if (sanitizedMaskUri && !isMaskUri && debug) {
-        logger(
-          'useThumbnail mask passthrough',
-          JSON.stringify({ maskUri: sanitizedMaskUri, note: 'non-mask URI forwarded to CBM' }),
-        );
+      if (sanitizedMaskUri && !isMaskUri) {
+        // non-mask URIs are forwarded without validation
       }
 
       const mask = isMaskUri ? parseMaskUri(sanitizedMaskUri as MaskUri) : null;
 
-      if (boundary.docId !== content.docId || (mask && boundary.docId !== mask.docId)) {
+      if (content && boundary.docId !== content.docId) {
+        throw new Error('Content, boundary, and mask URIs must point to the same document.');
+      }
+      if (mask && boundary.docId !== mask.docId) {
         throw new Error('Content, boundary, and mask URIs must point to the same document.');
       }
 
-      const watchedSeeds = mask ? [content.content, mask.content] : [content.content];
+      const watchedSeeds = [
+        ...(content ? [content.content] : []),
+        ...(mask ? [mask.content] : []),
+      ];
       const watchedContents = Array.from(new Set(watchedSeeds)) as ContentType[];
 
       return {
@@ -123,19 +193,9 @@ export const useThumbnail = (params: UseThumbnailParams): UseThumbnailResult => 
       };
     } catch (error) {
       const failure = error as Error;
-      logger(
-        'useThumbnail params invalid',
-        JSON.stringify({
-          fileUri,
-          contentUri,
-          boundaryUri,
-          maskUri,
-          message: failure.message,
-        }),
-      );
       return { value: null, error: failure };
     }
-  }, [fileUri, contentUri, boundaryUri, maskUri, logger, debug]);
+  }, [fileUri, contentUri, boundaryUri, maskUri]);
 
   const [data, setData] = useState<string | null>(null);
   const [isFetching, setIsFetching] = useState(false);
@@ -155,26 +215,22 @@ export const useThumbnail = (params: UseThumbnailParams): UseThumbnailResult => 
     if (!parsed.value) {
       const parseError = parsed.error ?? new Error('Invalid hook parameters.');
       setError(parseError);
+      console.log(`[useThumbnail] 参数错误，输入：${inputSummary}`);
       return Promise.reject(parseError);
     }
+
+    console.log(`[useThumbnail] 开始获取缩略图，输入：${inputSummary}`);
 
     const requestId = ++requestIdRef.current;
     setIsFetching(true);
     setError(null);
 
+    let executionSummary = '未确定的逻辑路径';
     try {
       let thumbnail: string | null = null;
 
       if (parsed.value.kind === 'file') {
-        if (debug) {
-          logger(
-            'useThumbnail fetch',
-            JSON.stringify({
-              variant: 'file',
-              fileUri: parsed.value.fileUri,
-            }),
-          );
-        }
+        executionSummary = '文件模式：直接调用 resource.thumbnail 获取缩略图';
         const result = await actions['resource.thumbnail']({
           resource: parsed.value.fileUri,
         });
@@ -186,31 +242,49 @@ export const useThumbnail = (params: UseThumbnailParams): UseThumbnailResult => 
             ? result.thumbnail
             : null;
       } else {
-        // if (debug) {
-          logger(
-            'useThumbnail fetch',
-            JSON.stringify({
-              variant: 'resource',
-              contentUri: parsed.value.contentUri,
-              boundaryUri: parsed.value.boundaryUri,
-              maskUri: parsed.value.maskUri,
-              watchedContents: parsed.value.watchedContents,
-            }),
-          );
-        // }
-        const result = await actions['resource.file.createFromCBM']({
+        const hasMask = Boolean(parsed.value.maskUri);
+        executionSummary = hasMask
+          ? '资源模式：调用 resource.file.combineByCBM（携带遮罩参数）'
+          : '资源模式：调用 resource.file.combineByCBM（未提供遮罩）';
+        const result = await actions['resource.file.combineByCBM']({
           contentUri: parsed.value.contentUri,
           boundaryUri: parsed.value.boundaryUri,
-          maskUri: parsed.value.maskUri ?? undefined,
+          maskUri: parsed.value.maskUri || undefined,
+          thumbnail: true,
         });
-        if (result?.error) {
-          throw new Error(`resource.file.createFromCBM: ${result.error}`);
+        const handle = result?.handle ?? null;
+        const resourceId =
+          typeof result?.resource === 'string' && result.resource.trim().length > 0
+            ? result.resource.trim()
+            : '';
+        try {
+          if (result?.error) {
+            throw new Error(`resource.file.combineByCBM: ${result.error}`);
+          }
+          if (resourceId) {
+            executionSummary = hasMask
+              ? '资源模式：resource.file.combineByCBM -> resource.thumbnail（遮罩已传递）'
+              : '资源模式：resource.file.combineByCBM -> resource.thumbnail（无遮罩参数）';
+            const thumbResult = await actions['resource.thumbnail']({
+              resource: resourceId,
+            });
+            if (thumbResult?.error) {
+              throw new Error(`resource.thumbnail: ${thumbResult.error}`);
+            }
+            thumbnail =
+              typeof thumbResult?.thumbnail === 'string' && thumbResult.thumbnail.length > 0
+                ? thumbResult.thumbnail
+                : null;
+          } else {
+            executionSummary = '资源模式：resource.file.combineByCBM 未返回资源ID';
+            thumbnail = null;
+          }
+        } finally {
+          handle?.dispose();
         }
-        thumbnail =
-          typeof result?.thumbnail === 'string' && result.thumbnail.length > 0
-            ? result.thumbnail
-            : null;
       }
+
+      console.log(`[useThumbnail] 完成获取，逻辑路径：${executionSummary}`);
 
       if (isActiveRef.current && requestIdRef.current === requestId) {
         setData(thumbnail);
@@ -221,12 +295,8 @@ export const useThumbnail = (params: UseThumbnailParams): UseThumbnailResult => 
     } catch (thrown) {
       const failure =
         thrown instanceof Error ? thrown : new Error(String(thrown ?? 'Unknown error'));
-      logger(
-        'useThumbnail failed',
-        JSON.stringify({
-          message: failure.message,
-          stack: failure.stack,
-        }),
+      console.log(
+        `[useThumbnail] 获取失败，逻辑路径：${executionSummary}，原因：${failure.message}`,
       );
       if (isActiveRef.current && requestIdRef.current === requestId) {
         setError(failure);
@@ -234,7 +304,7 @@ export const useThumbnail = (params: UseThumbnailParams): UseThumbnailResult => 
       }
       throw failure;
     }
-  }, [actions, parsed, logger, debug]);
+  }, [actions, parsed, inputSummary]);
 
   useEffect(() => {
     if (parsed.error) {
@@ -248,12 +318,37 @@ export const useThumbnail = (params: UseThumbnailParams): UseThumbnailResult => 
 
   useEffect(() => {
     if (parsed.error) return;
-    void refetch();
+
+    let cancelled = false;
+    const run = () => {
+      if (cancelled) return;
+      void refetch();
+    };
+
+    const raf = (globalThis as Record<string, unknown>)['requestAnimationFrame'];
+    if (typeof raf === 'function') {
+      const boundRaf = raf as (cb: (time: number) => void) => number;
+      const frameId = boundRaf(() => run());
+      return () => {
+        cancelled = true;
+        const caf = (globalThis as Record<string, unknown>)['cancelAnimationFrame'];
+        if (typeof caf === 'function') {
+          (caf as (handle: number) => void)(frameId);
+        }
+      };
+    }
+
+    const timeoutId = setTimeout(run, 16);
+    return () => {
+      cancelled = true;
+      clearTimeout(timeoutId);
+    };
   }, [parsed.value, parsed.error, refetch]);
 
   useEffect(() => {
     if (!parsed.value || parsed.value.kind !== 'resource' || parsed.error) return;
     if (!realtimeSubscriber) return;
+    if (parsed.value.watchedContents.length === 0) return;
 
     return realtimeSubscriber(parsed.value.docId, parsed.value.watchedContents, () => {
       void refetch();

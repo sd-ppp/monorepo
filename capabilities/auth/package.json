@@ -1,0 +1,21 @@
+{
+  "name": "@sdppp/auth",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {},
+  "dependencies": {
+    "@sdppp/ps-uxp": "workspace:*",
+    "@sdppp/vite-remote-config-loader": "workspace:*",
+    "zod": "^3.25.76"
+  },
+  "sdpppV": {
+    "uxpPlugins": [
+      {
+        "kind": "store-provider",
+        "entry": "./@uxp/ps-uxp-store-provider.ts"
+      }
+    ]
+  }
+}

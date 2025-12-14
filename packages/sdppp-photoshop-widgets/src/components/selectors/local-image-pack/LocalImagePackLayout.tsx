@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Button, Image, Spin } from 'antd';
+import { Button, Image, Spin, theme } from 'antd';
 import { Plus, Trash2, Upload } from 'lucide-react';
 import {
   computeLocalImagePackCells,
@@ -17,8 +17,6 @@ const {
   TRASH_BUTTON_HEIGHT,
 } = LOCAL_IMAGE_PACK_LAYOUT_CONSTANTS;
 
-const BORDER_COLOR = 'var(--sdppp-widget-border-color, var(--ant-color-border, #d9d9d9))';
-const BORDER_STYLE = `1px solid ${BORDER_COLOR}`;
 const BORDER_RADIUS_VALUE = 'var(--sdppp-widget-border-radius, 4px)';
 const BORDER_RADIUS = BORDER_RADIUS_VALUE;
 
@@ -53,6 +51,9 @@ export const LocalImagePackLayout: React.FC<LocalImagePackLayoutProps> = ({
   onCanvasClick,
   onClear,
 }) => {
+  const { token } = theme.useToken();
+  const borderColor = token.colorBorder;
+  const borderStyle = `1px solid ${borderColor}`;
   const totalItems = items.length;
   const rootRef = useRef<HTMLDivElement | null>(null);
   const rightContainerRef = useRef<HTMLDivElement | null>(null);
@@ -148,10 +149,10 @@ export const LocalImagePackLayout: React.FC<LocalImagePackLayoutProps> = ({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              border: BORDER_STYLE,
-              borderColor: BORDER_COLOR,
+              border: borderStyle,
+              borderColor,
               borderRight: 'none',
-              borderBottom: BORDER_STYLE,
+              borderBottom: borderStyle,
               borderRadius: hasImages
                 ? `${BORDER_RADIUS_VALUE} 0 0 0`
                 : `${BORDER_RADIUS_VALUE} 0 0 ${BORDER_RADIUS_VALUE}`,
@@ -171,9 +172,9 @@ export const LocalImagePackLayout: React.FC<LocalImagePackLayoutProps> = ({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              border: BORDER_STYLE,
-              borderColor: BORDER_COLOR,
-              borderBottom: BORDER_STYLE,
+              border: borderStyle,
+              borderColor,
+              borderBottom: borderStyle,
               borderRadius: hasImages
                 ? `0 ${BORDER_RADIUS_VALUE} 0 0`
                 : `0 ${BORDER_RADIUS_VALUE} ${BORDER_RADIUS_VALUE} 0`,
@@ -195,8 +196,8 @@ export const LocalImagePackLayout: React.FC<LocalImagePackLayoutProps> = ({
               alignItems: 'center',
               justifyContent: 'center',
               padding: 0,
-              border: BORDER_STYLE,
-              borderColor: BORDER_COLOR,
+              border: borderStyle,
+              borderColor,
               borderTop: 'none',
               borderRadius: `0 0 ${BORDER_RADIUS_VALUE} ${BORDER_RADIUS_VALUE}`,
             }}
@@ -215,7 +216,7 @@ export const LocalImagePackLayout: React.FC<LocalImagePackLayoutProps> = ({
           overflowX: 'hidden',
           height: layout.panelHeight,
           maxHeight: layout.panelHeight,
-          border: BORDER_STYLE,
+          border: borderStyle,
           borderRadius: BORDER_RADIUS,
           backgroundColor: '#fff',
         }}
@@ -258,7 +259,7 @@ export const LocalImagePackLayout: React.FC<LocalImagePackLayoutProps> = ({
                       borderRadius: BORDER_RADIUS_VALUE,
                       overflow: 'hidden',
                       backgroundColor: '#fff',
-                      border: hasImage ? `1px solid ${BORDER_COLOR}` : '1px dashed rgba(0,0,0,0.2)',
+                      border: hasImage ? `1px solid ${borderColor}` : '1px dashed rgba(0,0,0,0.2)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',

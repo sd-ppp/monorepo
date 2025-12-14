@@ -9,8 +9,7 @@
   "scripts": {
     "lint": "eslint .",
     "test": "vitest",
-    "test:run": "vitest run",
-    "storybook": "storybook dev -p 6006 -c playground/.storybook"
+    "test:run": "vitest run"
   },
   "main": "./src/index.ts",
   "module": "./src/index.ts",
@@ -25,15 +24,7 @@
     "lucide-react": "^0.553.0"
   },
   "devDependencies": {
-    "@chromatic-com/storybook": "^4.1.2",
     "@eslint/js": "^9.36.0",
-    "@storybook/addon-a11y": "^9.1.10",
-    "@storybook/addon-actions": "^9.0.8",
-    "@storybook/addon-docs": "^9.1.10",
-    "@storybook/addon-onboarding": "^9.1.10",
-    "@storybook/addon-vitest": "^9.1.10",
-    "@storybook/react": "^9.1.10",
-    "@storybook/react-vite": "^9.1.10",
     "@testing-library/jest-dom": "^6.8.0",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
@@ -46,12 +37,10 @@
     "eslint": "^9.36.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
-    "eslint-plugin-storybook": "^9.1.10",
     "globals": "^16.4.0",
     "jsdom": "^27.0.0",
     "playwright": "^1.55.1",
     "postcss": "^8.5.6",
-    "storybook": "^9.1.10",
     "tailwindcss": "^3.4.17",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.44.0",
@@ -61,6 +50,9 @@
   "peerDependencies": {
     "react": "18.3.1",
     "react-dom": "18.3.1",
-    "antd": "^5.25.4"
+    "antd": "5.25.4"
+  },
+  "sdpppStorybook": {
+    "exclude": true
   }
 }

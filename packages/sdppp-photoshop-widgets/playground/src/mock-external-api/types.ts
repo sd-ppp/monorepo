@@ -26,6 +26,7 @@ export interface MockExternalApiPlaygroundProps extends MockExternalApiRefs {
   registeredUploadPassCount?: number;
   lastUploadRunSummary?: UploadPassRunSummary | null;
   panelWidth?: number | string;
+  boundaryPreviewRect?: SelectionRect | null;
 }
 
 export interface UploadPassRunSummary {
