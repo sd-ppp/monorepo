@@ -53,6 +53,8 @@
     "antd": "5.25.4"
   },
   "sdpppStorybook": {
-    "exclude": true
+    "stories": [
+      "src/components/**/*.stories.@(ts|tsx|js|jsx|mdx)"
+    ]
   }
 }

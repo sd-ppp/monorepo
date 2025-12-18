@@ -239,6 +239,7 @@ export const useImageUploadWorkflow = ({
         maskUri: params.maskUri ? params.maskUri : undefined,
         meta: params.meta,
       };
+      console.info('[ImageUploadWorkflow] combineComposite invoke', payload);
       const result = await fn(payload);
       if ((result as any)?.error) {
         throw new Error((result as any)?.error ?? 'combine failed');
@@ -609,6 +610,12 @@ export const useImageUploadWorkflow = ({
       options?: { refreshMask?: boolean; maskOverride?: string | null },
       docSyncContext?: Pick<DocScopedUriSnapshot, 'contentUri' | 'maskUri' | 'boundaryUri'>,
     ) => {
+      console.info('[ImageUploadWorkflow] runManualComposite start', {
+        overrides,
+        options,
+        docSnapshot: docSyncContext,
+        sourceMode: sourceModeRef.current,
+      });
       const normalizedOverrides = overrides ?? undefined;
       const overrideBoundary =
         typeof normalizedOverrides?.boundaryUri === 'string'
@@ -619,10 +626,12 @@ export const useImageUploadWorkflow = ({
       const fallbackBoundary = baseBoundary || normalizedWorkBoundary;
       const effectiveBoundary = (overrideBoundary ?? fallbackBoundary).trim();
       if (!effectiveBoundary) {
+        console.warn('[ImageUploadWorkflow] runManualComposite missing boundary, abort');
         throw new Error('Boundary unavailable');
       }
 
       if (sourceModeRef.current === 'file') {
+        console.info('[ImageUploadWorkflow] runManualComposite short-circuit: file mode upload');
         const normalizedUpload = (diskFileUri ?? '').trim();
         if (!normalizedUpload) {
           throw new Error('Upload resource unavailable');

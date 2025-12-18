@@ -36,9 +36,14 @@ export function registerCreateByMaskAction(context: ImagingActionContext): void 
       const params = normalizeMaskParams(rawParams);
       const payload = await materialize(params);
       const response = await persistMaterializedPayload(payload);
+      if (response.resource) {
+        console.info("[fileResource.createByMask] resourceCreated", {
+          resource: response.resource
+        });
+      }
       actionLog("completed", { width: response.width, height: response.height });
       if (response.resource && payload.image) {
-        storeJimpForResource(response.resource, payload.image, payload.mime);
+        storeJimpForResource(response.resource, payload.image, { mime: payload.mime });
       }
       return response;
     } catch (error) {
@@ -253,6 +258,8 @@ function scaleImageToMaxSize(image: Jimp, maxSize: number) {
   const scale = maxSize / maxSide;
   const targetWidth = Math.max(1, Math.round(image.bitmap.width * scale));
   const targetHeight = Math.max(1, Math.round(image.bitmap.height * scale));
+  const beforeWidth = image.bitmap.width;
+  const beforeHeight = image.bitmap.height;
   image.resize({
     w: targetWidth,
     h: targetHeight

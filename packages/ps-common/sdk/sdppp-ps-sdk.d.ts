@@ -467,6 +467,7 @@ export declare const sdpppSDK: {
 			}, signal?: AbortSignal) => Promise<{}>;
 			logout: (data: {}, signal?: AbortSignal) => Promise<{}>;
 			guestLogin: (data: {}, signal?: AbortSignal) => Promise<{}>;
+			openAuthingLoginDialog: (data: {}, signal?: AbortSignal) => Promise<{}>;
 			log: (data: {
 				level: "info" | "warn" | "error" | "log";
 				messages: string[];

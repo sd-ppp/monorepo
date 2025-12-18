@@ -21,6 +21,7 @@ import {
 } from "./cbm-materializer.js";
 import { persistMaterializedPayload } from "./cbm-persist.js";
 import type { CombineByCbmParams, ImagingActionContext, MaterializedCbmPayload } from "./context.js";
+import { storeJimpForResource } from "./jimp-holder.js";
 
 export function registerCombineByCbmAction(context: ImagingActionContext): void {
   const { mcpMesh } = context;
@@ -30,12 +31,16 @@ export function registerCombineByCbmAction(context: ImagingActionContext): void 
     (async (params: CombineByCbmParams) => materializeCombineByCbm(mesh, params));
 
   mcpMesh.implementAction("fileResource.combineByCBM", async (rawParams?: CombineByCbmParams) => {
+    console.info("[fileResource.combineByCBM] invoked", rawParams);
     const actionLog = createPerfTracker("fileResource.combineByCBM.action");
     try {
       actionLog("start");
       const params = normalizeCombineParams(rawParams);
       const payload = await materialize(params);
       const response = await persistMaterializedPayload(payload);
+      if (response.resource && payload.image) {
+        storeJimpForResource(response.resource, payload.image, { mime: payload.mime });
+      }
       actionLog("completed", {
         boundaryUri: params.boundaryUri ?? null,
         contentUri: params.contentUri ?? null,
@@ -100,6 +105,13 @@ async function materializeCombineByCbm(
   const contentSnapshot = await loadContentSnapshotJimp(mesh, boundaryUri, contentUri, {
     prebuiltParams: contentParams
   });
+  console.info("[fileResource.combineByCBM] contentSnapshot", {
+    contentUri,
+    boundaryUri,
+    fromFileResource: contentIsFileResource,
+    width: contentSnapshot.jimp.bitmap.width,
+    height: contentSnapshot.jimp.bitmap.height
+  });
   perfLog("materialize.content.load.completed", {
     width: contentSnapshot.jimp.bitmap.width,
     height: contentSnapshot.jimp.bitmap.height
@@ -133,6 +145,13 @@ async function materializeCombineByCbm(
       throw new Error("Unable to resolve mask snapshot");
     }
     perfLog("materialize.mask.load.completed", {
+      width: maskSnapshot.jimp.bitmap.width,
+      height: maskSnapshot.jimp.bitmap.height
+    });
+    console.info("[fileResource.combineByCBM] maskSnapshot", {
+      maskUri,
+      boundaryUri,
+      fromFileResource: maskIsFileResource,
       width: maskSnapshot.jimp.bitmap.width,
       height: maskSnapshot.jimp.bitmap.height
     });

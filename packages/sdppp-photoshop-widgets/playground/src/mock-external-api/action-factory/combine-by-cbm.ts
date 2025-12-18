@@ -32,6 +32,13 @@ export const combineByCBM = async (
       : null;
 
     const contentSnapshot = await resolveContentSnapshot(ctx, params.contentUri, logError);
+    ctx.logger(
+      '[MaskDebug] content snapshot尺寸',
+      JSON.stringify({
+        width: contentSnapshot.image.bitmap.width,
+        height: contentSnapshot.image.bitmap.height,
+      })
+    );
     const maskSnapshot = await resolveMaskSnapshot(ctx, params.maskUri ?? undefined, logError);
 
     let combinedSnapshot: Snapshot;

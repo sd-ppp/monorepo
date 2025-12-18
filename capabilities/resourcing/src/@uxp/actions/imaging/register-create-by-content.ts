@@ -28,18 +28,40 @@ export function registerCreateByContentAction(context: ImagingActionContext): vo
   mcpMesh.implementAction("fileResource.createByContent", async (rawParams?: CreateByContentParams) => {
     console.info("[fileResource.createByContent] invoked", rawParams);
     const actionLog = createPerfTracker("fileResource.createByContent.action");
+    const start = Date.now();
+    let last = start;
+    const logStep = (label: string) => {
+      const now = Date.now();
+      console.info(`[fileResource.createByContent] ${label}`, {
+        elapsedMs: now - last,
+        totalMs: now - start
+      });
+      last = now;
+    };
     try {
       actionLog("start");
       const params = normalizeContentParams(rawParams);
+      logStep("normalizeContentParams");
       const payload = await materialize(params);
+      logStep("materialize");
       const response = await persistMaterializedPayload(payload);
-      actionLog("completed", { width: response.width, height: response.height });
+      logStep("persist");
+      if (response.resource) {
+        console.info("[fileResource.createByContent] resourceCreated", {
+          resource: response.resource
+        });
+      }
+      actionLog("completed", { width: response.width, height: response.height, totalMs: Date.now() - start });
       if (response.resource && payload.image) {
-        storeJimpForResource(response.resource, payload.image, payload.mime);
+        storeJimpForResource(response.resource, payload.image, { mime: payload.mime });
+        logStep("cache");
       }
       return response;
     } catch (error) {
-      actionLog("failed", { message: (error as any)?.message });
+      actionLog("failed", { message: (error as any)?.message, totalMs: Date.now() - start });
+      console.info("[fileResource.createByContent] failed", {
+        totalMs: Date.now() - start
+      });
       return actionErrorResult(error);
     }
   });
@@ -161,6 +183,8 @@ function scaleImageToMaxSize(image: Jimp, maxSize: number) {
   const scale = maxSize / maxSide;
   const targetWidth = Math.max(1, Math.round(image.bitmap.width * scale));
   const targetHeight = Math.max(1, Math.round(image.bitmap.height * scale));
+  const beforeWidth = image.bitmap.width;
+  const beforeHeight = image.bitmap.height;
   image.resize({
     w: targetWidth,
     h: targetHeight

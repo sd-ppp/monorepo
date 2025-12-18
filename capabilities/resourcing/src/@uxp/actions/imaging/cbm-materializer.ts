@@ -84,11 +84,16 @@ export const projectBoundaryRectFromResource = (
       });
       return null;
     }
-    const maxSide = Math.max(docWidth, docHeight);
+    const boundaryWidth = Math.max(1, Math.round(rect.width));
+    const boundaryHeight = Math.max(1, Math.round(rect.height));
+    const boundaryMaxSide = Math.max(boundaryWidth, boundaryHeight);
+    const docMaxSide = Math.max(docWidth, docHeight);
     const override = options?.imageSizeOverride;
     const targetSize = override !== undefined ? override : parsed.imageSize;
-    const maxTarget = targetSize && targetSize > 0 ? targetSize : maxSide;
-    const scale = maxSide > 0 ? Math.min(1, maxTarget / maxSide) : 1;
+    const maxTarget = targetSize && targetSize > 0 ? targetSize : docMaxSide;
+    const scaleBase = boundaryMaxSide > 0 ? boundaryMaxSide : docMaxSide;
+    const scale =
+      scaleBase > 0 && maxTarget > 0 ? Math.min(1, maxTarget / scaleBase) : 1;
     const scaledDocWidth = Math.max(1, Math.round(docWidth * scale));
     const scaledDocHeight = Math.max(1, Math.round(docHeight * scale));
     const cropRect = ensurePositiveRect({
@@ -529,6 +534,11 @@ export async function loadContentSnapshotJimp(
         width: cached.image.bitmap.width,
         height: cached.image.bitmap.height
       });
+      console.info("[fileResource.combineByCBM] loadContentSnapshotJimp cacheHit", {
+        resourceId: normalizedFile.resourceId,
+        width: cached.image.bitmap.width,
+        height: cached.image.bitmap.height
+      });
       if (options?.maxSizeOverride) {
         resizeImageToMaxSize(cached.image, options.maxSizeOverride);
       }
@@ -544,6 +554,11 @@ export async function loadContentSnapshotJimp(
           height: cachedThumbnail.height
         });
         const jimpImage = await Jimp.read(Buffer.from(cachedThumbnail.buffer));
+        console.info("[fileResource.combineByCBM] loadContentSnapshotJimp thumbnailFallback", {
+          resourceId: normalizedFile.resourceId,
+          width: jimpImage.bitmap.width,
+          height: jimpImage.bitmap.height
+        });
         return {
           jimp: jimpImage
         };
@@ -552,6 +567,11 @@ export async function loadContentSnapshotJimp(
     const fetchLog = createPerfTracker("loadContentSnapshotJimp.resolveSharedBuffer");
     const { buffer } = await resolveSharedResourceBuffer(normalizedFile.resourceId);
     const jimpImage = await Jimp.read(Buffer.from(buffer));
+    console.info("[fileResource.combineByCBM] loadContentSnapshotJimp cacheMiss", {
+      resourceId: normalizedFile.resourceId,
+      width: jimpImage.bitmap.width,
+      height: jimpImage.bitmap.height
+    });
     if (options?.maxSizeOverride) {
       resizeImageToMaxSize(jimpImage, options.maxSizeOverride);
     }
@@ -798,6 +818,8 @@ function resizeImageToMaxSize(image: Jimp, maxSize?: number) {
   const scale = maxSize / maxSide;
   const targetWidth = Math.max(1, Math.round(image.bitmap.width * scale));
   const targetHeight = Math.max(1, Math.round(image.bitmap.height * scale));
+  const beforeWidth = image.bitmap.width;
+  const beforeHeight = image.bitmap.height;
   image.resize({
     w: targetWidth,
     h: targetHeight
@@ -918,7 +940,7 @@ export async function materializeFromCBM(mesh: any, params: CbmMaterializeReques
       ...createSnapshot(maskSnapshot.jimp),
       maskRegion: null
     };
-  if (projectedBoundary && maskIsFileResource) {
+    if (projectedBoundary && maskIsFileResource) {
       normalizedMaskSnapshot.image.resize({
         w: projectedBoundary.docWidth,
         h: projectedBoundary.docHeight

@@ -1,5 +1,3 @@
-import { JimpMime } from "jimp";
-
 import { createResource } from "../../image-holder.js";
 import type { MaterializedCbmPayload } from "./context.js";
 import { PNG_MIME, createPerfTracker } from "./cbm-materializer.js";
@@ -12,17 +10,11 @@ export async function persistMaterializedPayload(payload: MaterializedCbmPayload
   const width = image.bitmap.width;
   const height = image.bitmap.height;
   const mime = payload.mime ?? PNG_MIME;
-  const encodeLog = createPerfTracker("fileResource.cbm.encode");
-  encodeLog("start");
-  const pngBuffer = await image.getBuffer(JimpMime.png);
-  encodeLog("completed", { bytes: pngBuffer.length });
-
   const createLog = createPerfTracker("fileResource.cbm.createResource");
   createLog("start");
   const resourceId = createResource({
     type: "file",
     data: {
-      buffer: new Uint8Array(pngBuffer),
       mime
     },
     originalMeta: {

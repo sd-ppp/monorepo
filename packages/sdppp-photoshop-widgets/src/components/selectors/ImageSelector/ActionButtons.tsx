@@ -185,11 +185,11 @@ const SyncButtonWrapper: React.FC<Omit<SyncActionButtonsProps, 'mode'>> = ({
           onManualSync(event);
         }}
         onAutoSyncToggle={event => {
-        onAutoToggle(event);
-      }}
-      direction="vertical"
-      autoSyncEnabled={true}
-      buttonSize={buttonHeight}
+          onAutoToggle(event);
+        }}
+        direction="vertical"
+        autoSyncEnabled={false}
+        buttonSize={buttonHeight}
         buttonSizeSub={ACTION_BUTTON_SIZE}
         mainButtonType="primary"
         autoSyncIcon={autoSyncIcon}

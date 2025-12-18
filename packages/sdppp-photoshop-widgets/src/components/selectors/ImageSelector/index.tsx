@@ -1,4 +1,4 @@
-import { Button, Flex, Tag, theme } from 'antd';
+import { Button, Flex, Spin, Tag, theme } from 'antd';
 import { FileUp, Layers, Layers2, Scroll } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -687,17 +687,35 @@ export const ImageSelector: React.FC<ImageSelectorProps> = ({
           }}
         >
           {resolvedUploadingStatusMessage ? (
-            <span
+            <div
               style={{
                 flex: 1,
                 minWidth: 0,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
-                textOverflow: 'ellipsis',
               }}
             >
-              {resolvedUploadingStatusMessage}
-            </span>
+              <Spin
+                size="small"
+                style={{
+                  flex: '0 0 auto',
+                }}
+              />
+              <span
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              >
+                {resolvedUploadingStatusMessage}
+              </span>
+            </div>
           ) : isModeSelectionActive ? (
             <>
               <div

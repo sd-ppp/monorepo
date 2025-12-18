@@ -1,5 +1,7 @@
 export { SyncButton } from './components/SyncButton/SyncButton';
 export type { SyncButtonProps } from './components/SyncButton/SyncButton';
+export { SwitchButton } from './components/SyncButton/SwitchButton';
+export type { SwitchButtonProps } from './components/SyncButton/SwitchButton';
 
 export { ExclusiveSyncGroup } from './components/ExclusiveSyncGroup/ExclusiveSyncGroup';
 export type { ExclusiveSyncGroupProps, ButtonConfig } from './components/ExclusiveSyncGroup/ExclusiveSyncGroup';

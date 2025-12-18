@@ -1,16 +1,16 @@
 import { Buffer } from "buffer";
-import { storage } from "uxp";
 import { Jimp, JimpMime } from "jimp";
+import { storage } from "uxp";
 
 import { createResource, updateResource } from "../../image-holder.js";
-import type { ImagingActionContext } from "./context.js";
 import { VIDEO_EXTENSIONS } from "./constants.js";
+import type { ImagingActionContext } from "./context.js";
 import {
   buildGenericFileThumbnail,
   buildVideoThumbnail,
   extensionFromMime,
-  mimeFromExtension,
-  isImageExtension
+  isImageExtension,
+  mimeFromExtension
 } from "./helpers.js";
 
 const DEFAULT_FILE_PREFIX = "downloaded_file";
