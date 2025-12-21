@@ -279,6 +279,35 @@
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   }
 
+  &__bottom-send {
+    box-shadow: none;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+  }
+
+  &__switch-button {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    font-size: 0;
+
+    .ant-btn-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    svg {
+      width: 16px;
+      height: 16px;
+    }
+  }
+
   &__bottom-indicator {
     position: absolute;
     bottom: 8px;

@@ -34,13 +34,13 @@ export const WorkflowRunStatus: React.FC<WorkflowRunStatusProps> = ({ uploading,
         showIcon: true,
       };
     }
-    if (executingNodeTitle) {
+    if (typeof queueSize === 'number' && queueSize > 0) {
       return {
         type: 'progress',
         message: translate('comfy.queue_progress', {
           queueSize,
           progress,
-          executingNodeTitle,
+          executingNodeTitle: executingNodeTitle ?? '',
         }),
         percent: progress ?? 0,
         showInfo: false,

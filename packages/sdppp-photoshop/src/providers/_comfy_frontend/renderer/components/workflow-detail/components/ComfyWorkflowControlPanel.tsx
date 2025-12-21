@@ -1,10 +1,8 @@
-import { sdpppSDK, useTranslation } from '@sdppp/common';
 import { WorkflowControlsPanel } from '@sdppp/ui-library';
-import { Typography } from 'antd';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { useBoundarySettings } from '../hooks/useBoundarySettings';
 import { useRunHover } from '../hooks/useRunHover';
-import { BoundaryPreview, BoundarySettingsLink } from './BoundarySection';
+import { BoundarySettingsLink } from './BoundarySection';
 import {
   BackButton,
   RefreshButton,
@@ -32,10 +30,10 @@ export const ComfyWorkflowControlPanel: React.FC<ComfyWorkflowControlPanelProps>
   uploading,
   setUploading,
 }) => {
-  const { t } = useTranslation();
-  const translate = t as unknown as (key: string, options?: Record<string, unknown>) => string;
-  const [isBoundaryPreviewVisible, setIsBoundaryPreviewVisible] = useState(false);
-  const boundarySettings = useBoundarySettings();
+  // const { t } = useTranslation();
+  // const translate = t as unknown as (key: string, options?: Record<string, unknown>) => string;
+  // const [isBoundaryPreviewVisible, setIsBoundaryPreviewVisible] = useState(false);
+  // const boundarySettings = useBoundarySettings();
   const {
     onRunButtonEnter,
     onRunButtonLeave,
@@ -43,15 +41,7 @@ export const ComfyWorkflowControlPanel: React.FC<ComfyWorkflowControlPanelProps>
     onMultiplierLeave,
     showMultiplierControls,
   } = useRunHover();
-  const { Link } = Typography;
-
-  useEffect(() => {
-    setIsBoundaryPreviewVisible(false);
-  }, [currentWorkflow]);
-
-  const handleEnableBoundaryPreview = useCallback(() => {
-    setIsBoundaryPreviewVisible(true);
-  }, []);
+  const boundarySettings = useBoundarySettings();
 
   const headerRight = useMemo(() => (
     <div className="workflow-controls-actions">
@@ -93,9 +83,10 @@ export const ComfyWorkflowControlPanel: React.FC<ComfyWorkflowControlPanelProps>
         right: headerRight,
       }}
       bodyRow={{
-        left: isBoundaryPreviewVisible ? (
-          <BoundaryPreview previewQuality={boundarySettings.previewQuality} />
-        ) : undefined,
+        // left: isBoundaryPreviewVisible ? (
+        //   <BoundaryPreview previewQuality={boundarySettings.previewQuality} />
+        // ) : undefined,
+        left: undefined,
         right: (
           <RunButton
             currentWorkflow={currentWorkflow}
@@ -120,19 +111,20 @@ export const ComfyWorkflowControlPanel: React.FC<ComfyWorkflowControlPanelProps>
         right: middleTopRight,
       }}
       middleBottomRow={{
-        left: !isBoundaryPreviewVisible ? (
-          <Link
-            className="workflow-boundary-limit"
-            onClick={handleEnableBoundaryPreview}
-            style={{
-              height: 32,
-            }}
-            type="secondary"
-          >
-            <span>{translate('workflow.output.destination.title', { defaultMessage: '输出至：' })}</span>
-            <span>{translate('workflow.output.destination.canvas', { defaultMessage: '全图' })}</span>
-          </Link>
-        ) : undefined,
+        // left: !isBoundaryPreviewVisible ? (
+        //   <Link
+        //     className="workflow-boundary-limit"
+        //     onClick={handleEnableBoundaryPreview}
+        //     style={{
+        //       height: 32,
+        //     }}
+        //     type="secondary"
+        //   >
+        //     <span>{translate('workflow.output.destination.title', { defaultMessage: '输出至：' })}</span>
+        //     <span>{translate('workflow.output.destination.canvas', { defaultMessage: '全图' })}</span>
+        //   </Link>
+        // ) : undefined,
+        left: undefined,
         center: (
           <WorkflowRunStatus uploading={uploading} />
         ),

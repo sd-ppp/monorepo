@@ -136,6 +136,14 @@ export const useImageUploadWorkflow = ({
   const preparedContentResourceRef = useRef<string | null>(null);
   const preparedMaskResourceRef = useRef<string | null>(null);
 
+  const resolveDefaultMaskUri = useCallback((): string => {
+    const normalizedDocId =
+      typeof curDocId === 'number' && Number.isFinite(curDocId) && curDocId > 0
+        ? Math.trunc(curDocId)
+        : 0;
+    return `uxp://mask/${normalizedDocId}/canvas`;
+  }, [curDocId]);
+
   const handleDismissError = useCallback(() => {
     dismissUploadError();
   }, [dismissUploadError]);
@@ -309,12 +317,13 @@ export const useImageUploadWorkflow = ({
 
         let effectiveMask: string | null | undefined;
         if (overrideMaskRaw === null) {
-          effectiveMask = null;
+          effectiveMask = resolveDefaultMaskUri();
         } else if (typeof overrideMaskRaw === 'string') {
           effectiveMask = overrideMaskRaw.trim();
         } else {
           const maskFallback = fallbackMask.length ? fallbackMask : (maskUri ?? '').trim();
-          effectiveMask = maskFallback.length ? maskFallback : undefined;
+          const sanitizedFallback = maskFallback.length ? maskFallback : resolveDefaultMaskUri();
+          effectiveMask = sanitizedFallback.length ? sanitizedFallback : undefined;
         }
 
         if (!effectiveContent) {
@@ -345,6 +354,7 @@ export const useImageUploadWorkflow = ({
     [
       boundaryUri,
       combineComposite,
+      resolveDefaultMaskUri,
       maskUri,
       setResultSnapshotResource,
       setUploadError,
@@ -674,14 +684,14 @@ export const useImageUploadWorkflow = ({
           preparedMaskResourceRef.current = override;
           setMaskResource(override, maskHandleRef.current ?? null);
         } else {
-          maskResource = null;
+          maskResource = resolveDefaultMaskUri();
           preparedMaskResourceRef.current = null;
           setMaskResource('', null);
         }
       } else if (hasMaskOverride) {
         const overrideValue = normalizedOverrides?.maskUri ?? undefined;
         if (overrideValue === null) {
-          maskResource = null;
+          maskResource = resolveDefaultMaskUri();
           preparedMaskResourceRef.current = null;
           setMaskResource('', null);
         } else if (typeof overrideValue === 'string') {
@@ -696,13 +706,17 @@ export const useImageUploadWorkflow = ({
         if (baseMaskUri) {
           maskResource = await prepareMaskHandle(baseMaskUri);
         } else {
-          maskResource = null;
+          maskResource = resolveDefaultMaskUri();
         }
       }
 
       if (options?.refreshMask) {
         const refreshed = await prepareMaskHandle(`uxp://mask/${curDocId}/selection`);
         maskResource = refreshed ?? maskResource;
+      }
+
+      if (!maskResource) {
+        maskResource = resolveDefaultMaskUri();
       }
 
       const finalResult = await combineComposite({
@@ -730,6 +744,7 @@ export const useImageUploadWorkflow = ({
       maskUri,
       prepareContentHandle,
       prepareMaskHandle,
+      resolveDefaultMaskUri,
       setMaskResource,
       setResultSnapshotResource,
       sourceModeRef,

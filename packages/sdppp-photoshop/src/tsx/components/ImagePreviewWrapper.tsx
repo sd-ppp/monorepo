@@ -1,6 +1,8 @@
 import {
+  BoxSelect,
   ChevronLeft,
   ChevronRight,
+  FilePlus2,
   Minimize2,
   MoreVertical,
   Save,
@@ -9,8 +11,8 @@ import {
   Trash2,
 } from 'lucide-react';
 import { sdpppSDK, useTranslation } from '@sdppp/common';
-import { SyncButton } from '@sdppp/ui-library';
-import { Button, Divider, Dropdown } from 'antd';
+import { SwitchButton } from '@sdppp/ui-library';
+import { Button, Divider, Dropdown, Tooltip } from 'antd';
 import React from 'react';
 import { isImage } from '../../utils/fileType';
 import { MainStore } from '../App.store';
@@ -20,15 +22,28 @@ interface ImagePreviewWrapperProps {
   children?: React.ReactNode;
 }
 
+type SendMode = 'smartobject' | 'newdoc' | 'selection';
+
 export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperProps) {
   const { t } = useTranslation();
   const images = MainStore(state => state.previewImageList);
+  const log = React.useMemo(
+    () =>
+      typeof sdpppSDK?.logger?.extend === 'function'
+        ? sdpppSDK.logger.extend('photoshop:image-preview')
+        : null,
+    [],
+  );
   const [currentIndex, setCurrentIndex] = React.useState(0);
   const [sending, setSending] = React.useState(false);
   const [sendingAll, setSendingAll] = React.useState(false);
-  const [isAutoSync, setIsAutoSync] = React.useState(false);
-  const autoSendTypeRef = React.useRef<'smartobject' | 'newdoc'>('smartobject');
+  const [autoMode, setAutoMode] = React.useState<SendMode | null>(null);
+  const autoModeRef = React.useRef<SendMode | null>(null);
   const pendingAutoSendRef = React.useRef(new Map<string, { cancel: boolean }>());
+
+  React.useEffect(() => {
+    autoModeRef.current = autoMode;
+  }, [autoMode]);
 
   const saveResources = React.useCallback(async (resources: string[]) => {
     if (!resources.length) {
@@ -59,9 +74,35 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
     }
   }, [currentIndex, normalizedIndex]);
 
+  const buildSelectionBoundaryUri = (docId?: number | null) => {
+    return typeof docId === 'number' && Number.isFinite(docId) && docId > 0
+      ? `uxp://boundary/${docId}/selection`
+      : undefined;
+  };
+
   const currentItem = images[normalizedIndex];
   const isCurrentItemImage = currentItem ? isImage(currentItem.url) : false;
   const ICON_SIZE = 16;
+  const SWITCH_BUTTON_SIZE = 32;
+  const selectionBoundaryUri = buildSelectionBoundaryUri(currentItem?.docId);
+
+  const resolveSendParams = (
+    image: (typeof images)[number] | undefined,
+    mode: SendMode
+  ): { type: 'smartobject' | 'newdoc'; boundaryUri?: string } | null => {
+    if (!image) {
+      return null;
+    }
+    const type = mode === 'newdoc' ? 'newdoc' : 'smartobject';
+    if (mode === 'selection') {
+      const boundaryUri = buildSelectionBoundaryUri(image.docId ?? null);
+      if (!boundaryUri) {
+        return null;
+      }
+      return { type, boundaryUri };
+    }
+    return { type, boundaryUri: image.boundaryUri ?? undefined };
+  };
 
   const handlePrev = () => {
     setCurrentIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
@@ -72,49 +113,104 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
   };
 
   // Internal helper to send a specific index
-  const sendToPSAtIndex = async (index: number, opts?: { shiftKey?: boolean }) => {
+  const sendToPSAtIndex = async (index: number, mode: SendMode) => {
     try {
       setSending(true);
-      const type = opts?.shiftKey ? 'newdoc' : 'smartobject';
       const resource = images[index].resource;
       if (!resource) {
         console.warn('[ImagePreviewWrapper] Missing resource for import', images[index]);
         return;
       }
+      const params = resolveSendParams(images[index], mode);
+      if (!params) {
+        console.warn('[ImagePreviewWrapper] Unable to resolve send parameters', images[index], mode);
+        return;
+      }
+      log?.('[ImagePreviewWrapper] sending image', {
+        mode,
+        resource,
+        params,
+        docId: images[index]?.docId ?? null,
+        boundaryUri: params?.boundaryUri ?? null,
+      });
       await sdpppSDK.plugins.photoshop.importImage({
         resource,
-        boundaryUri: images[index].boundaryUri ?? undefined,
-        type: type,
+        boundaryUri: params.boundaryUri,
+        type: params.type,
         // Pass through original image dimensions when known
         sourceWidth: (images as any)[index]?.width,
         sourceHeight: (images as any)[index]?.height
       } as any);
+    } catch (error) {
+      console.warn('[ImagePreviewWrapper] sendToPSAtIndex failed', error);
     } finally {
       setSending(false);
     }
   };
 
-  const handleSendToPS = async (event?: { shiftKey?: boolean }) => {
-    await sendToPSAtIndex(normalizedIndex, { shiftKey: !!event?.shiftKey });
+  const handleSendMode = async (mode: SendMode) => {
+    await sendToPSAtIndex(normalizedIndex, mode);
   };
+
+  const toggleAutoMode = React.useCallback((mode: SendMode) => {
+    setAutoMode(prev => {
+      const next = prev === mode ? null : mode;
+      autoModeRef.current = next;
+      return next;
+    });
+  }, []);
+
+  const handleModeButtonClick = React.useCallback((mode: SendMode) => async (event: React.MouseEvent<HTMLButtonElement>) => {
+    if (event.shiftKey) {
+      event.preventDefault();
+      toggleAutoMode(mode);
+      return;
+    }
+    try {
+      await handleSendMode(mode);
+    } catch (error) {
+      console.warn('[ImagePreviewWrapper] send failed', error);
+    }
+  }, [handleSendMode, toggleAutoMode]);
+
+  const handleModeButtonContextMenu = React.useCallback((mode: SendMode) => (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    toggleAutoMode(mode);
+  }, [toggleAutoMode]);
 
   // Send by URL using resource once ready
   const sendResourceByUrl = async (url: string) => {
+    const mode = autoModeRef.current;
+    if (!mode) {
+      return;
+    }
+    const list = MainStore.getState().previewImageList;
+    const item = list.find(it => it.url === url);
+    if (!item || !item.resource) {
+      return;
+    }
+    const params = resolveSendParams(item, mode);
+    if (!params) {
+      console.warn('[ImagePreviewWrapper] Auto send skipped due to invalid parameters', item, mode);
+      return;
+    }
     try {
       setSending(true);
-      const list = MainStore.getState().previewImageList;
-      const item = list.find(it => it.url === url);
-      if (!item || !item.resource) {
-        return;
-      }
-      const type = autoSendTypeRef.current;
+      log?.('[ImagePreviewWrapper] auto-sending image', {
+        mode,
+        resource: item.resource,
+        params,
+        docId: item?.docId ?? null,
+      });
       await sdpppSDK.plugins.photoshop.importImage({
         resource: item.resource,
-        boundaryUri: item.boundaryUri ?? undefined,
-        type,
+        boundaryUri: params.boundaryUri,
+        type: params.type,
         sourceWidth: (item as any)?.width,
         sourceHeight: (item as any)?.height,
       } as any);
+    } catch (error) {
+      console.warn('[ImagePreviewWrapper] auto send failed', error);
     } finally {
       setSending(false);
     }
@@ -216,7 +312,7 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
     pendingAutoSendRef.current.set(url, token);
     (async () => {
       try {
-        while (!token.cancel && isAutoSync) {
+        while (!token.cancel && autoModeRef.current !== null) {
           const list = MainStore.getState().previewImageList;
           const item = list.find(it => it.url === url);
           if (!item) break; // deleted
@@ -233,11 +329,17 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
     })();
   };
   React.useEffect(() => {
-    if (!isAutoSync) {
-      // cancel all pending tasks when auto-sync turns off
+    if (autoMode === null) {
       pendingAutoSendRef.current.forEach(t => (t.cancel = true));
       pendingAutoSendRef.current.clear();
       autoPrevLenRef.current = images.length;
+      return;
+    }
+    autoPrevLenRef.current = images.length;
+  }, [autoMode, images.length]);
+
+  React.useEffect(() => {
+    if (autoMode === null) {
       return;
     }
     if (images.length > autoPrevLenRef.current) {
@@ -249,7 +351,7 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
       }
     }
     autoPrevLenRef.current = images.length;
-  }, [images.length, isAutoSync]);
+  }, [images.length, autoMode]);
 
   React.useEffect(() => {
     return () => {
@@ -257,16 +359,6 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
       pendingAutoSendRef.current.forEach(t => (t.cancel = true));
       pendingAutoSendRef.current.clear();
     };
-  }, []);
-
-  const handleAutoSyncToggle = React.useCallback(({ shiftKey }: { shiftKey: boolean }) => {
-    setIsAutoSync(prev => {
-      const next = !prev;
-      if (!prev && next) {
-        autoSendTypeRef.current = shiftKey ? 'newdoc' : 'smartobject';
-      }
-      return next;
-    });
   }, []);
 
   if (!images.length) {
@@ -350,22 +442,48 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
     ),
     bottomSend: isCurrentItemImage ? (
       <div className="image-preview__bottom-send">
-        <SyncButton
-          disabled={sending || sendingAll}
-          isAutoSync={isAutoSync}
-          onSync={({ shiftKey }) => handleSendToPS({ shiftKey })}
-          onAutoSyncToggle={handleAutoSyncToggle}
-          buttonSize={88}
-          mainButtonType="primary"
-          autoSyncButtonTooltips={{
-            enabled: t('image.auto_send_enabled'),
-            disabled: t('image.auto_send_disabled')
-          }}
-          syncButtonTooltip={t('image.import_as_smartobject') + ' | ' + t('image.import_tip')}
-          data-testid="image-preview-sync-button"
-        >
-          {sending ? t('image.sending') : <Send size={ICON_SIZE} />}
-        </SyncButton>
+        {(['smartobject', 'newdoc', 'selection'] as SendMode[]).map(mode => {
+          const isSelectionMode = mode === 'selection';
+          const disabled =
+            sending ||
+            sendingAll ||
+            (isSelectionMode && !selectionBoundaryUri);
+          const icon =
+            mode === 'smartobject'
+              ? <Send size={ICON_SIZE} />
+              : mode === 'newdoc'
+                ? <FilePlus2 size={ICON_SIZE} />
+                : <BoxSelect size={ICON_SIZE} />;
+          const tooltipBase =
+            mode === 'smartobject'
+              ? t('image.import_as_smartobject')
+              : mode === 'newdoc'
+                ? t('image.import_as_newdoc')
+                : `${t('image.import_selection_button')} - ${t('image.import_selection_hint')}`;
+          const tooltip = `${tooltipBase} | ${t('image.import_auto_hint')}`;
+          const testId =
+            mode === 'smartobject'
+              ? 'image-preview-send-smartobject'
+              : mode === 'newdoc'
+                ? 'image-preview-send-newdoc'
+                : 'image-preview-send-selection';
+          return (
+            <Tooltip key={mode} title={tooltip} placement="top">
+              <SwitchButton
+                className="image-preview__switch-button"
+                disabled={disabled}
+                icon={icon}
+                aria-pressed={autoMode === mode}
+                onClick={handleModeButtonClick(mode)}
+                onContextMenu={handleModeButtonContextMenu(mode)}
+                style={{ width: SWITCH_BUTTON_SIZE, height: SWITCH_BUTTON_SIZE, padding: 0 }}
+                type="primary"
+                value={autoMode === mode}
+                data-testid={testId}
+              />
+            </Tooltip>
+          );
+        })}
       </div>
     ) : (
       <Button

@@ -726,10 +726,10 @@ async function loadMaskSnapshotJimp(
       height: jimpImage.bitmap.height
     });
     jimpImage.scan(0, 0, jimpImage.bitmap.width, jimpImage.bitmap.height, (_x, _y, idx) => {
-      jimpImage.bitmap.data[idx + 0] = 255;
-      jimpImage.bitmap.data[idx + 1] = 255;
-      jimpImage.bitmap.data[idx + 2] = 255;
-      jimpImage.bitmap.data[idx + 3] = 255;
+      jimpImage.bitmap.data[idx + 0] = 0;
+      jimpImage.bitmap.data[idx + 1] = 0;
+      jimpImage.bitmap.data[idx + 2] = 0;
+      jimpImage.bitmap.data[idx + 3] = 0;
     });
   } else if (built.content === "empty") {
     log("emptyMaskNoCoverage", {
@@ -737,10 +737,10 @@ async function loadMaskSnapshotJimp(
       height: jimpImage.bitmap.height
     });
     jimpImage.scan(0, 0, jimpImage.bitmap.width, jimpImage.bitmap.height, (_x, _y, idx) => {
-      jimpImage.bitmap.data[idx + 0] = 0;
-      jimpImage.bitmap.data[idx + 1] = 0;
-      jimpImage.bitmap.data[idx + 2] = 0;
-      jimpImage.bitmap.data[idx + 3] = 0;
+      jimpImage.bitmap.data[idx + 0] = 255;
+      jimpImage.bitmap.data[idx + 1] = 255;
+      jimpImage.bitmap.data[idx + 2] = 255;
+      jimpImage.bitmap.data[idx + 3] = 255;
     });
   }
 

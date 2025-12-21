@@ -429,6 +429,9 @@ export const zhCN = {
   'image.import_as_newdoc': '作为新文档导入',
   'image.boundary': '边界',
   'image.import_tip': '按住 Shift 键以新文档方式导入',
+  'image.import_selection_button': '发送至选区',
+  'image.import_auto_hint': 'Shift 点击或右键可切换自动发送',
+  'image.import_selection_hint': '使用当前选区边界',
   // === 自动补充缺失的键 ===
   'auth.guest_login_success': '访客登录成功',
   'boundary.canvas': '画布',

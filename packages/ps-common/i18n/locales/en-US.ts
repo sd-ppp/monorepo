@@ -429,6 +429,9 @@ export const enUS = {
   'image.import_as_newdoc': 'Import as New Document',
   'image.boundary': 'Boundary',
   'image.import_tip': 'Hold Shift key to import as new document',
+  'image.import_selection_button': 'Send to Selection',
+  'image.import_auto_hint': 'Shift-click or right-click to toggle auto send',
+  'image.import_selection_hint': 'Use current selection boundary',
   // === Auto-added missing keys ===
   'auth.guest_login_success': 'Guest login successful',
   'boundary.canvas': 'Canvas',

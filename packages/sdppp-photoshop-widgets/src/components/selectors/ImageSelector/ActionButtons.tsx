@@ -1,7 +1,7 @@
-import { SyncButton } from '@sdppp/ui-library';
+import { SwitchButton } from '@sdppp/ui-library';
 import { Button } from 'antd';
 import { Crop, Import as ImportIcon, Scissors } from 'lucide-react';
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 
 import { ACTION_BUTTON_MARGIN, ACTION_BUTTON_SIZE, SECTION_SIZE } from './constants';
 
@@ -163,7 +163,6 @@ const SelectionButtons: React.FC<Omit<SelectionActionButtonsProps, 'mode'>> = ({
 
 const SyncButtonWrapper: React.FC<Omit<SyncActionButtonsProps, 'mode'>> = ({
   auto,
-  autoButtonTooltip,
   manualSyncTooltipText,
   autoSyncIcon,
   onManualSync,
@@ -173,43 +172,104 @@ const SyncButtonWrapper: React.FC<Omit<SyncActionButtonsProps, 'mode'>> = ({
   onBoundaryHoverEnd,
 }) => {
   const manualIcon = useMemo(() => createImportIcon(), []);
+  const buttonWidth = ACTION_BUTTON_SIZE;
   const buttonHeight = SECTION_SIZE - ACTION_BUTTON_MARGIN * 2;
+
+  const handleClick = useCallback(
+    (event: React.MouseEvent<HTMLButtonElement>) => {
+      if (event.shiftKey) {
+        event.preventDefault();
+        onAutoToggle({
+          altKey: event.altKey,
+          shiftKey: event.shiftKey,
+        });
+        return;
+      }
+      onManualSync({
+        altKey: event.altKey,
+        shiftKey: event.shiftKey,
+      });
+    },
+    [onAutoToggle, onManualSync],
+  );
+
+  const handleContextMenu = useCallback(
+    (event: React.MouseEvent<HTMLButtonElement>) => {
+      event.preventDefault();
+      onAutoToggle({
+        altKey: event.altKey,
+        shiftKey: event.shiftKey,
+      });
+    },
+    [onAutoToggle],
+  );
+
+  const manualHoverMessage = useMemo(
+    () => `${manualSyncTooltipText} (+Shift自动模式)`,
+    [manualSyncTooltipText],
+  );
 
   return (
     <ActionButtonContainer align="stretch" justify="center">
-      <SyncButton
-        disabled={false}
-        mainButtonDisabled={false}
-        isAutoSync={auto}
-        onSync={event => {
-          onManualSync(event);
+      <SwitchButton
+        type="primary"
+        value={auto}
+        style={{
+          width: buttonWidth,
+          height: buttonHeight,
+          padding: 0,
+          margin: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          position: 'relative',
         }}
-        onAutoSyncToggle={event => {
-          onAutoToggle(event);
-        }}
-        direction="vertical"
-        autoSyncEnabled={false}
-        buttonSize={buttonHeight}
-        buttonSizeSub={ACTION_BUTTON_SIZE}
-        mainButtonType="primary"
-        autoSyncIcon={autoSyncIcon}
-        autoSyncButtonTooltips={{
-          enabled: autoButtonTooltip,
-          disabled: autoButtonTooltip,
-        }}
-        syncButtonTooltip={manualSyncTooltipText}
-        style={{ margin: 0 }}
+        onClick={handleClick}
+        onContextMenu={handleContextMenu}
         onMouseEnter={() => {
-          onHelpHintChange?.(manualSyncTooltipText);
+          onHelpHintChange?.(manualHoverMessage);
           onBoundaryHoverStart?.();
         }}
         onMouseLeave={() => {
           onHelpHintChange?.('');
           onBoundaryHoverEnd?.();
         }}
+        aria-label={manualHoverMessage}
       >
-        {manualIcon}
-      </SyncButton>
+        <span
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            pointerEvents: 'none',
+          }}
+        >
+          {manualIcon}
+        </span>
+        {auto ? (
+          <span
+            style={{
+              position: 'absolute',
+              bottom: 6,
+              left: '50%',
+              transform: 'translateX(-50%) scale(0.75)',
+              transformOrigin: 'center',
+              pointerEvents: 'none',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 10,
+              fontWeight: 600,
+              letterSpacing: 0.6,
+              lineHeight: 1,
+              opacity: 0.85,
+            }}
+          >
+            {autoSyncIcon}
+          </span>
+        ) : null}
+      </SwitchButton>
     </ActionButtonContainer>
   );
 };
