@@ -27,13 +27,6 @@ type SendMode = 'smartobject' | 'newdoc' | 'selection';
 export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperProps) {
   const { t } = useTranslation();
   const images = MainStore(state => state.previewImageList);
-  const log = React.useMemo(
-    () =>
-      typeof sdpppSDK?.logger?.extend === 'function'
-        ? sdpppSDK.logger.extend('photoshop:image-preview')
-        : null,
-    [],
-  );
   const [currentIndex, setCurrentIndex] = React.useState(0);
   const [sending, setSending] = React.useState(false);
   const [sendingAll, setSendingAll] = React.useState(false);
@@ -126,13 +119,6 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
         console.warn('[ImagePreviewWrapper] Unable to resolve send parameters', images[index], mode);
         return;
       }
-      log?.('[ImagePreviewWrapper] sending image', {
-        mode,
-        resource,
-        params,
-        docId: images[index]?.docId ?? null,
-        boundaryUri: params?.boundaryUri ?? null,
-      });
       await sdpppSDK.plugins.photoshop.importImage({
         resource,
         boundaryUri: params.boundaryUri,
@@ -196,12 +182,6 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
     }
     try {
       setSending(true);
-      log?.('[ImagePreviewWrapper] auto-sending image', {
-        mode,
-        resource: item.resource,
-        params,
-        docId: item?.docId ?? null,
-      });
       await sdpppSDK.plugins.photoshop.importImage({
         resource: item.resource,
         boundaryUri: params.boundaryUri,
