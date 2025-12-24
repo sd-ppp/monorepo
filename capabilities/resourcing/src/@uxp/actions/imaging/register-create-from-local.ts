@@ -216,9 +216,6 @@ export function registerCreateFromLocalAction(context: ImagingActionContext): vo
                   const image = await Jimp.read(Buffer.from(buffer));
                   imgWidth = imgWidth ?? image.width;
                   imgHeight = imgHeight ?? image.height;
-                  image.scaleToFit({ w: 320, h: 320 });
-                  const thumbnailBuffer = await image.getBuffer(JimpMime.png);
-                  thumbnailBase64 = "data:image/png;base64," + thumbnailBuffer.toString("base64");
                 } catch {
                   thumbnailBase64 = buildGenericFileThumbnail(extension ?? "");
                 }

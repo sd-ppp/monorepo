@@ -98,7 +98,7 @@ export function registerCreateFromExternalAction(context: ImagingActionContext):
       const tempFile = await tempFolder.createFile(finalFilename, { overwrite: true });
       await tempFile.write(new Uint8Array(buffer), { format: storage.formats.binary });
 
-      let thumbnailBase64: string;
+      let thumbnailBase64: string | undefined;
       let imgWidth: number | undefined;
       let imgHeight: number | undefined;
 
@@ -107,9 +107,6 @@ export function registerCreateFromExternalAction(context: ImagingActionContext):
           const image = await Jimp.read(buffer);
           imgWidth = image.width;
           imgHeight = image.height;
-          image.scaleToFit({ w: 320, h: 320 });
-          const thumbnailBuffer = await image.getBuffer(JimpMime.png);
-          thumbnailBase64 = "data:image/png;base64," + thumbnailBuffer.toString("base64");
         } catch (error) {
           thumbnailBase64 = buildGenericFileThumbnail(extension);
         }
@@ -135,15 +132,17 @@ export function registerCreateFromExternalAction(context: ImagingActionContext):
         }
       });
 
-      updateResource(resourceId, {
-        thumbnailCache: {
-          base64: thumbnailBase64,
-          width: imgWidth,
-          height: imgHeight,
-          mime: "image/png",
-          generatedAt: Date.now()
-        }
-      });
+      if (thumbnailBase64) {
+        updateResource(resourceId, {
+          thumbnailCache: {
+            base64: thumbnailBase64,
+            width: imgWidth,
+            height: imgHeight,
+            mime: "image/png",
+            generatedAt: Date.now()
+          }
+        });
+      }
 
       return {
         resource: resourceId,

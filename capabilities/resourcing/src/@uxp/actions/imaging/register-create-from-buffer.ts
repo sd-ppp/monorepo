@@ -138,9 +138,6 @@ export function registerCreateFromBufferAction(context: ImagingActionContext): v
                 const image = await Jimp.read(Buffer.from(buffer));
                 width = width ?? image.width;
                 height = height ?? image.height;
-                image.scaleToFit({ w: 320, h: 320 });
-                const thumbBuffer = await image.getBuffer(JimpMime.png);
-                thumbnail = "data:image/png;base64," + thumbBuffer.toString("base64");
               } catch {
                 thumbnail = buildGenericFileThumbnail(extension);
               }

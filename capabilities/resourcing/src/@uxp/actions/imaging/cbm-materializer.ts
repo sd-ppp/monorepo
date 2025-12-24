@@ -721,15 +721,17 @@ async function loadMaskSnapshotJimp(
   });
 
   if (built.content === "canvas") {
+    const fillAlpha = built.reverse ? 255 : 0;
     log("canvasMaskFullCoverage", {
       width: jimpImage.bitmap.width,
-      height: jimpImage.bitmap.height
+      height: jimpImage.bitmap.height,
+      reverse: built.reverse
     });
     jimpImage.scan(0, 0, jimpImage.bitmap.width, jimpImage.bitmap.height, (_x, _y, idx) => {
       jimpImage.bitmap.data[idx + 0] = 0;
       jimpImage.bitmap.data[idx + 1] = 0;
       jimpImage.bitmap.data[idx + 2] = 0;
-      jimpImage.bitmap.data[idx + 3] = 0;
+      jimpImage.bitmap.data[idx + 3] = fillAlpha;
     });
   } else if (built.content === "empty") {
     log("emptyMaskNoCoverage", {
