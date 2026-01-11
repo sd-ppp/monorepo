@@ -8,6 +8,7 @@ import {
   type WidgetUploadPass,
   type ResourceHandle,
 } from '../../../../context/PhotoshopWidgetContext';
+import { sdpppSDK } from '@sdppp/common';
 import { useManagedUploadTracker } from '../../../../hooks/useManagedUploadTracker';
 import { useUploadCopy } from '../../../../hooks/useUploadCopy';
 import { useWidgetValueEmitter } from '../../../../hooks/useWidgetValueEmitter';

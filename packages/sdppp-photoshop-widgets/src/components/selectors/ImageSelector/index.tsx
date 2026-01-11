@@ -143,6 +143,7 @@ export const ImageSelector: React.FC<ImageSelectorProps> = ({
     () => (normalizedWorkBoundaryString ?? '').trim(),
     [normalizedWorkBoundaryString],
   );
+  const documentIdForSelection = useMemo(() => (curDocId > 0 ? curDocId : undefined), [curDocId]);
 
   const boundaryComparison = useMemo(() => {
     const activeBoundary = (boundaryUri ?? '').trim();
@@ -238,28 +239,136 @@ export const ImageSelector: React.FC<ImageSelectorProps> = ({
     };
   }, [isBoundaryHoverActive, resolveBoundaryHoverRect, boundaryHoverHandler]);
 
+  const restoreMaskSelection = useCallback(async () => {
+    const normalizedMask = (maskUri ?? '').trim();
+    if (!normalizedMask) {
+      setHoverHelpMessage(
+        t('image.upload.status.mask.restoreUnavailable', { defaultValue: '当前没有可恢复的遮罩选区' }),
+      );
+      return;
+    }
+    const action = imageMaskActions['selection.selectFromMaskUri'];
+    if (typeof action !== 'function') {
+      setHoverHelpMessage(
+        t('image.upload.status.mask.restoreFailed', { defaultValue: '无法恢复遮罩选区' }),
+      );
+      return;
+    }
+    try {
+      const result = await action({
+        maskUri: normalizedMask,
+        documentId: documentIdForSelection,
+      });
+      if (result && result.success === false) {
+        setHoverHelpMessage(
+          result.error ??
+            t('image.upload.status.mask.restoreFailed', { defaultValue: '恢复遮罩选区失败' }),
+        );
+      } else {
+        setHoverHelpMessage('');
+      }
+    } catch (error: any) {
+      logger(
+        'widgets:image-selector restoreMaskSelection error',
+        error?.message ?? String(error),
+      );
+      setHoverHelpMessage(
+        t('image.upload.status.mask.restoreFailed', { defaultValue: '恢复遮罩选区失败' }),
+      );
+    }
+  }, [maskUri, imageMaskActions, documentIdForSelection, logger, setHoverHelpMessage, t]);
+
   const handleResetMask = useCallback(
     (event?: React.MouseEvent<HTMLElement>) => {
       event?.preventDefault();
+      if (event?.metaKey || event?.ctrlKey) {
+        void restoreMaskSelection();
+        return;
+      }
       setMaskResource('', null);
       setIsMaskButtonHovered(false);
       setIsMaskStatusTagHovered(false);
       setHoverHelpMessage('');
       void handleSync({ maskUri: null });
     },
-    [handleSync, setMaskResource, setIsMaskButtonHovered, setIsMaskStatusTagHovered, setHoverHelpMessage],
+    [
+      handleSync,
+      restoreMaskSelection,
+      setMaskResource,
+      setIsMaskButtonHovered,
+      setIsMaskStatusTagHovered,
+      setHoverHelpMessage,
+    ],
   );
+
+  const restoreBoundarySelection = useCallback(async () => {
+    const normalizedBoundary = (boundaryUri ?? '').trim() || (defaultBoundaryForMode ?? '').trim();
+    if (!normalizedBoundary) {
+      setHoverHelpMessage(
+        t('image.upload.status.boundary.restoreUnavailable', { defaultValue: '当前没有可恢复的限定范围' }),
+      );
+      return;
+    }
+    const action = imageMaskActions['selection.selectFromBoundaryUri'];
+    if (typeof action !== 'function') {
+      setHoverHelpMessage(
+        t('image.upload.status.boundary.restoreFailed', { defaultValue: '无法恢复限定范围选区' }),
+      );
+      return;
+    }
+    try {
+      const result = await action({
+        boundaryUri: normalizedBoundary,
+        documentId: documentIdForSelection,
+      });
+      if (result && result.success === false) {
+        setHoverHelpMessage(
+          result.error ??
+            t('image.upload.status.boundary.restoreFailed', { defaultValue: '恢复限定范围失败' }),
+        );
+      } else {
+        setHoverHelpMessage('');
+      }
+    } catch (error: any) {
+      logger(
+        'widgets:image-selector restoreBoundarySelection error',
+        error?.message ?? String(error),
+      );
+      setHoverHelpMessage(
+        t('image.upload.status.boundary.restoreFailed', { defaultValue: '恢复限定范围失败' }),
+      );
+    }
+  }, [
+    boundaryUri,
+    defaultBoundaryForMode,
+    imageMaskActions,
+    documentIdForSelection,
+    logger,
+    setHoverHelpMessage,
+    t,
+  ]);
 
   const handleResetBoundary = useCallback(
     (event?: React.MouseEvent<HTMLElement>) => {
       event?.preventDefault();
+      if (event?.metaKey || event?.ctrlKey) {
+        void restoreBoundarySelection();
+        return;
+      }
       const defaultBoundary = defaultBoundaryForMode;
       setBoundaryUri(defaultBoundary);
       setHoverHelpMessage('');
       setIsBoundaryButtonHovered(false);
       void handleSync({ boundaryUri: defaultBoundary || null });
     },
-    [handleSync, defaultBoundaryForMode, setBoundaryUri, setHoverHelpMessage, setIsBoundaryButtonHovered],
+    [
+      handleSync,
+      defaultBoundaryForMode,
+      restoreBoundarySelection,
+      setBoundaryUri,
+      setHoverHelpMessage,
+      setIsBoundaryButtonHovered,
+    ],
   );
 
   useEffect(() => {

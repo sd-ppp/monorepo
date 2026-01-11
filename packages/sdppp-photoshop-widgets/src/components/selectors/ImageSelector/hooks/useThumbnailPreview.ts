@@ -218,11 +218,11 @@ const describeParams = (params: UseThumbnailParams): Record<string, string | nul
   const {
     data: previewUrl,
     refetch: refetchPreview,
-  } = useThumbnail(thumbnailParams);
+  } = useThumbnail(thumbnailParams, { disableRealtime: !auto });
   const {
     data: overlayPreviewUrl,
     refetch: refetchOverlay,
-  } = useThumbnail(overlayThumbnailParams);
+  } = useThumbnail(overlayThumbnailParams, { disableRealtime: !auto });
 
   const lastInvalidationRef = useRef<number>(invalidationKey);
   useEffect(() => {
@@ -233,8 +233,8 @@ const describeParams = (params: UseThumbnailParams): Record<string, string | nul
     let cancelled = false;
     const run = () => {
       if (cancelled) return;
-      void refetchPreview();
-      void refetchOverlay();
+      void refetchPreview().catch(() => {});
+      void refetchOverlay().catch(() => {});
     };
 
     const raf = (globalThis as Record<string, unknown>)['requestAnimationFrame'];

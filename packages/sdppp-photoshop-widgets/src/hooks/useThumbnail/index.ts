@@ -64,6 +64,10 @@ const enforceBoundaryImageParams = (uri: string): string => {
   }
 };
 
+const logThumbnail = (_message: string, _details?: unknown) => {
+  return;
+};
+
 type ThumbnailVariant =
   | {
       kind: 'file';
@@ -102,9 +106,17 @@ export interface UseThumbnailResult extends UseThumbnailSnapshot {
   refetch: () => Promise<UseThumbnailSnapshot>;
 }
 
-export const useThumbnail = (params: UseThumbnailParams): UseThumbnailResult => {
+export interface UseThumbnailOptions {
+  disableRealtime?: boolean;
+}
+
+export const useThumbnail = (
+  params: UseThumbnailParams,
+  options?: UseThumbnailOptions,
+): UseThumbnailResult => {
   const actions = usePhotoshopWidgetActions();
   const realtimeSubscriber = useWidgetRealtimeSubscriber();
+  const disableRealtime = Boolean(options?.disableRealtime);
 
   const {
     fileUri,
@@ -200,9 +212,12 @@ export const useThumbnail = (params: UseThumbnailParams): UseThumbnailResult => 
   const [data, setData] = useState<string | null>(null);
   const [isFetching, setIsFetching] = useState(false);
   const [error, setError] = useState<Error | null>(parsed.error);
+  const [autoSuppressed, setAutoSuppressed] = useState(false);
 
   const requestIdRef = useRef(0);
   const isActiveRef = useRef(true);
+  const isFetchingRef = useRef(false);
+  const ignoreAutoUntilRef = useRef(0);
 
   useEffect(() => {
     isActiveRef.current = true;
@@ -211,100 +226,149 @@ export const useThumbnail = (params: UseThumbnailParams): UseThumbnailResult => 
     };
   }, []);
 
-  const refetch = useCallback(async (): Promise<UseThumbnailSnapshot> => {
-    if (!parsed.value) {
-      const parseError = parsed.error ?? new Error('Invalid hook parameters.');
-      setError(parseError);
-      console.log(`[useThumbnail] 参数错误，输入：${inputSummary}`);
-      return Promise.reject(parseError);
-    }
-
-    console.log(`[useThumbnail] 开始获取缩略图，输入：${inputSummary}`);
-
-    const requestId = ++requestIdRef.current;
-    setIsFetching(true);
-    setError(null);
-
-    let executionSummary = '未确定的逻辑路径';
-    try {
-      let thumbnail: string | null = null;
-
-      if (parsed.value.kind === 'file') {
-        executionSummary = '文件模式：直接调用 resource.thumbnail 获取缩略图';
-        const result = await actions['resource.thumbnail']({
-          resource: parsed.value.fileUri,
+  const executeRefetch = useCallback(
+    async (source: 'manual' | 'auto'): Promise<UseThumbnailSnapshot> => {
+      if (source === 'auto' && autoSuppressed) {
+        logThumbnail('useThumbnail.executeRefetch skip.autoSuppressed', {
+          source,
+          autoSuppressed,
+          isFetching: isFetchingRef.current,
+          summary: inputSummary,
         });
-        if (result?.error) {
-          throw new Error(`resource.thumbnail: ${result.error}`);
-        }
-        thumbnail =
-          typeof result?.thumbnail === 'string' && result.thumbnail.length > 0
-            ? result.thumbnail
-            : null;
-      } else {
-        const hasMask = Boolean(parsed.value.maskUri);
-        executionSummary = hasMask
-          ? '资源模式：调用 resource.file.combineByCBM（携带遮罩参数）'
-          : '资源模式：调用 resource.file.combineByCBM（未提供遮罩）';
-        const result = await actions['resource.file.combineByCBM']({
-          contentUri: parsed.value.contentUri,
-          boundaryUri: parsed.value.boundaryUri,
-          maskUri: parsed.value.maskUri || undefined,
-          thumbnail: true,
+        return { data };
+      }
+
+      if (!parsed.value) {
+        const parseError = parsed.error ?? new Error('Invalid hook parameters.');
+        setError(parseError);
+        console.log(`[useThumbnail] 参数错误，输入：${inputSummary}`);
+        logThumbnail('useThumbnail.executeRefetch invalidParams', {
+          source,
+          summary: inputSummary,
         });
-        const handle = result?.handle ?? null;
-        const resourceId =
-          typeof result?.resource === 'string' && result.resource.trim().length > 0
-            ? result.resource.trim()
-            : '';
-        try {
+        return Promise.reject(parseError);
+      }
+
+      logThumbnail('useThumbnail.executeRefetch begin', {
+        source,
+        autoSuppressed,
+        isFetching: isFetchingRef.current,
+        summary: inputSummary,
+      });
+      console.log(`[useThumbnail] 开始获取缩略图，输入：${inputSummary}`);
+
+      const requestId = ++requestIdRef.current;
+      isFetchingRef.current = true;
+      ignoreAutoUntilRef.current = Date.now() + 300;
+      setIsFetching(true);
+      setError(null);
+
+      let executionSummary = '未确定的逻辑路径';
+      try {
+        let thumbnail: string | null = null;
+
+        if (parsed.value.kind === 'file') {
+          executionSummary = '文件模式：直接调用 resource.thumbnail 获取缩略图';
+          const result = await actions['resource.thumbnail']({
+            resource: parsed.value.fileUri,
+          });
           if (result?.error) {
-            throw new Error(`resource.file.combineByCBM: ${result.error}`);
+            throw new Error(`resource.thumbnail: ${result.error}`);
           }
-          if (resourceId) {
-            executionSummary = hasMask
-              ? '资源模式：resource.file.combineByCBM -> resource.thumbnail（遮罩已传递）'
-              : '资源模式：resource.file.combineByCBM -> resource.thumbnail（无遮罩参数）';
-            const thumbResult = await actions['resource.thumbnail']({
-              resource: resourceId,
-            });
-            if (thumbResult?.error) {
-              throw new Error(`resource.thumbnail: ${thumbResult.error}`);
+          thumbnail =
+            typeof result?.thumbnail === 'string' && result.thumbnail.length > 0
+              ? result.thumbnail
+              : null;
+        } else {
+          const hasMask = Boolean(parsed.value.maskUri);
+          executionSummary = hasMask
+            ? '资源模式：调用 resource.file.combineByCBM（携带遮罩参数）'
+            : '资源模式：调用 resource.file.combineByCBM（未提供遮罩）';
+          const result = await actions['resource.file.combineByCBM']({
+            contentUri: parsed.value.contentUri,
+            boundaryUri: parsed.value.boundaryUri,
+            maskUri: parsed.value.maskUri || undefined,
+            thumbnail: true,
+          });
+          const handle = result?.handle ?? null;
+          const resourceId =
+            typeof result?.resource === 'string' && result.resource.trim().length > 0
+              ? result.resource.trim()
+              : '';
+          try {
+            if (result?.error) {
+              throw new Error(`resource.file.combineByCBM: ${result.error}`);
             }
-            thumbnail =
-              typeof thumbResult?.thumbnail === 'string' && thumbResult.thumbnail.length > 0
-                ? thumbResult.thumbnail
-                : null;
-          } else {
-            executionSummary = '资源模式：resource.file.combineByCBM 未返回资源ID';
-            thumbnail = null;
+            if (resourceId) {
+              executionSummary = hasMask
+                ? '资源模式：resource.file.combineByCBM -> resource.thumbnail（遮罩已传递）'
+                : '资源模式：resource.file.combineByCBM -> resource.thumbnail（无遮罩参数）';
+              const thumbResult = await actions['resource.thumbnail']({
+                resource: resourceId,
+              });
+              if (thumbResult?.error) {
+                throw new Error(`resource.thumbnail: ${thumbResult.error}`);
+              }
+              thumbnail =
+                typeof thumbResult?.thumbnail === 'string' && thumbResult.thumbnail.length > 0
+                  ? thumbResult.thumbnail
+                  : null;
+            } else {
+              executionSummary = '资源模式：resource.file.combineByCBM 未返回资源ID';
+              thumbnail = null;
+            }
+          } finally {
+            handle?.dispose();
           }
-        } finally {
-          handle?.dispose();
+        }
+
+        console.log(`[useThumbnail] 完成获取，逻辑路径：${executionSummary}`);
+
+        if (isActiveRef.current && requestIdRef.current === requestId) {
+          setAutoSuppressed(false);
+          setData(thumbnail);
+          setIsFetching(false);
+        }
+
+        logThumbnail('useThumbnail.executeRefetch success', {
+          source,
+          summary: inputSummary,
+          hasData: Boolean(thumbnail),
+        });
+
+        return { data: thumbnail };
+      } catch (thrown) {
+        const failure =
+          thrown instanceof Error ? thrown : new Error(String(thrown ?? 'Unknown error'));
+        console.log(
+          `[useThumbnail] 获取失败，逻辑路径：${executionSummary}，原因：${failure.message}`,
+        );
+        logThumbnail('useThumbnail.executeRefetch failed', {
+          source,
+          summary: inputSummary,
+          message: failure.message,
+        });
+        if (isActiveRef.current && requestIdRef.current === requestId) {
+          setError(failure);
+          setIsFetching(false);
+          setAutoSuppressed(true);
+        }
+        throw failure;
+      } finally {
+        isFetchingRef.current = false;
+        const cooldownUntil = Date.now() + 200;
+        if (cooldownUntil > ignoreAutoUntilRef.current) {
+          ignoreAutoUntilRef.current = cooldownUntil;
         }
       }
+    },
+    [actions, autoSuppressed, data, inputSummary, parsed],
+  );
 
-      console.log(`[useThumbnail] 完成获取，逻辑路径：${executionSummary}`);
-
-      if (isActiveRef.current && requestIdRef.current === requestId) {
-        setData(thumbnail);
-        setIsFetching(false);
-      }
-
-      return { data: thumbnail };
-    } catch (thrown) {
-      const failure =
-        thrown instanceof Error ? thrown : new Error(String(thrown ?? 'Unknown error'));
-      console.log(
-        `[useThumbnail] 获取失败，逻辑路径：${executionSummary}，原因：${failure.message}`,
-      );
-      if (isActiveRef.current && requestIdRef.current === requestId) {
-        setError(failure);
-        setIsFetching(false);
-      }
-      throw failure;
-    }
-  }, [actions, parsed, inputSummary]);
+  const refetch = useCallback(
+    () => executeRefetch('manual'),
+    [executeRefetch],
+  );
 
   useEffect(() => {
     if (parsed.error) {
@@ -321,8 +385,10 @@ export const useThumbnail = (params: UseThumbnailParams): UseThumbnailResult => 
 
     let cancelled = false;
     const run = () => {
-      if (cancelled) return;
-      void refetch();
+      if (cancelled || autoSuppressed) return;
+      void executeRefetch('auto').catch(() => {
+        /* auto fetch failure handled internally */
+      });
     };
 
     const raf = (globalThis as Record<string, unknown>)['requestAnimationFrame'];
@@ -343,17 +409,55 @@ export const useThumbnail = (params: UseThumbnailParams): UseThumbnailResult => 
       cancelled = true;
       clearTimeout(timeoutId);
     };
-  }, [parsed.value, parsed.error, refetch]);
+  }, [autoSuppressed, executeRefetch, parsed.error, parsed.value]);
 
   useEffect(() => {
+    if (disableRealtime) {
+      logThumbnail('useThumbnail.realtime disabled', {
+        summary: inputSummary,
+      });
+      return;
+    }
     if (!parsed.value || parsed.value.kind !== 'resource' || parsed.error) return;
     if (!realtimeSubscriber) return;
     if (parsed.value.watchedContents.length === 0) return;
 
     return realtimeSubscriber(parsed.value.docId, parsed.value.watchedContents, () => {
-      void refetch();
+      if (Date.now() < ignoreAutoUntilRef.current) {
+        logThumbnail('useThumbnail.realtime skip.cooldown', {
+          summary: inputSummary,
+          ignoreUntil: ignoreAutoUntilRef.current,
+        });
+        return;
+      }
+      if (isFetchingRef.current || autoSuppressed) {
+        logThumbnail('useThumbnail.realtime skip.inProgress', {
+          summary: inputSummary,
+          isFetching: isFetchingRef.current,
+          autoSuppressed,
+        });
+        return;
+      }
+      logThumbnail('useThumbnail.realtime refetch', {
+        summary: inputSummary,
+      });
+      void executeRefetch('auto').catch(() => {
+        /* auto fetch failure handled internally */
+      });
     });
-  }, [realtimeSubscriber, parsed.value, parsed.error, refetch]);
+  }, [
+    autoSuppressed,
+    disableRealtime,
+    executeRefetch,
+    parsed.error,
+    parsed.value,
+    realtimeSubscriber,
+  ]);
+
+  useEffect(() => {
+    setAutoSuppressed(false);
+    ignoreAutoUntilRef.current = 0;
+  }, [fileUri, contentUri, boundaryUri, maskUri]);
 
   return {
     data,

@@ -21,7 +21,6 @@ export function registerThumbnailAction(context: ImagingActionContext): void {
 
       const entry = resolveResource(resource);
       if (!entry) {
-        console.warn("[fileResource.thumbnail] resourceMissing", { resource });
         throw new Error("fileResource.thumbnail: resource not found");
       }
 
@@ -55,12 +54,6 @@ export function registerThumbnailAction(context: ImagingActionContext): void {
       if (!image) {
         const { buffer } = await resolveResourceBuffer(resource);
         image = await Jimp.read(Buffer.from(buffer)); 
-      } else {
-        console.info("[fileResource.thumbnail] usingJimpCache", {
-          resource,
-          width: image.bitmap.width,
-          height: image.bitmap.height
-        });
       }
 
       const origW = image.width;

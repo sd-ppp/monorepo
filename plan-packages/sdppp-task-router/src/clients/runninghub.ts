@@ -1,6 +1,10 @@
-import { getCurrentLanguage } from '@sdppp/common';
+import { getCurrentLanguage, sdpppSDK } from '@sdppp/common';
 
 export type TaskLike<T = any> = { taskId: string; promise: Promise<T>; cancelable?: boolean; cancel?: () => Promise<void> | void };
+
+const log =
+  (sdpppSDK?.logger?.extend && sdpppSDK.logger.extend('task-router:runninghub')) ||
+  ((..._args: any[]) => {});
 
 export class SDPPPRunningHubClient {
   private static nodeInfoListStore: Record<string, any[] | undefined> = {};
@@ -97,6 +101,11 @@ export class SDPPPRunningHubClient {
       const nodeKey = `${node.nodeId}_${node.fieldName}`;
       let fieldValue = input[nodeKey] !== undefined ? input[nodeKey] : node.fieldValue;
       const ft = String(node.fieldType || '').toUpperCase();
+      if (ft === 'SWITCH') {
+        const normalized = this.normalizeSwitchFieldValue(node, fieldValue);
+        log('switch field normalized', { nodeKey, originalValue: fieldValue, normalizedValue: normalized });
+        fieldValue = normalized;
+      }
       if (ft === 'IMAGE' || ft === 'FILE') {
         if (Array.isArray(fieldValue)) {
           const first = fieldValue[0];
@@ -107,6 +116,33 @@ export class SDPPPRunningHubClient {
       }
       return { ...node, fieldValue };
     });
+  }
+
+  private normalizeSwitchFieldValue(node: any, rawValue: any): any {
+    if (rawValue === undefined || rawValue === null) return rawValue;
+    const fieldData = this.parseNodeFieldData(node?.fieldData);
+    const candidates = Array.isArray(fieldData) ? fieldData : [];
+    log('normalize switch candidates', { nodeId: node?.nodeId, fieldName: node?.fieldName, rawValue, candidates });
+    const match = candidates.find(item => item && typeof item === 'object' && String(item.name) === String(rawValue));
+    if (match && match.index !== undefined) return match.index;
+    const matchByFast = candidates.find(item => item && typeof item === 'object' && String(item.fastIndex) === String(rawValue));
+    if (matchByFast && matchByFast.index !== undefined) return matchByFast.index;
+    const alreadyIndex = candidates.find(item => item && typeof item === 'object' && String(item.index) === String(rawValue));
+    if (alreadyIndex && alreadyIndex.index !== undefined) return alreadyIndex.index;
+    return rawValue;
+  }
+
+  private parseNodeFieldData(fieldData: any): any {
+    if (fieldData == null) return [];
+    if (Array.isArray(fieldData)) return fieldData;
+    if (typeof fieldData === 'string') {
+      try {
+        return JSON.parse(fieldData);
+      } catch {
+        return [];
+      }
+    }
+    return [];
   }
 
   private convertFormDataToNodes(formData: any): { widgetableNodes: any[]; defaultInput: Record<string, any> } {
@@ -152,4 +188,3 @@ export class SDPPPRunningHubClient {
     switch (outputType) { case 'string': return ''; case 'number': return 0; case 'boolean': return false; case 'combo': return null; case 'images': return []; default: return null; }
   }
 }
-

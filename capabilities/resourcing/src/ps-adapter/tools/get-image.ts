@@ -298,8 +298,16 @@ async function getJimpImageWithHistory(params: getImageActions["params"]): Promi
         const [layer, isGroup] = await getRasterizedLayer(document, layerID);
         if (isGroup) mergedLayer = layer;
         if (mergedLayer != null) {
-            restorer.add(() => {
-                (mergedLayer as Layer).delete();
+            const tempLayer = mergedLayer;
+            restorer.add(async () => {
+                try {
+                    const deletionResult = tempLayer.delete();
+                    if (deletionResult && typeof (deletionResult as Promise<unknown>).then === "function") {
+                        await deletionResult;
+                    }
+                } catch {
+                    // ignore cleanup errors
+                }
             });
         }
 
@@ -391,7 +399,6 @@ async function getJimpImage(params: getImageActions["params"]): Promise<JimpInst
             }
         }
     }
-
     if (useSimple) {
         log("simplePath");
         const result = await getJimpImageSimple(params);

@@ -220,6 +220,30 @@ const createActions = (): PhotoshopWidgetActions => {
         }
     };
 
+    const selectFromMaskUri: PhotoshopWidgetActions['selection.selectFromMaskUri'] = async params => {
+        const fn = photoshopActions?.selectFromMaskUri;
+        if (typeof fn !== 'function') {
+            return { success: false, error: 'selectFromMaskUri unavailable' };
+        }
+        try {
+            return await fn(params);
+        } catch (error) {
+            return { success: false, error: error instanceof Error ? error.message : String(error) };
+        }
+    };
+
+    const selectFromBoundaryUri: PhotoshopWidgetActions['selection.selectFromBoundaryUri'] = async params => {
+        const fn = photoshopActions?.selectFromBoundaryUri;
+        if (typeof fn !== 'function') {
+            return { success: false, error: 'selectFromBoundaryUri unavailable' };
+        }
+        try {
+            return await fn(params);
+        } catch (error) {
+            return { success: false, error: error instanceof Error ? error.message : String(error) };
+        }
+    };
+
     return {
         'resource.file.combineByCBM': combineByCBM,
         'resource.file.createByContent': createByContent,
@@ -229,6 +253,8 @@ const createActions = (): PhotoshopWidgetActions => {
         'resource.thumbnail': createThumbnail,
         'resource.boundary.normalize': normalizeBoundary,
         'resource.layer.resolve': resolveLayer,
+        'selection.selectFromMaskUri': selectFromMaskUri,
+        'selection.selectFromBoundaryUri': selectFromBoundaryUri,
     };
 };
 

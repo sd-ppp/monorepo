@@ -79,13 +79,14 @@ async function generateBoundaryThumbnail(document: any, boundaryRect: BoundaryRe
       docHeight,
     );
 
-    const canvasImage = await (getImage as any).getJimpImage({
+    const params = {
       document_identify: SpeicialIDManager.get_SPECIAL_DOCUMENT_CURRENT(),
       layer_identify: SpeicialIDManager.get_SPECIAL_LAYER_USE_CANVAS(),
       boundary: documentBoundary,
       max_wh: 192,
       quality: 8
-    });
+    };
+    const canvasImage = await (getImage as any).getJimpImage(params);
 
         const thumbWidth = canvasImage.width;
         const thumbHeight = canvasImage.height;

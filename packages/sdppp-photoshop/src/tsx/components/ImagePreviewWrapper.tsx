@@ -31,12 +31,32 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
   const [sending, setSending] = React.useState(false);
   const [sendingAll, setSendingAll] = React.useState(false);
   const [autoMode, setAutoMode] = React.useState<SendMode | null>(null);
+  const log = React.useMemo(() => {
+    return typeof sdpppSDK?.logger?.extend === 'function'
+      ? sdpppSDK.logger.extend('photoshop:image-preview')
+      : null;
+  }, []);
+  const logMessage = React.useCallback(
+    (event: string, payload?: Record<string, unknown>) => {
+      if (log) {
+        payload ? log(event, payload) : log(event);
+        return;
+      }
+      if (typeof sdpppSDK?.logger === 'function') {
+        payload
+          ? sdpppSDK.logger('photoshop:image-preview', event, payload)
+          : sdpppSDK.logger('photoshop:image-preview', event);
+      }
+    },
+    [log]
+  );
   const autoModeRef = React.useRef<SendMode | null>(null);
   const pendingAutoSendRef = React.useRef(new Map<string, { cancel: boolean }>());
 
   React.useEffect(() => {
     autoModeRef.current = autoMode;
-  }, [autoMode]);
+    logMessage('autoModeRef updated', { mode: autoMode });
+  }, [autoMode, logMessage]);
 
   const saveResources = React.useCallback(async (resources: string[]) => {
     if (!resources.length) {
@@ -142,9 +162,10 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
     setAutoMode(prev => {
       const next = prev === mode ? null : mode;
       autoModeRef.current = next;
+      logMessage('toggleAutoMode', { previous: prev, next, mode });
       return next;
     });
-  }, []);
+  }, [logMessage]);
 
   const handleModeButtonClick = React.useCallback((mode: SendMode) => async (event: React.MouseEvent<HTMLButtonElement>) => {
     if (event.shiftKey) {
@@ -168,20 +189,33 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
   const sendResourceByUrl = async (url: string) => {
     const mode = autoModeRef.current;
     if (!mode) {
+      logMessage('sendResourceByUrl skipped: autoMode disabled', { url });
       return;
     }
     const list = MainStore.getState().previewImageList;
     const item = list.find(it => it.url === url);
     if (!item || !item.resource) {
+      logMessage('sendResourceByUrl pending resource', {
+        url,
+        hasItem: !!item,
+        hasResource: !!item?.resource
+      });
       return;
     }
     const params = resolveSendParams(item, mode);
     if (!params) {
       console.warn('[ImagePreviewWrapper] Auto send skipped due to invalid parameters', item, mode);
+      logMessage('sendResourceByUrl invalid params', { url, mode });
       return;
     }
     try {
       setSending(true);
+      logMessage('sendResourceByUrl importing', {
+        url,
+        mode,
+        boundaryUri: params.boundaryUri,
+        type: params.type
+      });
       await sdpppSDK.plugins.photoshop.importImage({
         resource: item.resource,
         boundaryUri: params.boundaryUri,
@@ -285,61 +319,113 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
   }, [images.length, currentIndex]);
 
   // Auto-send newly received images when auto is active, waiting for resource
-  const autoPrevLenRef = React.useRef(images.length);
+  const autoProcessedUrlsRef = React.useRef<Set<string>>(new Set());
+  const getAutoItemKey = React.useCallback(
+    (item: (typeof images)[number] | undefined) => {
+      if (!item) return null;
+      return item.resource ?? item.url ?? null;
+    },
+    []
+  );
   const scheduleAutoSendForUrl = (url: string) => {
-    if (pendingAutoSendRef.current.has(url)) return;
+    if (pendingAutoSendRef.current.has(url)) {
+      logMessage('schedule auto send skipped duplicate', { url });
+      return;
+    }
     const token = { cancel: false };
     pendingAutoSendRef.current.set(url, token);
+    logMessage('schedule auto send start', { url });
     (async () => {
       try {
         while (!token.cancel && autoModeRef.current !== null) {
           const list = MainStore.getState().previewImageList;
           const item = list.find(it => it.url === url);
-          if (!item) break; // deleted
+          if (!item) {
+            logMessage('schedule auto send item removed', { url });
+            break; // deleted
+          }
           const downloading = (item as any)?.downloading === true;
           if (!downloading && !!item.resource) {
             await sendResourceByUrl(url);
             break;
           }
+          logMessage('schedule auto send waiting', {
+            url,
+            downloading,
+            hasResource: !!item.resource
+          });
           await new Promise(res => setTimeout(res, 200));
         }
       } finally {
+        logMessage('schedule auto send end', { url, cancelled: token.cancel, autoMode: autoModeRef.current });
         pendingAutoSendRef.current.delete(url);
       }
     })();
   };
   React.useEffect(() => {
+    const currentList = MainStore.getState().previewImageList;
+    const processed = autoProcessedUrlsRef.current;
     if (autoMode === null) {
       pendingAutoSendRef.current.forEach(t => (t.cancel = true));
       pendingAutoSendRef.current.clear();
-      autoPrevLenRef.current = images.length;
+      processed.clear();
+      logMessage('autoMode disabled', { imagesLength: currentList.length });
       return;
     }
-    autoPrevLenRef.current = images.length;
-  }, [autoMode, images.length]);
+    processed.clear();
+    for (const item of currentList) {
+      const key = getAutoItemKey(item);
+      if (key) {
+        processed.add(key);
+      }
+    }
+    logMessage('autoMode enabled', { mode: autoMode, imagesLength: currentList.length });
+  }, [autoMode, getAutoItemKey, logMessage]);
 
   React.useEffect(() => {
     if (autoMode === null) {
       return;
     }
-    if (images.length > autoPrevLenRef.current) {
-      for (let i = autoPrevLenRef.current; i < images.length; i++) {
-        const itm = images[i];
-        if (itm && isImage(itm.url)) {
-          scheduleAutoSendForUrl(itm.url);
-        }
+    const processed = autoProcessedUrlsRef.current;
+    const activeUrls = new Set<string>();
+    for (const item of images) {
+      const key = getAutoItemKey(item);
+      if (!key) {
+        continue;
       }
+      activeUrls.add(key);
+      if (processed.has(key)) {
+        continue;
+      }
+      if (!item || !isImage(item.url)) {
+        processed.add(key);
+        logMessage('autoMode new item ignored', {
+          url: item?.url,
+          resource: item?.resource,
+          isImage: item ? isImage(item.url) : false
+        });
+        continue;
+      }
+      processed.add(key);
+      logMessage('autoMode enqueue new image', { url: item.url, docId: item.docId });
+      scheduleAutoSendForUrl(item.url);
     }
-    autoPrevLenRef.current = images.length;
-  }, [images.length, autoMode]);
+
+    processed.forEach(url => {
+      if (!activeUrls.has(url)) {
+        processed.delete(url);
+      }
+    });
+  }, [images, autoMode, getAutoItemKey, logMessage]);
 
   React.useEffect(() => {
     return () => {
       // cancel pending tasks on unmount
       pendingAutoSendRef.current.forEach(t => (t.cancel = true));
       pendingAutoSendRef.current.clear();
+      logMessage('component unmount', {});
     };
-  }, []);
+  }, [logMessage]);
 
   if (!images.length) {
     return null;

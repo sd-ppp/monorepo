@@ -27,6 +27,11 @@ export interface ResourceThumbnailResult {
   error?: string | null;
 }
 
+export interface SelectionActionResult {
+  success: boolean;
+  error?: string | null;
+}
+
 export interface FileResourceMaterializeRecord {
   resource?: string | null;
   width?: number | null;
@@ -123,6 +128,12 @@ export interface PhotoshopWidgetActions {
     params: FileResourceCreateFromBufferParams
   ) => Promise<FileResourceMaterializeResult | void>;
   'resource.file.createFromLocal': (params?: Record<string, unknown>) => Promise<FileResourceMaterializeResult | void>;
+  'selection.selectFromMaskUri': (
+    params: { maskUri: string; documentId?: number }
+  ) => Promise<SelectionActionResult | void>;
+  'selection.selectFromBoundaryUri': (
+    params: { boundaryUri: string; documentId?: number }
+  ) => Promise<SelectionActionResult | void>;
 }
 
 export type TranslateFn = (key: string, options?: Record<string, any>) => string;

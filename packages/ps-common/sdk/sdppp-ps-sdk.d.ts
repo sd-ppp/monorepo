@@ -339,6 +339,19 @@ export declare const sdpppSDK: {
 					identify: string;
 				}[] | undefined;
 			}>;
+			selectFromMaskUri: (data: {
+				maskUri: string;
+				documentId?: number | undefined;
+			}, signal?: AbortSignal) => Promise<{
+				success: boolean;
+			}>;
+			selectFromBoundaryUri: (data: {
+				boundaryUri: string;
+				documentId?: number | undefined;
+			}, signal?: AbortSignal) => Promise<{
+				success: boolean;
+				error?: string | undefined;
+			}>;
 			applyMaskToImage: (data: {
 				imageResource: string;
 				maskResource: string;

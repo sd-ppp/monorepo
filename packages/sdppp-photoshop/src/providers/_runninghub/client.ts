@@ -148,6 +148,11 @@ export class SDPPPRunningHub extends Client<{
 
       // If image/file field, submit only the first value
       const ft = String(node.fieldType || '').toUpperCase();
+      if (ft === 'SWITCH') {
+        const normalizedValue = this.normalizeSwitchFieldValue(node, fieldValue);
+        log('switch field normalized', { nodeKey, rawValue: fieldValue, normalizedValue });
+        fieldValue = normalizedValue;
+      }
       if (ft === 'IMAGE' || ft === 'FILE') {
         if (Array.isArray(fieldValue)) {
           const first = fieldValue[0];
@@ -172,6 +177,32 @@ export class SDPPPRunningHub extends Client<{
         fieldValue,
       };
     });
+  }
+
+  private normalizeSwitchFieldValue(node: any, rawValue: any): any {
+    if (rawValue === undefined || rawValue === null) return rawValue;
+    const candidates = this.parseFieldData(node?.fieldData);
+    const byName = candidates.find(item => item && typeof item === 'object' && String(item.name) === String(rawValue));
+    if (byName && byName.index !== undefined) return byName.index;
+    const byFastIndex = candidates.find(item => item && typeof item === 'object' && String(item.fastIndex) === String(rawValue));
+    if (byFastIndex && byFastIndex.index !== undefined) return byFastIndex.index;
+    const byIndex = candidates.find(item => item && typeof item === 'object' && String(item.index) === String(rawValue));
+    if (byIndex && byIndex.index !== undefined) return byIndex.index;
+    return rawValue;
+  }
+
+  private parseFieldData(fieldData: any): any[] {
+    if (!fieldData) return [];
+    if (Array.isArray(fieldData)) return fieldData;
+    if (typeof fieldData === 'string') {
+      try {
+        const parsed = JSON.parse(fieldData);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+    return [];
   }
 
   private mapStatusToChineseMessage(status: string): string {

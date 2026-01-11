@@ -31,7 +31,6 @@ export function registerCombineByCbmAction(context: ImagingActionContext): void 
     (async (params: CombineByCbmParams) => materializeCombineByCbm(mesh, params));
 
   mcpMesh.implementAction("fileResource.combineByCBM", async (rawParams?: CombineByCbmParams) => {
-    console.info("[fileResource.combineByCBM] invoked", rawParams);
     const actionLog = createPerfTracker("fileResource.combineByCBM.action");
     try {
       actionLog("start");
@@ -64,12 +63,6 @@ async function materializeCombineByCbm(
     boundaryUri: params.boundaryUri ?? null,
     contentUri: params.contentUri ?? null,
     maskUri: params.maskUri ?? null
-  });
-  console.log("[combineByCBM][调试] 接收到参数", {
-    boundaryUri: params.boundaryUri ?? null,
-    contentUri: params.contentUri ?? null,
-    maskUri: params.maskUri ?? null,
-    thumbnail: params.thumbnail ?? false
   });
   const contentUri = normalizeUri(params.contentUri);
   const maskUri = normalizeUri(params.maskUri);
@@ -105,13 +98,6 @@ async function materializeCombineByCbm(
   const contentSnapshot = await loadContentSnapshotJimp(mesh, boundaryUri, contentUri, {
     prebuiltParams: contentParams
   });
-  console.info("[fileResource.combineByCBM] contentSnapshot", {
-    contentUri,
-    boundaryUri,
-    fromFileResource: contentIsFileResource,
-    width: contentSnapshot.jimp.bitmap.width,
-    height: contentSnapshot.jimp.bitmap.height
-  });
   perfLog("materialize.content.load.completed", {
     width: contentSnapshot.jimp.bitmap.width,
     height: contentSnapshot.jimp.bitmap.height
@@ -132,11 +118,6 @@ async function materializeCombineByCbm(
     boundaryUri,
     contentUri
   };
-  console.log("[combineByCBM][调试] 内容图像已就绪", {
-    width: contentImage.bitmap.width,
-    height: contentImage.bitmap.height,
-    contentIsFileResource
-  });
 
   if (maskUri && !maskIsEmpty) {
     perfLog("materialize.mask.load.start", { maskIsFileResource });
@@ -145,13 +126,6 @@ async function materializeCombineByCbm(
       throw new Error("Unable to resolve mask snapshot");
     }
     perfLog("materialize.mask.load.completed", {
-      width: maskSnapshot.jimp.bitmap.width,
-      height: maskSnapshot.jimp.bitmap.height
-    });
-    console.info("[fileResource.combineByCBM] maskSnapshot", {
-      maskUri,
-      boundaryUri,
-      fromFileResource: maskIsFileResource,
       width: maskSnapshot.jimp.bitmap.width,
       height: maskSnapshot.jimp.bitmap.height
     });
@@ -165,12 +139,6 @@ async function materializeCombineByCbm(
         height: maskImage.bitmap.height
       });
     }
-    console.log("[combineByCBM][调试] 遮罩图像已就绪", {
-      width: maskImage.bitmap.width,
-      height: maskImage.bitmap.height,
-      maskIsFileResource,
-      reverse: maskSnapshot.reverse ?? null
-    });
 
     const normalizedMaskSnapshot: MaskSnapshot = {
       ...createSnapshot(maskImage),
@@ -185,21 +153,6 @@ async function materializeCombineByCbm(
     });
     snapshot = applicationResult.snapshot;
     const maskStats = applicationResult.stats ?? null;
-    console.log("[combineByCBM][调试] 遮罩已应用", {
-      invertMask,
-      maskedPixels: maskStats?.maskedPixels ?? null,
-      totalPixels: maskStats?.totalPixels ?? null,
-      coverage: maskStats
-        ? Number(((maskStats.maskedPixels / Math.max(1, maskStats.totalPixels)) * 100).toFixed(2))
-        : null,
-      maskAlphaZeroPixels: maskStats?.maskAlphaZeroPixels ?? null,
-      maskAlphaNonZeroPixels: maskStats?.maskAlphaNonZeroPixels ?? null,
-      invertMaskApplied: maskStats?.invertMaskApplied ?? null,
-      alphaRemovalAverage: maskStats?.alphaRemovalAverage ?? null,
-      alphaRemovalAverageNormalized: maskStats?.alphaRemovalAverageNormalized ?? null,
-      alphaRemovalMax: maskStats?.alphaRemovalMax ?? null,
-      stronglyMaskedPixels: maskStats?.stronglyMaskedPixels ?? null
-    });
     meta.maskApplied = maskUri;
     meta.maskStats = applicationResult.stats;
     perfLog("materialize.mask.apply.completed", {
@@ -215,11 +168,6 @@ async function materializeCombineByCbm(
   perfLog("materialize.completed", {
     outputWidth: snapshot.image.bitmap.width,
     outputHeight: snapshot.image.bitmap.height
-  });
-  console.log("[combineByCBM][调试] 合成完成", {
-    outputWidth: snapshot.image.bitmap.width,
-    outputHeight: snapshot.image.bitmap.height,
-    hasMaskApplied: Boolean(meta.maskApplied)
   });
   return {
     type: "image",

@@ -79,7 +79,6 @@ async function materializeContentOnly(mesh: any, params: CreateByContentParams):
 
   const log = createPerfTracker("fileResource.createByContent.materialize");
   log("boundaryResolved", { boundaryUri: boundaryUri ?? null });
-
   const contentSnapshot = await loadContentSnapshot(mesh, boundaryUri, contentUri, {
     maxSizeOverride: 0
   });

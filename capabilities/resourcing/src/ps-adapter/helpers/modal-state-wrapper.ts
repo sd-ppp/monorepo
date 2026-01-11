@@ -3,18 +3,20 @@ import type { Document } from "photoshop/dom/Document";
 import type { Layer } from "photoshop/dom/Layer";
 
 export class ModalStateRestorer {
-    private promise: Promise<void>;
-    public restore: (success: boolean) => void;
+    private callbacks: Array<(success: boolean) => void | Promise<void>> = [];
 
-    constructor() {
-        this.restore = () => {};
-        this.promise = new Promise<void>((resolve) => {
-            this.restore = resolve;
-        });
+    public add(fn: (success: boolean) => void | Promise<void>): void {
+        this.callbacks.push(fn);
     }
 
-    public add(fn: (success: boolean) => void): void {
-        this.promise.then(fn);
+    public async restore(success: boolean): Promise<void> {
+        for (const callback of this.callbacks) {
+            try {
+                await callback(success);
+            } catch {
+                // Swallow restorer callback errors to continue restoring others.
+            }
+        }
     }
 }
 
@@ -63,6 +65,7 @@ export async function runNextModalState(
     }
 
     let suspensionID: any = null;
+    let historySuspended = false;
     modalStatePromise = modalStatePromise.catch((e) => e).then(() => {
         return new Promise<void>((resolve) => {
             checkModal();
@@ -73,26 +76,41 @@ export async function runNextModalState(
         });
     }).then(() => {
         return core.executeAsModal(async (executionContext, ...args: any[]) => {
-            suspensionID = suspendHistory && options.document
-                ? await executionContext.hostControl.suspendHistory({
-                    documentID: options.document.id,
-                    name: commandName
-                })
-                : null;
+            if (suspendHistory && options.document) {
+                try {
+                    suspensionID = await executionContext.hostControl.suspendHistory({
+                        documentID: options.document.id,
+                        name: commandName
+                    });
+                    historySuspended = Boolean(suspensionID);
+                } catch (error) {
+                    suspensionID = null;
+                    historySuspended = false;
+                }
+            } else {
+                suspensionID = null;
+                historySuspended = false;
+            }
             restorer.add(async () => {
                 await new Promise(requestAnimationFrame);
                 if (!anyLayerSelectedChanged) {
-                    if (suspendHistory && suspensionID) {
-                        executionContext.hostControl.resumeHistory(suspensionID);
+                    if (historySuspended && suspensionID) {
+                        try {
+                            await executionContext.hostControl.resumeHistory(suspensionID);
+                            historySuspended = false;
+                            suspensionID = null;
+                        } catch (resumeError) {
+                            throw resumeError;
+                        }
                     }
                 }
             });
             try {
                 const ret = await fn(restorer, executionContext, ...args);
-                restorer.restore(true);
+                await restorer.restore(true);
                 return ret;
             } catch (e) {
-                restorer.restore(false);
+                await restorer.restore(false);
                 throw e;
             }
         }, { commandName: Math.random().toString() });
@@ -110,8 +128,14 @@ export async function runNextModalState(
             activeLayers.forEach((layer, index) => {
                 layer.visible = formerActiveLayersVisible[index];
             });
-            if (suspendHistory && suspensionID) {
-                executionContext.hostControl.resumeHistory(suspensionID);
+            if (historySuspended && suspensionID) {
+                try {
+                    await executionContext.hostControl.resumeHistory(suspensionID);
+                    historySuspended = false;
+                    suspensionID = null;
+                } catch (resumeError) {
+                    throw resumeError;
+                }
             }
         }, {
             commandName,

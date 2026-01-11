@@ -88,7 +88,7 @@ export const MainStore = create<{
                 const thumbnailAction = photoshopActions['fileResource.thumbnail'];
 
                 if (typeof thumbnailAction === 'function') {
-                    const thumbRes = await thumbnailAction.call(photoshopActions, { resource })
+                    const thumbRes = await thumbnailAction.call(photoshopActions, { resource, maxSize: 512 })
                     thumbnail = thumbRes?.thumbnail ?? thumbnail
                 }
             } catch (error) {

@@ -48,7 +48,8 @@ const DATA_URL_REGEX = /^data:([^;,]+)?(;base64)?,(.*)$/i;
 const perfLogger = sdpppLogger.extend("perf");
 const PERF_ALLOWED_REGEX = /^fileResource\.(createBy|createFrom|combineBy)[^.]+\.action$/;
 
-const shouldLogPerf = (label: string): boolean => PERF_ALLOWED_REGEX.test(label);
+const shouldLogPerf = (label: string): boolean =>
+  label !== "fileResource.combineByCBM.action" && PERF_ALLOWED_REGEX.test(label);
 
 export type CbmMaterializeRequest = {
   contentUri?: string;
@@ -534,11 +535,6 @@ export async function loadContentSnapshotJimp(
         width: cached.image.bitmap.width,
         height: cached.image.bitmap.height
       });
-      console.info("[fileResource.combineByCBM] loadContentSnapshotJimp cacheHit", {
-        resourceId: normalizedFile.resourceId,
-        width: cached.image.bitmap.width,
-        height: cached.image.bitmap.height
-      });
       if (options?.maxSizeOverride) {
         resizeImageToMaxSize(cached.image, options.maxSizeOverride);
       }
@@ -554,11 +550,6 @@ export async function loadContentSnapshotJimp(
           height: cachedThumbnail.height
         });
         const jimpImage = await Jimp.read(Buffer.from(cachedThumbnail.buffer));
-        console.info("[fileResource.combineByCBM] loadContentSnapshotJimp thumbnailFallback", {
-          resourceId: normalizedFile.resourceId,
-          width: jimpImage.bitmap.width,
-          height: jimpImage.bitmap.height
-        });
         return {
           jimp: jimpImage
         };
@@ -567,11 +558,6 @@ export async function loadContentSnapshotJimp(
     const fetchLog = createPerfTracker("loadContentSnapshotJimp.resolveSharedBuffer");
     const { buffer } = await resolveSharedResourceBuffer(normalizedFile.resourceId);
     const jimpImage = await Jimp.read(Buffer.from(buffer));
-    console.info("[fileResource.combineByCBM] loadContentSnapshotJimp cacheMiss", {
-      resourceId: normalizedFile.resourceId,
-      width: jimpImage.bitmap.width,
-      height: jimpImage.bitmap.height
-    });
     if (options?.maxSizeOverride) {
       resizeImageToMaxSize(jimpImage, options.maxSizeOverride);
     }
@@ -826,173 +812,6 @@ function resizeImageToMaxSize(image: Jimp, maxSize?: number) {
     w: targetWidth,
     h: targetHeight
   });
-}
-
-export async function materializeFromCBM(mesh: any, params: CbmMaterializeRequest): Promise<MaterializedCbmPayload> {
-  const log = createPerfTracker("materializeFromCBM");
-  log("start", {
-    hasContent: Boolean(params.contentUri),
-    hasMask: Boolean(params.maskUri),
-    boundaryUri: params.boundaryUri
-  });
-  const contentUri = normalizeUri(params.contentUri);
-  const maskUri = normalizeUri(params.maskUri);
-  const maskIsCanvas = maskUri ? isCanvasMaskUri(maskUri) : false;
-  const parsedMask = maskUri && maskUri.startsWith("uxp://mask/") ? parseMaskResource(maskUri) : null;
-  const maskIsEmpty = parsedMask?.content === "empty";
-  const maskIsFileResource = Boolean(maskUri && maskUri.startsWith("uxp://file/"));
-  const contentIsFileResource = Boolean(contentUri && contentUri.startsWith("uxp://file/"));
-
-  if (!contentUri && !maskUri) {
-    throw new Error("contentUri or maskUri must be provided");
-  }
-
-  const boundaryUri = await resolveEffectiveBoundaryUri(params);
-  log("boundaryResolved", { boundaryUri });
-  const shouldDeferBoundaryCrop = Boolean(contentUri && boundaryUri && maskUri && !maskIsCanvas && !maskIsEmpty);
-  const forceBoundaryCropFromFile = contentIsFileResource && Boolean(params.boundaryUri);
-  const boundaryOverride: BoundaryFetchSpec | undefined = shouldDeferBoundaryCrop ? "canvas" : undefined;
-
-  if (!contentUri && maskUri) {
-    const maskLog = createPerfTracker("materializeFromCBM.maskOnly.load");
-    const maskSnapshot = await loadMaskSnapshotForMaterializer(mesh, boundaryUri, maskUri);
-    maskLog("completed", {
-      hasSnapshot: Boolean(maskSnapshot),
-      width: maskSnapshot?.jimp?.bitmap.width,
-      height: maskSnapshot?.jimp?.bitmap.height
-    });
-    if (!maskSnapshot) {
-      throw new Error("Unable to resolve mask snapshot");
-    }
-    log("maskOnlyReady", {
-      width: maskSnapshot.jimp.bitmap.width,
-      height: maskSnapshot.jimp.bitmap.height
-    });
-    return {
-      type: "mask",
-      image: maskSnapshot.jimp,
-      mime: PNG_MIME,
-      meta: {
-        boundaryUri,
-        sourceMaskUri: maskUri
-      }
-    };
-  }
-
-  if (!contentUri) {
-    throw new Error("contentUri is required when maskUri is not provided");
-  }
-
-  const boundaryDetails = parseBoundaryResource(boundaryUri);
-  const contentParams = contentIsFileResource
-    ? {
-        boundary: boundaryDetails.boundary,
-        content: "canvas" as const,
-        imageSize: boundaryDetails.imageSize ?? 0,
-        imageQuality: boundaryDetails.imageQuality ?? 1,
-        layer_identify: null
-      }
-    : buildGetImageParamsFromResources(boundaryUri, contentUri);
-  const contentTimer = createPerfTracker("materializeFromCBM.content.load");
-  const contentSnapshot = await loadContentSnapshotJimp(mesh, boundaryUri, contentUri, {
-    boundaryOverride,
-    prebuiltParams: contentParams
-  });
-  contentTimer("completed", {
-    width: contentSnapshot.jimp.bitmap.width,
-    height: contentSnapshot.jimp.bitmap.height
-  });
-
-  let snapshot = createSnapshot(contentSnapshot.jimp);
-  const meta: Record<string, unknown> = {
-    boundaryUri,
-    contentUri
-  };
-  const projectedBoundary = projectBoundaryRectFromResource(boundaryUri);
-  if (projectedBoundary && contentIsFileResource) {
-    snapshot.image.resize({
-      w: projectedBoundary.docWidth,
-      h: projectedBoundary.docHeight
-    });
-    snapshot.rect = ensurePositiveRect({
-      x: 0,
-      y: 0,
-      width: projectedBoundary.docWidth,
-      height: projectedBoundary.docHeight
-    });
-  }
-
-  if (maskUri && !maskIsCanvas && !maskIsEmpty) {
-    const maskTimer = createPerfTracker("materializeFromCBM.mask.load");
-    const maskSnapshot = await loadMaskSnapshotForMaterializer(
-      mesh,
-      boundaryUri,
-      maskUri,
-      boundaryOverride ? { boundaryOverride } : undefined
-    );
-    maskTimer("completed", {
-      hasSnapshot: Boolean(maskSnapshot),
-      width: maskSnapshot?.jimp?.bitmap.width,
-      height: maskSnapshot?.jimp?.bitmap.height
-    });
-    if (!maskSnapshot) {
-      throw new Error("Unable to resolve mask snapshot");
-    }
-    const normalizedMaskSnapshot: MaskSnapshot = {
-      ...createSnapshot(maskSnapshot.jimp),
-      maskRegion: null
-    };
-    if (projectedBoundary && maskIsFileResource) {
-      normalizedMaskSnapshot.image.resize({
-        w: projectedBoundary.docWidth,
-        h: projectedBoundary.docHeight
-      });
-      normalizedMaskSnapshot.rect = ensurePositiveRect({
-        x: 0,
-        y: 0,
-        width: projectedBoundary.docWidth,
-        height: projectedBoundary.docHeight
-      });
-    }
-    const invertSettingEnabled = Number(sdpppX["settings.imaging.applyMaskInvert"]) === 1;
-    const reverseFlag = maskSnapshot.reverse === true;
-    const invertMask = Boolean(invertSettingEnabled) !== reverseFlag;
-    const applyTimer = createPerfTracker("materializeFromCBM.mask.apply");
-    const applicationResult = await applyMaskToSnapshot(snapshot, {
-      maskSnapshot: normalizedMaskSnapshot,
-      invertMask
-    });
-    snapshot = applicationResult.snapshot;
-    meta.maskApplied = maskUri;
-    meta.maskStats = applicationResult.stats;
-    if (maskSnapshot.reverse !== undefined) {
-      meta.maskReverse = maskSnapshot.reverse;
-    }
-    applyTimer("completed");
-  } else if (maskIsEmpty) {
-    log("maskSkipped.empty", { maskUri });
-  }
-
-  if (projectedBoundary) {
-    snapshot = await cropSnapshot(snapshot, projectedBoundary.cropRect);
-    meta.boundaryDeferred = true;
-  } else if (shouldDeferBoundaryCrop || forceBoundaryCropFromFile) {
-    const boundaryType = typeof contentParams.boundary === "string" ? contentParams.boundary : "rect";
-    if (boundaryType !== "canvas") {
-      console.warn("[createFromCBM] boundary crop skipped: unsupported boundary", {
-        boundaryUri,
-        boundaryType
-      });
-    }
-  }
-  log("contentReady", { width: snapshot.image.bitmap.width, height: snapshot.image.bitmap.height });
-
-  return {
-    type: "image",
-    image: snapshot.image,
-    mime: PNG_MIME,
-    meta
-  };
 }
 
 export const normalizeContentParams = (params?: CreateByContentParams): CreateByContentParams => ({
