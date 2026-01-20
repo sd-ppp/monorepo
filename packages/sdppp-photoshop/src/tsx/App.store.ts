@@ -7,6 +7,8 @@ import { createFileResourceFromExternal } from '@sdppp/resourcing/src/@sideweb/f
 import { loadRemoteConfig } from '@sdppp/vite-remote-config-loader'
 import { buildBoundaryUri } from '@sdppp/resourcing/src/resource-uris'
 
+export type SendMode = 'smartobject' | 'newdoc' | 'selection';
+
 export const MainStore = create<{
     provider: (keyof typeof Providers) | ''
     previewImageList: {
@@ -27,6 +29,9 @@ export const MainStore = create<{
     }[]
     showingPreview: boolean
     previewError: string
+    autoSendMode: SendMode | null
+    autoSendSending: boolean
+    autoSendSendingAll: boolean
     downloadAndAppendImage: (image: {
         url: string,
         source: string,
@@ -39,8 +44,15 @@ export const MainStore = create<{
     deletePreviewImages: (keys: string[]) => Promise<void>
     setShowingPreview: (showing: boolean) => void
     setPreviewError: (error: string) => void
+    setAutoSendMode: (mode: SendMode | null) => void
+    toggleAutoSendMode: (mode: SendMode) => void
+    setAutoSendSending: (sending: boolean) => void
+    setAutoSendSendingAll: (sending: boolean) => void
 }>()(persist((set) => ({
     provider: '',
+    autoSendMode: null,
+    autoSendSending: false,
+    autoSendSendingAll: false,
     previewImageList: [
     ],
     downloadAndAppendImage: async (
@@ -182,7 +194,13 @@ export const MainStore = create<{
     showingPreview: false,
     previewError: '',
     setPreviewError: (error: string) => set({ previewError: error }),
-    setShowingPreview: (showing: boolean) => set({ showingPreview: showing })
+    setShowingPreview: (showing: boolean) => set({ showingPreview: showing }),
+    setAutoSendMode: (mode: SendMode | null) => set({ autoSendMode: mode }),
+    toggleAutoSendMode: (mode: SendMode) => set((state) => ({
+        autoSendMode: state.autoSendMode === mode ? null : mode
+    })),
+    setAutoSendSending: (sending: boolean) => set({ autoSendSending: sending }),
+    setAutoSendSendingAll: (sending: boolean) => set({ autoSendSendingAll: sending })
 }), {
     name: 'main-store',
     storage: createJSONStorage(() => ({
@@ -199,6 +217,7 @@ export const MainStore = create<{
     })),
     partialize: (state) => ({
         provider: state.provider,
+        autoSendMode: state.autoSendMode,
     }),
     onRehydrateStorage: () => (state) => {
         if (state?.previewImageList) {

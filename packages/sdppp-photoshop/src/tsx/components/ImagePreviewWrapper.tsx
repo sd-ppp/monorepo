@@ -28,9 +28,9 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
   const { t } = useTranslation();
   const images = MainStore(state => state.previewImageList);
   const [currentIndex, setCurrentIndex] = React.useState(0);
-  const [sending, setSending] = React.useState(false);
-  const [sendingAll, setSendingAll] = React.useState(false);
-  const [autoMode, setAutoMode] = React.useState<SendMode | null>(null);
+  const autoMode = MainStore(state => state.autoSendMode);
+  const sending = MainStore(state => state.autoSendSending);
+  const sendingAll = MainStore(state => state.autoSendSendingAll);
   const log = React.useMemo(() => {
     return typeof sdpppSDK?.logger?.extend === 'function'
       ? sdpppSDK.logger.extend('photoshop:image-preview')
@@ -128,7 +128,7 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
   // Internal helper to send a specific index
   const sendToPSAtIndex = async (index: number, mode: SendMode) => {
     try {
-      setSending(true);
+      MainStore.getState().setAutoSendSending(true);
       const resource = images[index].resource;
       if (!resource) {
         console.warn('[ImagePreviewWrapper] Missing resource for import', images[index]);
@@ -150,7 +150,7 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
     } catch (error) {
       console.warn('[ImagePreviewWrapper] sendToPSAtIndex failed', error);
     } finally {
-      setSending(false);
+      MainStore.getState().setAutoSendSending(false);
     }
   };
 
@@ -159,12 +159,8 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
   };
 
   const toggleAutoMode = React.useCallback((mode: SendMode) => {
-    setAutoMode(prev => {
-      const next = prev === mode ? null : mode;
-      autoModeRef.current = next;
-      logMessage('toggleAutoMode', { previous: prev, next, mode });
-      return next;
-    });
+    MainStore.getState().toggleAutoSendMode(mode);
+    logMessage('toggleAutoMode', { mode });
   }, [logMessage]);
 
   const handleModeButtonClick = React.useCallback((mode: SendMode) => async (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -209,7 +205,7 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
       return;
     }
     try {
-      setSending(true);
+      MainStore.getState().setAutoSendSending(true);
       logMessage('sendResourceByUrl importing', {
         url,
         mode,
@@ -226,7 +222,7 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
     } catch (error) {
       console.warn('[ImagePreviewWrapper] auto send failed', error);
     } finally {
-      setSending(false);
+      MainStore.getState().setAutoSendSending(false);
     }
   };
 
@@ -263,7 +259,7 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
   };
 
   const handleSendAll = async (event?: React.MouseEvent) => {
-    setSendingAll(true);
+    MainStore.getState().setAutoSendSendingAll(true);
     try {
       const imageItems = images.filter(image => isImage(image.url));
       if (imageItems.length === 0) {
@@ -286,7 +282,7 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
       });
       await Promise.all(promises);
     } finally {
-      setSendingAll(false);
+      MainStore.getState().setAutoSendSendingAll(false);
     }
   };
 

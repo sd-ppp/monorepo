@@ -59,10 +59,51 @@ export class SDPPPCustomAPI extends Client<{
 
     ];
 
-    const defaultInput = {
+    // Add aspectRatio and imageSize only for Google format
+    if (this.config.format === 'google') {
+      widgetableNodes.push(
+        {
+          id: 'aspectRatio',
+          title: t('google.field.aspect_ratio', { defaultMessage: 'Aspect Ratio' }),
+          widgets: [{
+            name: '',
+            uiWeight: 12,
+            outputType: 'combo',
+            options: {
+              required: false,
+              values: ['1:1', '16:9', '9:16', '4:3', '3:4', '21:9', '3:2', '2:3'],
+              labels: ['1:1 (Square)', '16:9 (Landscape)', '9:16 (Portrait)', '4:3 (Landscape)', '3:4 (Portrait)', '21:9 (Ultrawide)', '3:2 (Landscape)', '2:3 (Portrait)']
+            }
+          }],
+          uiWeightSum: 12
+        },
+        {
+          id: 'imageSize',
+          title: t('google.field.image_size', { defaultMessage: 'Image Size' }),
+          widgets: [{
+            name: '',
+            uiWeight: 12,
+            outputType: 'combo',
+            options: {
+              required: false,
+              values: ['1K', '2K', '4K'],
+              labels: ['1K (Standard)', '2K (High)', '4K (Ultra)']
+            }
+          }],
+          uiWeightSum: 12
+        }
+      );
+    }
+
+    const defaultInput: Record<string, any> = {
       image_input: null,
       prompt: ''
     };
+
+    if (this.config.format === 'google') {
+      defaultInput.aspectRatio = '1:1';
+      defaultInput.imageSize = '1K';
+    }
 
     return {
       widgetableNodes,
@@ -71,7 +112,7 @@ export class SDPPPCustomAPI extends Client<{
     };
   }
 
-  async run(model: string, input: { image_input: string | string[], prompt: string }, signal?: AbortSignal): Promise<Task<any>> {
+  async run(model: string, input: { image_input: string | string[], prompt: string, aspectRatio?: string, imageSize?: string }, signal?: AbortSignal): Promise<Task<any>> {
     try {
       // Check if already aborted
       if (signal?.aborted) {
@@ -113,13 +154,24 @@ export class SDPPPCustomAPI extends Client<{
                   console.log('Starting Gemini image generation via mesh action...');
                   // Determine type: if every input is a data URL, treat as base64; otherwise tokens
                   const areAllDataUrls = inputsArray.every(v => typeof v === 'string' && v.startsWith('data:'));
-                  taskResult = await sdpppSDK.plugins.photoshop.geminiImageGenerate({
+                  const geminiParams: any = {
                     apiKey: this.config.apiKey,
                     baseURL: this.config.baseURL,
+                    model,
                     imageInputs: inputsArray as any,
                     imageInputType: (areAllDataUrls ? 'base64' : 'token') as any,
                     prompt: input.prompt
-                  }, signal);
+                  };
+                  
+                  // Add aspectRatio and imageSize if provided
+                  if (input.aspectRatio) {
+                    geminiParams.aspectRatio = input.aspectRatio;
+                  }
+                  if (input.imageSize) {
+                    geminiParams.imageSize = input.imageSize;
+                  }
+                  
+                  taskResult = await sdpppSDK.plugins.photoshop.geminiImageGenerate(geminiParams, signal);
                 } else {
                   console.log('Starting OpenAI image edit via mesh action...');
                   taskResult = await sdpppSDK.plugins.photoshop.openaiImageEdit({
