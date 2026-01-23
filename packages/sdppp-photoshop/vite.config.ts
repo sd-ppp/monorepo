@@ -1,8 +1,20 @@
+import { remoteConfigLoader } from '@sdppp/vite-remote-config-loader/vite';
 import react from '@vitejs/plugin-react';
-import { copyFileSync, existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { resolve } from 'path';
 import { defineConfig } from 'vite';
-import { remoteConfigLoader } from '@sdppp/vite-remote-config-loader/vite';
+
+function reactDevOnlyPlugin() {
+  const matcher = /node_modules\/(react|react-dom)\//;
+  return {
+    name: 'react-dev-only',
+    enforce: 'pre',
+    transform(code, id) {
+      if (!matcher.test(id)) return null;
+      return { code: code.replaceAll('process.env.NODE_ENV', '"development"'), map: null };
+    }
+  };
+}
 
 // 自定义插件来处理 sdpppX.js 文件
 function sdpppXPlugin() {
@@ -160,7 +172,7 @@ function copyPublicAssetsPlugin() {
 }
 
 export default defineConfig({
-  plugins: [react(), sdpppXPlugin(), moveScriptToBodyPlugin(), sdkPlugin(), copyPublicAssetsPlugin(),
+  plugins: [react(), reactDevOnlyPlugin(), sdpppXPlugin(), moveScriptToBodyPlugin(), sdkPlugin(), copyPublicAssetsPlugin(),
     remoteConfigLoader({
       configs: [
         {
@@ -172,14 +184,14 @@ export default defineConfig({
   ],
   resolve: {
     // Ensure single instances across workspace to keep React/Antd contexts unified
-    dedupe: ['react', 'react-dom', 'antd']
+    dedupe: ['react', 'react-dom', 'antd'],
+    conditions: ['development', 'browser', 'module']
   },
   define: {
     SDPPP_VERSION: readFileSync(resolve(import.meta.dirname, '../../release-repos/sd-ppp/sdppp_python/version2.txt'), 'utf-8').trim(),
   },
   base: './',
   build: {
-    // minify: false,
     emptyOutDir: false, // 构建前不清理目标目录
     outDir: resolve(import.meta.dirname, './plugin/webview'),
     rollupOptions: {
@@ -197,5 +209,5 @@ export default defineConfig({
   },
   server: {
     port: 19920,
-  } 
-}); 
+  }
+});

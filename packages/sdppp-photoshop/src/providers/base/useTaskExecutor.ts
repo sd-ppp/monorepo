@@ -1,4 +1,5 @@
 import { t, sdpppSDK } from '@sdppp/common';
+import { buildBoundaryUri } from '@sdppp/resourcing/src/resource-uris';
 import { useEffect, useState } from 'react';
 import { MainStore } from '../../tsx/App.store';
 import { useUploadPasses } from './upload-pass-context';
@@ -61,8 +62,19 @@ export function useTaskExecutor({
 
         setProgressMessage(t('task.creating_task'));
         // 在任务开始时读取并冻结 docId 与 boundary，保持与 ComfyTask 一致
-        const docIdAtStart = sdpppSDK.stores.PhotoshopStore.getState().activeDocumentID;
-        const boundaryAtStart = sdpppSDK.stores.WebviewStore.getState().workBoundaries[docIdAtStart];
+        const docIdAtStart = sdpppSDK.stores.PhotoshopStore.getState().activeDocumentID ?? 0;
+        const webviewStateAtStart = sdpppSDK.stores.WebviewStore.getState();
+        const boundaryAtStart = webviewStateAtStart?.workBoundaries?.[docIdAtStart] ?? null;
+        const sizeLimitAtStart = webviewStateAtStart?.workBoundaryMaxSizes?.[docIdAtStart];
+        const imageQualityAtStart = webviewStateAtStart?.workBoundaryImageQualities?.[docIdAtStart];
+        const boundaryUriAtStart = buildBoundaryUri(docIdAtStart, boundaryAtStart ?? null, {
+            imageSize: typeof sizeLimitAtStart === 'number' && Number.isFinite(sizeLimitAtStart) && sizeLimitAtStart > 0
+                ? Math.round(sizeLimitAtStart)
+                : undefined,
+            imageQuality: typeof imageQualityAtStart === 'number' && Number.isFinite(imageQualityAtStart)
+                ? Math.round(imageQualityAtStart)
+                : undefined,
+        });
         
         // 在创建任务前调用 hook 来修改 currentValues
         const liveValues = getCurrentValues ? getCurrentValues() : currentValues;
@@ -80,7 +92,9 @@ export function useTaskExecutor({
                         url: output.url,
                         source: 'remote',
                         docId: docIdAtStart,
-                        boundary: boundaryAtStart,
+                        boundaryUri: boundaryUriAtStart,
+                        maskUri: null,
+                        maskHandle: null,
                     })));
 
                 } catch (error: any) {

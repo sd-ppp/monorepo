@@ -31,46 +31,53 @@ export const WidgetableMasksWidgetSchema = z.object({
 })
 export const WidgetableStringWidgetSchema = z.object({
     ...WidgetableBaseWidgetSchemaPart,
-        outputType: z.literal('string'),
-        options: z.object({
-            required: z.boolean()
-        })
+    outputType: z.literal('string'),
+    options: z.object({
+        required: z.boolean()
+    })
 })
 export const WidgetableToggleWidgetSchema = z.object({
     ...WidgetableBaseWidgetSchemaPart,
-        outputType: z.literal('boolean'),
-        options: z.object({
-            required: z.boolean()
-        })
+    outputType: z.literal('boolean'),
+    options: z.object({
+        required: z.boolean()
+    })
 })
 export const WidgetableNumberWidgetSchema = z.object({
     ...WidgetableBaseWidgetSchemaPart,
-        outputType: z.literal('number'),
-        options: z.object({
-            required: z.boolean(),
-            min: z.number().optional(),
-            max: z.number().optional(),
-            step: z.number().optional(),
-            random: z.boolean().optional(),
-            slider: z.boolean().optional()
-        })
+    outputType: z.literal('number'),
+    options: z.object({
+        required: z.boolean(),
+        min: z.number().optional(),
+        max: z.number().optional(),
+        step: z.number().optional(),
+        random: z.boolean().optional(),
+        slider: z.boolean().optional()
+    })
 })
 export const WidgetableComboWidgetSchema = z.object({
     ...WidgetableBaseWidgetSchemaPart,
-        outputType: z.literal('combo'),
-        options: z.object({
-            required: z.boolean(),
-            values: z.array(z.string()),
-            labels: z.array(z.string()).optional()
-        })
+    outputType: z.literal('combo'),
+    options: z.object({
+        required: z.boolean(),
+        values: z.array(z.string()),
+        labels: z.array(z.string()).optional()
+    })
 })
 export const WidgetableSegmentWidgetSchema = z.object({
     ...WidgetableBaseWidgetSchemaPart,
-        outputType: z.literal('segment'),
-        options: z.object({
-            required: z.boolean(),
-            values: z.array(z.string())
-        })
+    outputType: z.literal('segment'),
+    options: z.object({
+        required: z.boolean(),
+        values: z.array(z.string())
+    })
+})
+export const WidgetableVideoWidgetSchema = z.object({
+    ...WidgetableBaseWidgetSchemaPart,
+    outputType: z.literal('video'),
+    options: z.object({
+        required: z.boolean(),
+    })
 })
 export const WidgetableWidgetSchema = z.discriminatedUnion("outputType", [
     WidgetableImagesWidgetSchema,
@@ -79,7 +86,8 @@ export const WidgetableWidgetSchema = z.discriminatedUnion("outputType", [
     WidgetableToggleWidgetSchema,
     WidgetableNumberWidgetSchema,
     WidgetableComboWidgetSchema,
-    WidgetableSegmentWidgetSchema
+    WidgetableSegmentWidgetSchema,
+    WidgetableVideoWidgetSchema,
 ])
 export const WidgetableNodeSchema = z.object({
     id: z.string(),

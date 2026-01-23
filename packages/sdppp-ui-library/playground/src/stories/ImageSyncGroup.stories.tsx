@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { useState, useCallback } from 'react';
-import { ImageSyncGroup } from 'react-antd-tailwind-ui';
-import type { ButtonConfig } from 'react-antd-tailwind-ui';
+import { ImageSyncGroup } from '@sdppp/ui-library';
+import type { ButtonConfig } from '@sdppp/ui-library';
 
 const meta: Meta<typeof ImageSyncGroup> = {
   title: 'Components/ImageSyncGroup',
@@ -65,7 +65,7 @@ export const Default: Story = {
         buttons={buttons}
         onSync={async (id) => handleSync(id)}
         onAutoSyncChange={() => {}}
-        buttonWidth={140}
+        buttonSize={140}
       />
     );
   },

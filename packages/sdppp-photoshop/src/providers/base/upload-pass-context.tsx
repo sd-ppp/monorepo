@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, ReactNode, useContext } from 'react';
+import { t } from '@sdppp/common';
 import { z } from 'zod';
 import { createStore } from 'zustand';
 
@@ -44,7 +45,7 @@ export function UploadPassProvider({ children, uploader }: UploadPassProviderPro
   const value: UploadPassContextType = {
     runUploadPassOnce: async (pass: UploadPass) => {
       if (!uploader) {
-        throw new Error('Uploader not set');
+        throw new Error(t('upload_pass.error.uploader_missing', { defaultValue: 'Uploader not set' }));
       }
       const runID = crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`;
       const abortController = new AbortController();
@@ -107,7 +108,7 @@ export function UploadPassProvider({ children, uploader }: UploadPassProviderPro
     },
     waitAllUploadPasses: async () => {
       if (!uploader) {
-        throw new Error('Uploader not set');
+        throw new Error(t('upload_pass.error.uploader_missing', { defaultValue: 'Uploader not set' }));
       }
       const promisesFromUploadPasses = uploadPassesStore.getState().uploadPasses.map(async pass => {
         try {
@@ -135,4 +136,3 @@ export function useUploadPasses() {
   if (!ctx) throw new Error('useUploadPasses must be used within an UploadPassProvider');
   return ctx;
 }
-

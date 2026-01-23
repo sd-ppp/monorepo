@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { fn } from '@storybook/test';
 import { StringWidget } from './string';
 
 const meta: Meta<typeof StringWidget> = {
@@ -10,7 +9,7 @@ const meta: Meta<typeof StringWidget> = {
   },
   tags: ['autodocs'],
   args: {
-    onValueChange: fn(),
+    onValueChange: () => undefined,
   },
 };
 

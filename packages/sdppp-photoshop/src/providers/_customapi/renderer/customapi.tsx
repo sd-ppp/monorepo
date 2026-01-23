@@ -1,15 +1,17 @@
 import { sdpppSDK, useTranslation } from '@sdppp/common';
 import { WidgetableNode } from '@sdppp/common/schemas/schemas';
 import { WidgetableProvider, WorkflowEditApiFormat } from '@sdppp/widgetable-ui';
+import { Alert, Flex, Input, Select } from 'antd';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { UploadPassProvider } from '../../base/upload-pass-context';
-import { Alert, Button, Flex, Input, Select } from 'antd';
-import { useEffect, useMemo, useState, useRef } from 'react';
 import { useTaskExecutor } from '../../base/useTaskExecutor';
 import './customapi.less';
 import { changeSelectedModel, createTask, customapiStore } from './customapi.store';
 // removed help icon
-import { WorkBoundary } from '../../base/components';
-import { createImageMaskWidgetRegistry } from '../../base/widgetable-image-mask/widgetable-widgets';
+import type { WorkflowStatusDescriptor } from '@sdppp/ui-library';
+import { SimpleWorkflowControlPanel } from '../../_comfy_frontend/renderer/components/workflow-detail/components/SimpleWorkflowControlPanel';
+import '../../base/styles/workflow-controls.less';
+import { WidgetablePhotoshopProvider, createImageMaskWidgetRegistry } from '../../base/widgetable-photoshop';
 
 const log = sdpppSDK.logger.extend('customapi')
 
@@ -108,16 +110,30 @@ function CustomAPIRendererModels() {
     return (
         <UploadPassProvider
             uploader={async (uploadInput, signal) => {
-                // return await client.uploadImage(uploadInput.type, uploadInput.tokenOrBuffer, 'png', signal);
-                return uploadInput.tokenOrBuffer as string;
+                if (uploadInput.type === 'buffer') {
+                    const source = uploadInput.resource as any;
+                    const arrayBuffer = source?.data ?? uploadInput.resource;
+                    const bytes = new Uint8Array(arrayBuffer);
+                    const binary = Array.from(bytes)
+                        .map((b) => String.fromCharCode(b))
+                        .join('');
+                    const base64 = typeof btoa === 'function'
+                        ? btoa(binary)
+                        : Buffer.from(arrayBuffer).toString('base64');
+                    const mime = uploadInput.mimeType ?? 'image/png';
+                    return `data:${mime};base64,${base64}`;
+                }
+                return uploadInput.resource as string;
             }}
         >
-        <WidgetableProvider widgetRegistry={createImageMaskWidgetRegistry()}>
-            {/* No help icon or model title header for Custom API */}
-            {!loading && !loadError && <CustomAPIRendererForm />}
-            {loading && <Alert message={t('google.loading')} type="info" showIcon />}
-            {loadError && <Alert message={loadError} type="error" showIcon />}
-        </WidgetableProvider>
+        <WidgetablePhotoshopProvider>
+            <WidgetableProvider widgetRegistry={createImageMaskWidgetRegistry()}>
+                {/* No help icon or model title header for Custom API */}
+                {!loading && !loadError && <CustomAPIRendererForm />}
+                {loading && <Alert message={t('google.loading')} type="info" showIcon />}
+                {loadError && <Alert message={loadError} type="error" showIcon />}
+            </WidgetableProvider>
+        </WidgetablePhotoshopProvider>
         </UploadPassProvider>
     )
 }
@@ -175,25 +191,32 @@ function CustomAPIRendererForm() {
         }
     });
 
+    const translate = t as unknown as (key: string, options?: Record<string, unknown>) => string;
+
     return (
         <>
-            <WorkBoundary />
-            <Button type="primary" onClick={handleRun} disabled={isRunning}>
-                {isRunning ? t('google.generating', 'Generating...') : t('google.generate', 'Generate')}
-            </Button>
-            {progressMessage && (
-                <Alert
-                    message={progressMessage}
-                    type="info"
-                    showIcon
-                    action={canCancel ? (
-                        <Button size="small" type="text" onClick={handleCancel}>
-                            {t('common.cancel')}
-                        </Button>
-                    ) : undefined}
-                />
-            )}
-            {runError && <Alert message={runError} type="error" showIcon />}
+            <SimpleWorkflowControlPanel
+                headerCenter={(
+                    <Flex align="center" justify="center" style={{ width: '100%', color: 'var(--sdppp-host-text-color-secondary)', fontSize: 12 }}>
+                        <span style={{ fontWeight: 500, marginRight: 6 }}>{translate('google.model_label', { defaultMessage: 'Model' })}:</span>
+                        <span style={{ color: 'var(--sdppp-host-text-color)', fontWeight: 600 }}>
+                            {model || translate('google.model_placeholder', { defaultMessage: 'Select a model' })}
+                        </span>
+                    </Flex>
+                )}
+                runTooltip={translate('google.generate', { defaultMessage: 'Generate' })}
+                runDisabled={isRunning || !model}
+                onRun={handleRun}
+                cancelTooltip={translate('google.stop', { defaultMessage: 'Stop' })}
+                canCancel={canCancel}
+                onCancel={handleCancel}
+                status={((): WorkflowStatusDescriptor => {
+                    if (runError) return { type: 'error', message: runError };
+                    if (progressMessage) return { type: 'text', tone: 'secondary', message: progressMessage };
+                    if (isRunning) return { type: 'uploading', message: translate('google.generating', { defaultMessage: 'Generating...' }) };
+                    return { type: 'empty' };
+                })()}
+            />
             {/* Adjust maxCount for OpenAI gpt-image-1 to 1 */}
             <WorkflowEditApiFormat
                 modelName={model}

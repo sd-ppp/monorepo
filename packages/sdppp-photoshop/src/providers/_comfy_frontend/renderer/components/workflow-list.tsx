@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Tree, Alert, Typography, Button, Flex } from "antd";
-import { ReloadOutlined, FileOutlined, FolderOutlined } from "@ant-design/icons";
+import { File, Folder, RotateCcw } from "lucide-react";
 import { useWorkflowListContext, TreeNodeData } from "../comfy_frontend";
 import { useTranslation } from '@sdppp/common';
 import { sdpppSDK } from '@sdppp/common';
@@ -64,11 +64,13 @@ const WorkflowList: React.FC<WorkflowListProps> = ({
     }
   };
 
+  const ICON_SIZE = 16;
+
   const renderTreeIcon = (props: any) => {
     if (props.isLeaf) {
-      return <FileOutlined />;
+      return <File size={ICON_SIZE} />;
     }
-    return <FolderOutlined />;
+    return <Folder size={ICON_SIZE} />;
   };
 
   return (
@@ -79,7 +81,7 @@ const WorkflowList: React.FC<WorkflowListProps> = ({
         </Typography.Title>
         <Button
           type="text"
-          icon={<ReloadOutlined />}
+          icon={<RotateCcw size={ICON_SIZE} />}
           onClick={refetch}
           loading={loading}
           size="small"

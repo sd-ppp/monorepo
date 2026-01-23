@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { Space } from 'antd';
+import type { TooltipPlacement } from 'antd/es/tooltip';
 import { SyncButton } from '../SyncButton/SyncButton';
 
 export interface ButtonConfig {
@@ -23,19 +24,23 @@ export interface ExclusiveSyncGroupProps {
   buttons: ButtonConfig[];
   onSync: (id: string, event: ModifierKeyEvent) => Promise<void>;
   onAutoSyncChange?: (activeId: string | null, event: ModifierKeyEvent) => void;
-  buttonWidth?: number | string;
+  buttonSize?: number | string;
   // Controlled/Uncontrolled support for auto active id
   activeAutoSyncId?: string | null;
   defaultActiveAutoSyncId?: string | null;
+  tooltipPlacement?: TooltipPlacement;
+  autoTooltipPlacement?: TooltipPlacement;
 }
 
 export const ExclusiveSyncGroup: React.FC<ExclusiveSyncGroupProps> = ({
   buttons,
   onSync,
   onAutoSyncChange,
-  buttonWidth,
+  buttonSize,
   activeAutoSyncId: activeAutoSyncIdProp,
   defaultActiveAutoSyncId = null,
+  tooltipPlacement,
+  autoTooltipPlacement,
 }) => {
   const [syncingStates, setSyncingStates] = useState<Record<string, boolean>>({});
   const [activeAutoSyncIdState, setActiveAutoSyncIdState] = useState<string | null>(defaultActiveAutoSyncId);
@@ -76,7 +81,7 @@ export const ExclusiveSyncGroup: React.FC<ExclusiveSyncGroupProps> = ({
       {buttons.map(config => (
         <SyncButton
           key={config.id}
-          buttonWidth={buttonWidth}
+          buttonSize={buttonSize}
           data-testid={`sync-button-${config.id}`}
           disabled={isAnyButtonSyncing}
           isAutoSync={activeAutoSyncId === config.id}
@@ -86,6 +91,8 @@ export const ExclusiveSyncGroup: React.FC<ExclusiveSyncGroupProps> = ({
           syncButtonTooltip={config.syncButtonTooltip}
           autoSyncButtonTooltips={config.autoSyncButtonTooltips}
           descText={config.descText}
+          tooltipPlacement={tooltipPlacement}
+          autoTooltipPlacement={autoTooltipPlacement}
         >
           {config.text}
         </SyncButton>

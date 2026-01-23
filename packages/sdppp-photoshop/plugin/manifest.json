@@ -1,8 +1,8 @@
 {
-  "id": "sd-ppp2",
-  "name": "SD-PPP2.0",
-  "version": "1.9.13",
-  "main": "sdppp/photoshop.html", 
+  "id": "sd-ppp2-dev",
+  "name": "SD-PPP",
+  "version": "1.9.21",
+  "main": "sdppp/photoshop.html",
   "manifestVersion": 5,
   "host": {
     "app": "PS",
@@ -16,6 +16,7 @@
       "domains": "all"
     },
     "allowCodeGenerationFromStrings": true,
+    "localFileSystem": "request",
     "launchProcess": {
       "schemes": [
         "http",
@@ -38,7 +39,7 @@
       "type": "panel",
       "id": "sd-ppp",
       "label": {
-        "default": "SD-PPP 2.0-prerelease.3"
+        "default": "sdppp"
       },
       "minimumSize": {
         "width": 330,

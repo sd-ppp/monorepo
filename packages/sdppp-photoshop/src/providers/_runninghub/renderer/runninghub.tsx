@@ -1,16 +1,18 @@
-import { QuestionCircleOutlined } from '@ant-design/icons';
 import { sdpppSDK, useTranslation } from '@sdppp/common';
 import { WidgetableNode } from '@sdppp/common/schemas/schemas';
+import type { WorkflowStatusDescriptor } from '@sdppp/ui-library';
 import { loadRemoteConfig } from '@sdppp/vite-remote-config-loader';
 import { WidgetableProvider, WorkflowEditApiFormat } from '@sdppp/widgetable-ui';
-import { UploadPassProvider } from '../../base/upload-pass-context';
 import { Alert, Button, Flex, Input, Tooltip } from 'antd';
 import Link from 'antd/es/typography/Link';
-import { useEffect, useState } from 'react';
-import { WorkBoundary } from '../../base/components';
+import { CircleStop, HelpCircle } from 'lucide-react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { SimpleWorkflowControlPanel } from '../../_comfy_frontend/renderer/components/workflow-detail/components/SimpleWorkflowControlPanel';
 import { ModelSelector } from '../../base/components/ModelSelector';
+import '../../base/styles/workflow-controls.less';
+import { UploadPassProvider } from '../../base/upload-pass-context';
 import { useTaskExecutor } from '../../base/useTaskExecutor';
-import { createImageMaskWidgetRegistry } from '../../base/widgetable-image-mask/widgetable-widgets';
+import { WidgetablePhotoshopProvider, createImageMaskWidgetRegistry } from '../../base/widgetable-photoshop';
 import './runninghub.less';
 import { changeSelectedModel, createTask, runninghubStore } from './runninghub.store';
 
@@ -150,47 +152,56 @@ function RunningHubRendererModels() {
         deletable: true
     }));
 
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
 
     return (
         <UploadPassProvider
             uploader={async (uploadInput, signal) => {
-                return await client.uploadImage(uploadInput.type, uploadInput.tokenOrBuffer, 'jpg', signal);
+                if (uploadInput.type !== 'resource') {
+                    throw new Error(t('upload_pass.error.unsupported_type', {
+                        type: uploadInput.type,
+                        defaultValue: 'Unsupported upload type: {{type}}'
+                    }));
+                }
+                return await client.uploadImage(uploadInput.type, uploadInput.resourceId as string, 'png', signal);
             }}
         >
-        <WidgetableProvider widgetRegistry={createImageMaskWidgetRegistry()}>
-            <Flex gap={4} align="center">
-                <Tooltip title={t('runninghub.help_tooltip', { defaultMessage: 'How to use?' })} placement="left">
-                    <Button
-                        type="text"
-                        size="small"
-                        icon={<QuestionCircleOutlined />}
-                        onClick={async () => {
-                            const banners = loadRemoteConfig('banners');
-                            const runninghubURL = banners.find((banner: any) => banner.type === 'runninghub_tutorial' && banner.locale == language)?.link;
-                            sdpppSDK.plugins.photoshop.openExternalLink({ url: runninghubURL })
-                        }}
-                        style={{ color: 'var(--sdppp-host-text-color-secondary)' }}
-                    />
-                </Tooltip>
-                <ModelSelector
-                    value={appName || webappId}
-                    placeholder={t('runninghub.webapp_id_placeholder')}
+        <WidgetablePhotoshopProvider>
+            <WidgetableProvider widgetRegistry={createImageMaskWidgetRegistry()}>
+                <RunningHubRendererForm
                     loading={loading}
                     loadError={loadError}
-                    options={selectOptions}
-                    onChange={handleWebappIdChange}
-                    onDelete={removeWebappHistory}
+                    selectOptions={selectOptions}
+                    onSelectChange={handleWebappIdChange}
+                    onSelectRemove={removeWebappHistory}
+                    language={language}
                 />
-            </Flex>
-            {webappId && !loading && !loadError && <RunningHubRendererForm />}
-        </WidgetableProvider>
+                {loadError && <Alert message={loadError} type="error" showIcon />}
+            </WidgetableProvider>
+        </WidgetablePhotoshopProvider>
         </UploadPassProvider>
     )
 }
 
-function RunningHubRendererForm() {
+interface RunningHubRendererFormProps {
+    loading: boolean;
+    loadError: string;
+    selectOptions: { value: string; label: ReactNode; searchText: string; displayText: string; deletable: boolean }[];
+    onSelectChange: (value: string) => Promise<void> | void;
+    onSelectRemove: (value: string) => void;
+    language: string;
+}
+
+function RunningHubRendererForm({
+    loading,
+    loadError,
+    selectOptions,
+    onSelectChange,
+    onSelectRemove,
+    language,
+}: RunningHubRendererFormProps) {
     const { t } = useTranslation()
+    const translate = t as unknown as (key: string, options?: Record<string, unknown>) => string;
     const currentNodes = runninghubStore((state) => state.currentNodes);
     const currentValues = runninghubStore((state) => state.currentValues);
     const setCurrentValues = runninghubStore((state) => state.setCurrentValues);
@@ -229,21 +240,58 @@ function RunningHubRendererForm() {
 
     return (
         <>
-            <WorkBoundary />
-            <Button type="primary" onClick={handleRun}>{t('runninghub.execute')}</Button>
-            {progressMessage && (
-                <Alert 
-                    message={progressMessage} 
-                    type="info" 
-                    showIcon
-                    action={canCancel ? (
-                        <Button size="small" type="text" onClick={handleCancel}>
-                            {t('common.cancel')}
-                        </Button>
-                    ) : undefined}
+            <Flex gap={4} align="center" style={{ marginBottom: 8, width: '100%' }}>
+                <Tooltip title={translate('runninghub.help_tooltip', { defaultMessage: 'How to use?' })} placement="left">
+                    <Button
+                        type="text"
+                        size="small"
+                        icon={<HelpCircle size={16} />}
+                        style={{ color: 'var(--sdppp-host-text-color-secondary)' }}
+                        onClick={async () => {
+                            const banners = loadRemoteConfig('banners');
+                            const runninghubURL = banners.find((banner: any) => banner.type === 'runninghub_tutorial' && banner.locale == language)?.link;
+                            if (runninghubURL) {
+                                sdpppSDK.plugins.photoshop.openExternalLink({ url: runninghubURL });
+                            }
+                        }}
+                    />
+                </Tooltip>
+                <ModelSelector
+                    value={appName || webappId}
+                    placeholder={translate('runninghub.webapp_id_placeholder')}
+                    loading={loading}
+                    loadError={loadError}
+                    options={selectOptions}
+                    onChange={onSelectChange}
+                    onDelete={onSelectRemove}
                 />
-            )}
-            {runError && <Alert message={runError} type="error" showIcon />}
+            </Flex>
+            <SimpleWorkflowControlPanel
+                headerRight={undefined}
+                runTooltip={translate('runninghub.execute', { defaultMessage: 'Execute' })}
+                runDisabled={isRunning || loading || !webappId}
+                onRun={handleRun}
+                cancelTooltip={translate('runninghub.stop_all', { defaultMessage: 'Stop' })}
+                canCancel={canCancel}
+                onCancel={handleCancel}
+                middleTopRight={(
+                    <Tooltip title={translate('runninghub.stop_all', { defaultMessage: 'Stop' })}>
+                        <Button
+                            className="workflow-action-button"
+                            icon={<CircleStop size={18} />}
+                            danger
+                            onClick={handleCancel}
+                            disabled={!canCancel}
+                        />
+                    </Tooltip>
+                )}
+                status={((): WorkflowStatusDescriptor => {
+                    if (runError) return { type: 'error', message: runError };
+                    if (progressMessage) return { type: 'text', tone: 'secondary', message: progressMessage };
+                    if (isRunning) return { type: 'uploading', message: translate('runninghub.running', { defaultMessage: 'Running...' }) };
+                    return { type: 'empty' };
+                })()}
+            />
             <WorkflowEditApiFormat
                 modelName={webappId}
                 nodes={currentNodes}

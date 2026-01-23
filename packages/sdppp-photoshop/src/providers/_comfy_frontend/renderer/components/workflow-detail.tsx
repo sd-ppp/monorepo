@@ -1,335 +1,132 @@
-import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
-import { Button, Tooltip, Divider, Progress, Space, Typography, Alert } from 'antd';
-import {
-  SaveOutlined,
-  ReloadOutlined,
-  CloseCircleOutlined,
-  ArrowLeftOutlined,
-  PlayCircleFilled,
-  ForwardOutlined,
-  StopOutlined,
-  ThunderboltFilled
-} from '@ant-design/icons';
-import { sdpppSDK } from '@sdppp/common';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from 'zustand';
+import { shallow } from 'zustand/shallow';
+import { sdpppSDK } from '@sdppp/common';
 import { WidgetableRenderer as WorkflowEdit } from '@sdppp/widgetable-ui';
-import { useUploadPasses } from '../../../base/upload-pass-context';
 import './workflow-detail.less';
-import { MainStore } from '../../../../tsx/App.store';
 import { comfyWorkflowStore } from '../comfy_frontend';
-import { debug } from 'debug';
-import { useTranslation } from '@sdppp/common';
-import { ComfyTask } from '../../ComfyTask';
-import { WorkBoundary } from '../../../base/components';
-
-const log = debug('comfy-frontend:workflow-detail')
-const { Text } = Typography; 
-
-const WorkflowStatus: React.FC<{ currentWorkflow: string, uploading: boolean }> = ({ currentWorkflow, uploading }) => {
-  const { t } = useTranslation()
-  // Avoid subscribing to the whole store to prevent re-render on every state change
-  const lastError = useStore(sdpppSDK.stores.ComfyStore, (s) => s.lastError)
-  const progress = useStore(sdpppSDK.stores.ComfyStore, (s) => s.progress)
-  const executingNodeTitle = useStore(sdpppSDK.stores.ComfyStore, (s) => s.executingNodeTitle)
-  const queueSize = useStore(sdpppSDK.stores.ComfyStore, (s) => s.queueSize)
-  const autoRunning = useStore(sdpppSDK.stores.PhotoshopStore, (state) => state.comfyAutoRunning)
-
-  // Removed debug render logging per request
-
-  if (uploading) {
-    return <Alert type="info" message={t('comfy.uploading')} showIcon className="workflow-run-status" />;
-  }
-  if (lastError) {
-    return <Alert type="error" message={lastError} showIcon className="workflow-run-status" />;
-  }
-  if (executingNodeTitle) {
-    return (
-      <div className="workflow-run-status">
-        <Text ellipsis={{ tooltip: true }}>{t('comfy.queue_progress', { queueSize, progress, executingNodeTitle })}</Text>
-        <Progress percent={progress} size="small" showInfo={false} />
-      </div>
-    );
-  }
-  if (autoRunning) {
-    return <Text type="secondary" className="workflow-run-status">auto run workflow after change..</Text>;
-  }
-  if (currentWorkflow) {
-    return <Text type="secondary" className="workflow-run-status">{currentWorkflow}</Text>;
-  }
-  return null;
-};
-
-const SaveButton = ({ currentWorkflow }: { currentWorkflow: string }) => {
-  const { t } = useTranslation()
-  return (
-    <Tooltip title={t('comfy.save')}>
-      <Button icon={<SaveOutlined />} onClick={() => {
-        sdpppSDK.plugins.ComfyCaller.saveWorkflow({
-          workflow_path: currentWorkflow,
-        })
-      }} />
-    </Tooltip>
-  );
-};
-
-const RefreshButton = ({ currentWorkflow }: { currentWorkflow: string }) => {
-  const { t } = useTranslation()
-  return (
-    <Tooltip title={t('comfy.refresh')}>
-      <Button icon={<ReloadOutlined />} onClick={() =>
-        sdpppSDK.plugins.ComfyCaller.openWorkflow({
-          workflow_path: currentWorkflow,
-          reset: true
-        })
-      } />
-    </Tooltip>
-  );
-};
-
-const StopAndCancelButton = () => {
-  const { t } = useTranslation()
-  const onClearAndInterrupt = useCallback(async () => {
-    sdpppSDK.plugins.ComfyCaller.stopAll({});
-  }, []);
-  return (
-    <Tooltip title={t('comfy.stop_cancel_all')}>
-      <Button icon={<CloseCircleOutlined />} danger onClick={onClearAndInterrupt} />
-    </Tooltip>
-  );
-};
-
-const AutoRunButton = ({ currentWorkflow, setUploading }: { currentWorkflow: string, setUploading: (uploading: boolean) => void }) => {
-  const { t } = useTranslation()
-  const [isAutoRunning, setIsAutoRunning] = useState(false)
-  const canvasStateID = useStore(sdpppSDK.stores.PhotoshopStore, (state) => state.canvasStateID)
-  const { waitAllUploadPasses } = useUploadPasses();
-  // Stabilize referenced values/functions inside the effect to avoid retriggers
-  const waitAllUploadPassesRef = useRef(waitAllUploadPasses)
-  useEffect(() => { waitAllUploadPassesRef.current = waitAllUploadPasses }, [waitAllUploadPasses])
-  const currentWorkflowRef = useRef(currentWorkflow)
-  useEffect(() => { currentWorkflowRef.current = currentWorkflow }, [currentWorkflow])
-
-  // Removed debug render logging per request
-
-  // Listen for canvasStateID changes and trigger run
-  useEffect(() => {
-    if (!isAutoRunning || !canvasStateID) return;
-    let cancelled = false;
-    (async () => {
-      setUploading(true);
-      try {
-        await waitAllUploadPassesRef.current();
-      } finally {
-        setUploading(false);
-      }
-      if (!cancelled) {
-        await runAndWaitResult(1, currentWorkflowRef.current);
-      }
-    })();
-    return () => { cancelled = true };
-  }, [canvasStateID, isAutoRunning, setUploading]);
-
-  return (
-    <Tooltip title={isAutoRunning ? t('comfy.stop_auto_run') : t('comfy.start_auto_run')}>
-      <Button
-        icon={<ForwardOutlined />}
-        type={isAutoRunning ? 'primary' : 'default'}
-        className={isAutoRunning ? 'auto-run-active' : ''}
-        onClick={() => {
-          setIsAutoRunning(!isAutoRunning)
-        }}
-      />
-    </Tooltip>
-  );
-};
-
-// const EditButton = () => {
-//   // Mocked logic for edit
-//   return (
-//     <Tooltip title="ComfyUI 编辑">
-//       <Button icon={<EditOutlined />} />
-//     </Tooltip>
-//   );
-// };
-async function runAndWaitResult(multi: number, currentWorkflow: string): Promise<ComfyTask> {
-  // 获取当前文档ID和边界信息
-  const activeDocumentID = sdpppSDK.stores.PhotoshopStore.getState().activeDocumentID;
-  const boundary = sdpppSDK.stores.WebviewStore.getState().workBoundaries[activeDocumentID];
-
-  const task = new ComfyTask({ size: multi }, currentWorkflow, activeDocumentID, boundary);
-
-  // 返回 task 以便外部可以跟踪状态
-  task.promise.catch(error => {
-    console.error('ComfyUI task failed:', error);
-  });
-
-  return task;
-}
-
-const RunButton = ({ currentWorkflow, setUploading }: { currentWorkflow: string, setUploading: (uploading: boolean) => void }) => {
-  const { t } = useTranslation();
-  const { waitAllUploadPasses } = useUploadPasses();
-  const [isDisabled, setIsDisabled] = useState(false);
-
-  const doRun = useCallback(async () => {
-    setIsDisabled(true);
-    setTimeout(() => setIsDisabled(false), 500);
-
-    setUploading(true);
-    await waitAllUploadPasses();
-    setUploading(false);
-
-    const task = await runAndWaitResult(1, currentWorkflow);
-  }, [waitAllUploadPasses, setUploading, currentWorkflow]);
-
-  return (
-    <Tooltip title={t('comfy.run')}>
-      <Button
-        type="primary"
-        icon={<PlayCircleFilled />}
-        onClick={doRun}
-        disabled={isDisabled}
-      />
-    </Tooltip>
-  );
-};
-
-const RunMultiButtons = ({ currentWorkflow, setUploading }: { currentWorkflow: string, setUploading: (uploading: boolean) => void }) => {
-  const { waitAllUploadPasses } = useUploadPasses();
-  const [disabledButtons, setDisabledButtons] = useState<Set<number>>(new Set());
-
-  const doRun = useCallback(async (multi: number) => {
-    setDisabledButtons(prev => new Set(prev).add(multi));
-    setTimeout(() => {
-      setDisabledButtons(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(multi);
-        return newSet;
-      });
-    }, 500);
-
-    setUploading(true);
-    await waitAllUploadPasses();
-    setUploading(false);
-    const task = await runAndWaitResult(multi, currentWorkflow);
-    // 任务完成后清理
-    task.promise.finally(() => {
-      // 多任务不需要特殊状态跟踪，直接执行即可
-    });
-  }, [waitAllUploadPasses, currentWorkflow]);
-
-  return (
-    <>
-      <Button size="small" onClick={() => doRun(2)} disabled={disabledButtons.has(2)}>x2</Button>
-      <Button size="small" onClick={() => doRun(5)} disabled={disabledButtons.has(5)}>x5</Button>
-      <Button size="small" onClick={() => doRun(9)} disabled={disabledButtons.has(9)}>x9</Button>
-    </>
-  );
-};
-
-const BackButton = ({ onBack }: { onBack: () => void }) => {
-  const { t } = useTranslation()
-  return (
-    <Tooltip title={t('comfy.back')}>
-      <Button icon={<ArrowLeftOutlined />} onClick={onBack} />
-    </Tooltip>
-  )
-};
+import { ComfyWorkflowControlPanel } from './workflow-detail/components/ComfyWorkflowControlPanel';
+import { EMPTY_OBJECT } from './workflow-detail/constants';
 
 // 渲染计数器
 let workflowDetailRenderCount = 0;
 
-export function WorkflowDetail({ currentWorkflow, setCurrentWorkflow }: { currentWorkflow: string, setCurrentWorkflow: (workflow: string) => void }) {
-  workflowDetailRenderCount++;
-  const widgetableValues = useStore(sdpppSDK.stores.ComfyStore, (state) => state.widgetableValues)
-  const widgetableStructure = useStore(sdpppSDK.stores.ComfyStore, (state) => state.widgetableStructure)
-  const widgetableErrors = useStore(sdpppSDK.stores.ComfyStore, (state) => state.widgetableErrors)
+interface WorkflowDetailProps {
+  currentWorkflow: string;
+  setCurrentWorkflow: (workflow: string) => void;
+}
 
-  // Removed debug render logging per request
-  const [hasRecoverHistory, setHasRecoverHistory] = useState<boolean>(false);
+export function WorkflowDetail({
+  currentWorkflow,
+  setCurrentWorkflow,
+}: WorkflowDetailProps) {
+  workflowDetailRenderCount++;
+  const widgetableValues =
+    useStore(sdpppSDK.stores.ComfyStore, (state) => state.widgetableValues ?? EMPTY_OBJECT, shallow) ??
+    EMPTY_OBJECT;
+  const widgetableStructure =
+    useStore(sdpppSDK.stores.ComfyStore, (state) => state.widgetableStructure ?? EMPTY_OBJECT, shallow) ??
+    EMPTY_OBJECT;
+  const widgetableErrors = useStore(sdpppSDK.stores.ComfyStore, (state) => state.widgetableErrors ?? null, shallow);
+
+  const widgetablePath = useMemo(
+    () => (typeof (widgetableStructure as any)?.widgetablePath === 'string'
+      ? (widgetableStructure as any).widgetablePath
+      : ''),
+    [widgetableStructure],
+  );
+
   const [uploading, setUploading] = useState<boolean>(false);
+  const [prevWidgetableValues, setPrevWidgetableValues] = useState<Record<string, any>>(widgetableValues);
+  const prevWidgetableHashRef = useRef<string>('');
+  const historyRecoveryRef = useRef<{ workflow: string | null; recovered: boolean }>({
+    workflow: null,
+    recovered: false,
+  });
+
   useEffect(() => {
-    if (currentWorkflow === widgetableStructure.widgetablePath.replace(/^workflows\//, '') && !hasRecoverHistory) {
-      const historyValues = comfyWorkflowStore.getState().historyValues[currentWorkflow]
-      if (historyValues) {
-        const values = Object.entries(historyValues)
-          .reduce((acc, [nodeID, values]) => {
-            return acc.concat(values.map((value: any, widgetIndex: number) => ({
+    const pathMatches =
+      currentWorkflow &&
+      widgetablePath &&
+      currentWorkflow === widgetablePath.replace(/^workflows\//, '');
+
+    const recoveredState = historyRecoveryRef.current;
+    if (!pathMatches) {
+      historyRecoveryRef.current = { workflow: currentWorkflow, recovered: false };
+      return;
+    }
+
+    if (
+      recoveredState.workflow === currentWorkflow &&
+      recoveredState.recovered
+    ) {
+      return;
+    }
+
+    const historyValues = comfyWorkflowStore.getState().historyValues[currentWorkflow];
+    if (historyValues) {
+      const values = Object.entries(historyValues)
+        .reduce((acc, [nodeID, values]) => {
+          return acc.concat(
+            values.map((value: any, widgetIndex: number) => ({
               nodeID,
               widgetIndex,
-              value
-            })))
-          }, [])
-        sdpppSDK.plugins.ComfyCaller.setWidgetValue({ values })
-      }
-      setHasRecoverHistory(true)
-    } else {
-      setHasRecoverHistory(false)
+              value,
+            })),
+          );
+        }, [] as Array<{ nodeID: string; widgetIndex: number; value: any }>);
+      sdpppSDK.plugins.ComfyCaller.setWidgetValue({ values });
     }
-  }, [currentWorkflow, widgetableStructure.widgetablePath])
 
-  const [prevWidgetableValues, setPrevWidgetableValues] = useState<Record<string, any>>(widgetableValues)
+    historyRecoveryRef.current = { workflow: currentWorkflow, recovered: true };
+  }, [currentWorkflow, widgetablePath]);
 
-  // 稳定的回调函数
-  const handleWidgetChange = useCallback((nodeID: string, widgetIndex: number, value: any, fieldInfo: any) => {
+  const handleWidgetChange = useCallback((
+    nodeID: string,
+    widgetIndex: number,
+    value: any,
+  ) => {
     sdpppSDK.plugins.ComfyCaller.setWidgetValue({
       values: [{
         nodeID,
         widgetIndex,
-        value
-      }]
-    })
+        value,
+      }],
+    });
   }, []);
 
   const handleTitleChange = useCallback((nodeID: string, title: string) => {
     sdpppSDK.plugins.ComfyCaller.setNodeTitle({
       title,
-      node_id: nodeID
-    })
+      node_id: nodeID,
+    });
   }, []);
+
   useEffect(() => {
-    if (JSON.stringify(prevWidgetableValues) !== JSON.stringify(widgetableValues)) {
+    const nextHash = JSON.stringify(widgetableValues ?? EMPTY_OBJECT);
+    const prevHash = prevWidgetableHashRef.current;
+    if (prevHash !== nextHash) {
       comfyWorkflowStore.getState().setHistoryValues({
         ...comfyWorkflowStore.getState().historyValues,
-        [currentWorkflow]: widgetableValues
-      })
-      setPrevWidgetableValues(widgetableValues)
+        [currentWorkflow]: widgetableValues,
+      });
+      setPrevWidgetableValues(widgetableValues);
+      prevWidgetableHashRef.current = nextHash;
     }
-  }, [widgetableValues, currentWorkflow])
+  }, [widgetableValues, currentWorkflow]);
 
   return (
     <div className="workflow-edit-wrap">
       <div className="workflow-edit-top">
-        <div className="workflow-edit-controls">
-          <div className="workflow-edit-controls-grid">
-          <div className="workflow-edit-controls-main">
-            <div className="workflow-edit-controls-main-top">
-              <div className="workflow-edit-controls-left">
-                <BackButton onBack={() => setCurrentWorkflow('')} />
-                <SaveButton currentWorkflow={currentWorkflow} />
-                <RefreshButton currentWorkflow={currentWorkflow} />
-              </div>
-              <div className="workflow-edit-controls-right">
-                <StopAndCancelButton />
-                <AutoRunButton currentWorkflow={currentWorkflow} setUploading={setUploading} />
-              </div>
-            </div>
-            <div className="workflow-edit-controls-main-bottom">
-              <WorkflowStatus currentWorkflow={currentWorkflow} uploading={uploading} />
-            </div>
-          </div>
-          <div className="workflow-edit-controls-center">
-            <RunButton currentWorkflow={currentWorkflow} setUploading={setUploading} />
-          </div>
-          <div className="workflow-edit-multibuttons-vertical">
-            <RunMultiButtons currentWorkflow={currentWorkflow} setUploading={setUploading} />
-          </div>
-          </div>
-          <WorkBoundary />
-        </div>
+        <ComfyWorkflowControlPanel
+          currentWorkflow={currentWorkflow}
+          setCurrentWorkflow={setCurrentWorkflow}
+          uploading={uploading}
+          setUploading={setUploading}
+        />
       </div>
       <WorkflowEdit
-        widgetableStructure={widgetableStructure}
+        widgetableStructure={widgetableStructure as any}
         widgetableValues={widgetableValues}
         widgetableErrors={widgetableErrors}
         onWidgetChange={handleWidgetChange}
@@ -337,4 +134,4 @@ export function WorkflowDetail({ currentWorkflow, setCurrentWorkflow }: { curren
       />
     </div>
   );
-};
+}

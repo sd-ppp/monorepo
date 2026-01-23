@@ -1,7 +1,18 @@
-import { DeleteOutlined, LeftOutlined, MoreOutlined, RightOutlined, SaveOutlined, SendOutlined, ShrinkOutlined, StepForwardOutlined } from '@ant-design/icons';
+import {
+  BoxSelect,
+  ChevronLeft,
+  ChevronRight,
+  FilePlus2,
+  Minimize2,
+  MoreVertical,
+  Save,
+  Send,
+  StepForward,
+  Trash2,
+} from 'lucide-react';
 import { sdpppSDK, useTranslation } from '@sdppp/common';
-import { SyncButton } from '@sdppp/ui-library';
-import { Button, Divider, Dropdown } from 'antd';
+import { SwitchButton } from '@sdppp/ui-library';
+import { Button, Divider, Dropdown, Tooltip } from 'antd';
 import React from 'react';
 import { isImage } from '../../utils/fileType';
 import { MainStore } from '../App.store';
@@ -11,25 +22,99 @@ interface ImagePreviewWrapperProps {
   children?: React.ReactNode;
 }
 
+type SendMode = 'smartobject' | 'newdoc' | 'selection';
+
 export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperProps) {
   const { t } = useTranslation();
   const images = MainStore(state => state.previewImageList);
   const [currentIndex, setCurrentIndex] = React.useState(0);
-  const [sending, setSending] = React.useState(false);
-  const [sendingAll, setSendingAll] = React.useState(false);
-  const [isAutoSync, setIsAutoSync] = React.useState(false);
-  const autoSendTypeRef = React.useRef<'smartobject' | 'newdoc'>('smartobject');
+  const autoMode = MainStore(state => state.autoSendMode);
+  const sending = MainStore(state => state.autoSendSending);
+  const sendingAll = MainStore(state => state.autoSendSendingAll);
+  const log = React.useMemo(() => {
+    return typeof sdpppSDK?.logger?.extend === 'function'
+      ? sdpppSDK.logger.extend('photoshop:image-preview')
+      : null;
+  }, []);
+  const logMessage = React.useCallback(
+    (event: string, payload?: Record<string, unknown>) => {
+      if (log) {
+        payload ? log(event, payload) : log(event);
+        return;
+      }
+      if (typeof sdpppSDK?.logger === 'function') {
+        payload
+          ? sdpppSDK.logger('photoshop:image-preview', event, payload)
+          : sdpppSDK.logger('photoshop:image-preview', event);
+      }
+    },
+    [log]
+  );
+  const autoModeRef = React.useRef<SendMode | null>(null);
   const pendingAutoSendRef = React.useRef(new Map<string, { cancel: boolean }>());
 
-  const currentItem = images[currentIndex];
-  const isCurrentItemImage = currentItem ? isImage(currentItem.url) : false;
+  React.useEffect(() => {
+    autoModeRef.current = autoMode;
+    logMessage('autoModeRef updated', { mode: autoMode });
+  }, [autoMode, logMessage]);
 
-  // Get boundary display text (similar to WorkBoundary.tsx)
-  const getBoundaryText = (boundary: any): string => {
-    if (!boundary || (boundary.width >= 999999 && boundary.height >= 999999)) {
-      return t('boundary.current_canvas', {defaultMessage: 'Entire Canvas'});
+  const saveResources = React.useCallback(async (resources: string[]) => {
+    if (!resources.length) {
+      return;
     }
-    return `(${boundary.leftDistance}, ${boundary.topDistance}, ${boundary.width}, ${boundary.height})`;
+    const photoshop = (sdpppSDK?.plugins?.photoshop ?? {}) as Record<string, any>;
+    const saveAction = photoshop?.fileResource?.saveAs;
+    if (typeof saveAction !== 'function') {
+      console.warn('[ImagePreviewWrapper] fileResource.saveAs not available');
+      return;
+    }
+    const result = await saveAction.call(photoshop, { resources });
+    if (result?.error && result.error !== 'cancelled') {
+      console.warn('[ImagePreviewWrapper] saveAs failed', result.error);
+    }
+  }, []);
+
+  const normalizedIndex = React.useMemo(() => {
+    if (!images.length) {
+      return 0;
+    }
+    return Math.min(currentIndex, images.length - 1);
+  }, [currentIndex, images.length]);
+
+  React.useEffect(() => {
+    if (currentIndex !== normalizedIndex) {
+      setCurrentIndex(normalizedIndex);
+    }
+  }, [currentIndex, normalizedIndex]);
+
+  const buildSelectionBoundaryUri = (docId?: number | null) => {
+    return typeof docId === 'number' && Number.isFinite(docId) && docId > 0
+      ? `uxp://boundary/${docId}/selection`
+      : undefined;
+  };
+
+  const currentItem = images[normalizedIndex];
+  const isCurrentItemImage = currentItem ? isImage(currentItem.url) : false;
+  const ICON_SIZE = 16;
+  const SWITCH_BUTTON_SIZE = 32;
+  const selectionBoundaryUri = buildSelectionBoundaryUri(currentItem?.docId);
+
+  const resolveSendParams = (
+    image: (typeof images)[number] | undefined,
+    mode: SendMode
+  ): { type: 'smartobject' | 'newdoc'; boundaryUri?: string } | null => {
+    if (!image) {
+      return null;
+    }
+    const type = mode === 'newdoc' ? 'newdoc' : 'smartobject';
+    if (mode === 'selection') {
+      const boundaryUri = buildSelectionBoundaryUri(image.docId ?? null);
+      if (!boundaryUri) {
+        return null;
+      }
+      return { type, boundaryUri };
+    }
+    return { type, boundaryUri: image.boundaryUri ?? undefined };
   };
 
   const handlePrev = () => {
@@ -41,47 +126,103 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
   };
 
   // Internal helper to send a specific index
-  const sendToPSAtIndex = async (index: number, opts?: { shiftKey?: boolean }) => {
+  const sendToPSAtIndex = async (index: number, mode: SendMode) => {
     try {
-      setSending(true);
-      const type = opts?.shiftKey ? 'newdoc' : 'smartobject';
+      MainStore.getState().setAutoSendSending(true);
+      const resource = images[index].resource;
+      if (!resource) {
+        console.warn('[ImagePreviewWrapper] Missing resource for import', images[index]);
+        return;
+      }
+      const params = resolveSendParams(images[index], mode);
+      if (!params) {
+        console.warn('[ImagePreviewWrapper] Unable to resolve send parameters', images[index], mode);
+        return;
+      }
       await sdpppSDK.plugins.photoshop.importImage({
-        nativePath: images[index].nativePath || images[index].url,
-        // Pass boundary if available; default to 'canvas'
-        boundary: images[index].boundary ?? 'canvas',
-        type: type,
+        resource,
+        boundaryUri: params.boundaryUri,
+        type: params.type,
         // Pass through original image dimensions when known
         sourceWidth: (images as any)[index]?.width,
         sourceHeight: (images as any)[index]?.height
-      });
+      } as any);
+    } catch (error) {
+      console.warn('[ImagePreviewWrapper] sendToPSAtIndex failed', error);
     } finally {
-      setSending(false);
+      MainStore.getState().setAutoSendSending(false);
     }
   };
 
-  const handleSendToPS = async (event?: { shiftKey?: boolean }) => {
-    await sendToPSAtIndex(currentIndex, { shiftKey: !!event?.shiftKey });
+  const handleSendMode = async (mode: SendMode) => {
+    await sendToPSAtIndex(normalizedIndex, mode);
   };
 
-  // Send by URL using nativePath once ready
-  const sendNativeImageByUrl = async (url: string) => {
+  const toggleAutoMode = React.useCallback((mode: SendMode) => {
+    MainStore.getState().toggleAutoSendMode(mode);
+    logMessage('toggleAutoMode', { mode });
+  }, [logMessage]);
+
+  const handleModeButtonClick = React.useCallback((mode: SendMode) => async (event: React.MouseEvent<HTMLButtonElement>) => {
+    if (event.shiftKey) {
+      event.preventDefault();
+      toggleAutoMode(mode);
+      return;
+    }
     try {
-      setSending(true);
-      const list = MainStore.getState().previewImageList;
-      const item = list.find(it => it.url === url);
-      if (!item || !item.nativePath) {
-        return;
-      }
-      const type = autoSendTypeRef.current;
+      await handleSendMode(mode);
+    } catch (error) {
+      console.warn('[ImagePreviewWrapper] send failed', error);
+    }
+  }, [handleSendMode, toggleAutoMode]);
+
+  const handleModeButtonContextMenu = React.useCallback((mode: SendMode) => (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    toggleAutoMode(mode);
+  }, [toggleAutoMode]);
+
+  // Send by URL using resource once ready
+  const sendResourceByUrl = async (url: string) => {
+    const mode = autoModeRef.current;
+    if (!mode) {
+      logMessage('sendResourceByUrl skipped: autoMode disabled', { url });
+      return;
+    }
+    const list = MainStore.getState().previewImageList;
+    const item = list.find(it => it.url === url);
+    if (!item || !item.resource) {
+      logMessage('sendResourceByUrl pending resource', {
+        url,
+        hasItem: !!item,
+        hasResource: !!item?.resource
+      });
+      return;
+    }
+    const params = resolveSendParams(item, mode);
+    if (!params) {
+      console.warn('[ImagePreviewWrapper] Auto send skipped due to invalid parameters', item, mode);
+      logMessage('sendResourceByUrl invalid params', { url, mode });
+      return;
+    }
+    try {
+      MainStore.getState().setAutoSendSending(true);
+      logMessage('sendResourceByUrl importing', {
+        url,
+        mode,
+        boundaryUri: params.boundaryUri,
+        type: params.type
+      });
       await sdpppSDK.plugins.photoshop.importImage({
-        nativePath: item.nativePath,
-        boundary: item.boundary ?? 'canvas',
-        type,
+        resource: item.resource,
+        boundaryUri: params.boundaryUri,
+        type: params.type,
         sourceWidth: (item as any)?.width,
         sourceHeight: (item as any)?.height,
-      });
+      } as any);
+    } catch (error) {
+      console.warn('[ImagePreviewWrapper] auto send failed', error);
     } finally {
-      setSending(false);
+      MainStore.getState().setAutoSendSending(false);
     }
   };
 
@@ -89,20 +230,36 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
     MainStore.setState({ showingPreview: false });
   };
 
-  const handleDeleteCurrent = () => {
-    const newImages = images.filter((_, index) => index !== currentIndex);
-    MainStore.setState({ previewImageList: newImages });
-    if (currentIndex >= newImages.length && newImages.length > 0) {
-      setCurrentIndex(newImages.length - 1);
+  const handleDeleteCurrent = async () => {
+    const current = images[normalizedIndex];
+    if (current?.resource) {
+      await MainStore.getState().deletePreviewImages([current.resource]);
+    } else {
+      const newImages = images.filter((_, index) => index !== normalizedIndex);
+      MainStore.setState({ previewImageList: newImages });
+    }
+    const nextList = MainStore.getState().previewImageList;
+    if (normalizedIndex >= nextList.length && nextList.length > 0) {
+      setCurrentIndex(nextList.length - 1);
+    } else if (!nextList.length) {
+      setCurrentIndex(0);
     }
   };
 
-  const handleClearAll = () => {
-    MainStore.setState({ previewImageList: [] });
+  const handleClearAll = async () => {
+    const resources = images
+      .map(image => image.resource)
+      .filter((res): res is string => !!res);
+    if (resources.length) {
+      await MainStore.getState().deletePreviewImages(resources);
+    } else {
+      MainStore.setState({ previewImageList: [] });
+    }
+    setCurrentIndex(0);
   };
 
   const handleSendAll = async (event?: React.MouseEvent) => {
-    setSendingAll(true);
+    MainStore.getState().setAutoSendSendingAll(true);
     try {
       const imageItems = images.filter(image => isImage(image.url));
       if (imageItems.length === 0) {
@@ -110,31 +267,37 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
       }
 
       const type = event?.shiftKey ? 'newdoc' : 'smartobject';
-      const promises = imageItems.map(image =>
-        sdpppSDK.plugins.photoshop.importImage({
-          nativePath: image.nativePath || image.url,
-          boundary: image.boundary ?? 'canvas',
+      const promises = imageItems.map(image => {
+        if (!image.resource) {
+          console.warn('[ImagePreviewWrapper] skip sendAll without resource', image.url);
+          return Promise.resolve();
+        }
+        return sdpppSDK.plugins.photoshop.importImage({
+          resource: image.resource,
+          boundaryUri: image.boundaryUri ?? undefined,
           type: type,
           sourceWidth: (image as any)?.width,
           sourceHeight: (image as any)?.height
-        })
-      );
+        } as any);
+      });
       await Promise.all(promises);
     } finally {
-      setSendingAll(false);
+      MainStore.getState().setAutoSendSendingAll(false);
     }
   };
 
   const handleSaveAll = () => {
-    sdpppSDK.plugins.photoshop.requestAndDoSaveImage({
-      nativePaths: images.map(image => image.nativePath)
-    });
+    const resources = images
+      .map(image => image.resource)
+      .filter((res): res is string => !!res);
+    if (resources.length) {
+      void saveResources(resources);
+    }
   };
 
   const handleSaveCurrent = async () => {
-    await sdpppSDK.plugins.photoshop.requestAndDoSaveImage({
-      nativePaths: [currentItem.nativePath]
-    });
+    if (!currentItem?.resource) return;
+    await saveResources([currentItem.resource]);
   };
 
   const handleJumpToLast = () => {
@@ -151,66 +314,114 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
     setPrevLength(images.length);
   }, [images.length, currentIndex]);
 
-  // Auto-send newly received images when auto is active, waiting for nativePath
-  const autoPrevLenRef = React.useRef(images.length);
+  // Auto-send newly received images when auto is active, waiting for resource
+  const autoProcessedUrlsRef = React.useRef<Set<string>>(new Set());
+  const getAutoItemKey = React.useCallback(
+    (item: (typeof images)[number] | undefined) => {
+      if (!item) return null;
+      return item.resource ?? item.url ?? null;
+    },
+    []
+  );
   const scheduleAutoSendForUrl = (url: string) => {
-    if (pendingAutoSendRef.current.has(url)) return;
+    if (pendingAutoSendRef.current.has(url)) {
+      logMessage('schedule auto send skipped duplicate', { url });
+      return;
+    }
     const token = { cancel: false };
     pendingAutoSendRef.current.set(url, token);
+    logMessage('schedule auto send start', { url });
     (async () => {
       try {
-        while (!token.cancel && isAutoSync) {
+        while (!token.cancel && autoModeRef.current !== null) {
           const list = MainStore.getState().previewImageList;
           const item = list.find(it => it.url === url);
-          if (!item) break; // deleted
+          if (!item) {
+            logMessage('schedule auto send item removed', { url });
+            break; // deleted
+          }
           const downloading = (item as any)?.downloading === true;
-          if (!downloading && !!item.nativePath) {
-            await sendNativeImageByUrl(url);
+          if (!downloading && !!item.resource) {
+            await sendResourceByUrl(url);
             break;
           }
+          logMessage('schedule auto send waiting', {
+            url,
+            downloading,
+            hasResource: !!item.resource
+          });
           await new Promise(res => setTimeout(res, 200));
         }
       } finally {
+        logMessage('schedule auto send end', { url, cancelled: token.cancel, autoMode: autoModeRef.current });
         pendingAutoSendRef.current.delete(url);
       }
     })();
   };
   React.useEffect(() => {
-    if (!isAutoSync) {
-      // cancel all pending tasks when auto-sync turns off
+    const currentList = MainStore.getState().previewImageList;
+    const processed = autoProcessedUrlsRef.current;
+    if (autoMode === null) {
       pendingAutoSendRef.current.forEach(t => (t.cancel = true));
       pendingAutoSendRef.current.clear();
-      autoPrevLenRef.current = images.length;
+      processed.clear();
+      logMessage('autoMode disabled', { imagesLength: currentList.length });
       return;
     }
-    if (images.length > autoPrevLenRef.current) {
-      for (let i = autoPrevLenRef.current; i < images.length; i++) {
-        const itm = images[i];
-        if (itm && isImage(itm.url)) {
-          scheduleAutoSendForUrl(itm.url);
-        }
+    processed.clear();
+    for (const item of currentList) {
+      const key = getAutoItemKey(item);
+      if (key) {
+        processed.add(key);
       }
     }
-    autoPrevLenRef.current = images.length;
-  }, [images.length, isAutoSync]);
+    logMessage('autoMode enabled', { mode: autoMode, imagesLength: currentList.length });
+  }, [autoMode, getAutoItemKey, logMessage]);
+
+  React.useEffect(() => {
+    if (autoMode === null) {
+      return;
+    }
+    const processed = autoProcessedUrlsRef.current;
+    const activeUrls = new Set<string>();
+    for (const item of images) {
+      const key = getAutoItemKey(item);
+      if (!key) {
+        continue;
+      }
+      activeUrls.add(key);
+      if (processed.has(key)) {
+        continue;
+      }
+      if (!item || !isImage(item.url)) {
+        processed.add(key);
+        logMessage('autoMode new item ignored', {
+          url: item?.url,
+          resource: item?.resource,
+          isImage: item ? isImage(item.url) : false
+        });
+        continue;
+      }
+      processed.add(key);
+      logMessage('autoMode enqueue new image', { url: item.url, docId: item.docId });
+      scheduleAutoSendForUrl(item.url);
+    }
+
+    processed.forEach(url => {
+      if (!activeUrls.has(url)) {
+        processed.delete(url);
+      }
+    });
+  }, [images, autoMode, getAutoItemKey, logMessage]);
 
   React.useEffect(() => {
     return () => {
       // cancel pending tasks on unmount
       pendingAutoSendRef.current.forEach(t => (t.cancel = true));
       pendingAutoSendRef.current.clear();
+      logMessage('component unmount', {});
     };
-  }, []);
-
-  const handleAutoSyncToggle = React.useCallback(({ shiftKey }: { shiftKey: boolean }) => {
-    setIsAutoSync(prev => {
-      const next = !prev;
-      if (!prev && next) {
-        autoSendTypeRef.current = shiftKey ? 'newdoc' : 'smartobject';
-      }
-      return next;
-    });
-  }, []);
+  }, [logMessage]);
 
   if (!images.length) {
     return null;
@@ -221,7 +432,7 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
       <Button
         className="image-preview__close-btn"
         type="text"
-        icon={<ShrinkOutlined />}
+        icon={<Minimize2 size={ICON_SIZE} />}
         onClick={handleClose}
         size="middle"
       />
@@ -229,7 +440,7 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
     prev: images.length > 1 ? (
       <Button
         className="image-preview__nav image-preview__nav--prev"
-        icon={<LeftOutlined />}
+        icon={<ChevronLeft size={ICON_SIZE} />}
         onClick={handlePrev}
         shape="circle"
         size="middle"
@@ -238,16 +449,16 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
     next: images.length > 1 ? (
       <Button
         className="image-preview__nav image-preview__nav--next"
-        icon={<RightOutlined />}
+        icon={<ChevronRight size={ICON_SIZE} />}
         onClick={handleNext}
         shape="circle"
         size="middle"
       />
     ) : null,
-    jumpToLast: currentIndex < images.length - 1 ? (
+    jumpToLast: normalizedIndex < images.length - 1 ? (
       <Button
         className="image-preview__floating-btn--jump"
-        icon={<StepForwardOutlined />}
+        icon={<StepForward size={ICON_SIZE} />}
         onClick={handleJumpToLast}
         shape="circle"
         size="middle"
@@ -257,7 +468,7 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
     deleteCurrent: (
       <Button
         className="image-preview__floating-btn--delete"
-        icon={<DeleteOutlined />}
+        icon={<Trash2 size={ICON_SIZE} />}
         onClick={handleDeleteCurrent}
         shape="circle"
         size="middle"
@@ -266,13 +477,13 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
     ),
     indicator: (
       <div className="image-preview__indicator">
-        {currentIndex + 1} / {images.length}
+        {normalizedIndex + 1} / {images.length}
       </div>
     ),
     bottomDeleteAll: (
       <Button
         className="image-preview__bottom-delete-all"
-        icon={<DeleteOutlined />}
+        icon={<Trash2 size={ICON_SIZE} />}
         onClick={handleClearAll}
         shape="circle"
         size="large"
@@ -282,7 +493,7 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
     bottomDeleteCurrent: (
       <div className="image-preview__bottom-delete-current" style={{ background: 'transparent', boxShadow: 'none', color: 'inherit' }}>
         <Button
-          icon={<DeleteOutlined />}
+          icon={<Trash2 size={ICON_SIZE} />}
           onClick={handleDeleteCurrent}
           size="middle"
           type="default"
@@ -293,22 +504,48 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
     ),
     bottomSend: isCurrentItemImage ? (
       <div className="image-preview__bottom-send">
-        <SyncButton
-          disabled={sending || sendingAll}
-          isAutoSync={isAutoSync}
-          onSync={({ shiftKey }) => handleSendToPS({ shiftKey })}
-          onAutoSyncToggle={handleAutoSyncToggle}
-          buttonWidth={88}
-          mainButtonType="primary"
-          autoSyncButtonTooltips={{
-            enabled: t('image.auto_send_enabled'),
-            disabled: t('image.auto_send_disabled')
-          }}
-          syncButtonTooltip={t('image.import_as_smartobject') + ' | ' + t('image.import_tip')}
-          data-testid="image-preview-sync-button"
-        >
-          {sending ? t('image.sending') : <SendOutlined />}
-        </SyncButton>
+        {(['smartobject', 'newdoc', 'selection'] as SendMode[]).map(mode => {
+          const isSelectionMode = mode === 'selection';
+          const disabled =
+            sending ||
+            sendingAll ||
+            (isSelectionMode && !selectionBoundaryUri);
+          const icon =
+            mode === 'smartobject'
+              ? <Send size={ICON_SIZE} />
+              : mode === 'newdoc'
+                ? <FilePlus2 size={ICON_SIZE} />
+                : <BoxSelect size={ICON_SIZE} />;
+          const tooltipBase =
+            mode === 'smartobject'
+              ? t('image.import_as_smartobject')
+              : mode === 'newdoc'
+                ? t('image.import_as_newdoc')
+                : `${t('image.import_selection_button')} - ${t('image.import_selection_hint')}`;
+          const tooltip = `${tooltipBase} | ${t('image.import_auto_hint')}`;
+          const testId =
+            mode === 'smartobject'
+              ? 'image-preview-send-smartobject'
+              : mode === 'newdoc'
+                ? 'image-preview-send-newdoc'
+                : 'image-preview-send-selection';
+          return (
+            <Tooltip key={mode} title={tooltip} placement="top">
+              <SwitchButton
+                className="image-preview__switch-button"
+                disabled={disabled}
+                icon={icon}
+                aria-pressed={autoMode === mode}
+                onClick={handleModeButtonClick(mode)}
+                onContextMenu={handleModeButtonContextMenu(mode)}
+                style={{ width: SWITCH_BUTTON_SIZE, height: SWITCH_BUTTON_SIZE, padding: 0 }}
+                type="primary"
+                value={autoMode === mode}
+                data-testid={testId}
+              />
+            </Tooltip>
+          );
+        })}
       </div>
     ) : (
       <Button
@@ -318,7 +555,7 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
         size="middle"
         style={{ width: '56px' }}
       >
-        <SaveOutlined />
+        <Save size={ICON_SIZE} />
       </Button>
     ),
     bottomIndicator: (
@@ -328,13 +565,13 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
             {
               key: 'saveCurrent',
               label: t('image.save_current'),
-              icon: <SaveOutlined />,
+              icon: <Save size={ICON_SIZE} />,
               onClick: handleSaveCurrent
             },
             {
               key: 'saveAll',
               label: t('image.save_all'),
-              icon: <SaveOutlined />,
+              icon: <Save size={ICON_SIZE} />,
               onClick: handleSaveAll
             },
             {
@@ -343,7 +580,7 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
             {
               key: 'clearAll',
               label: t('image.clear_all'),
-              icon: <DeleteOutlined />,
+              icon: <Trash2 size={ICON_SIZE} />,
               onClick: handleClearAll
             }
           ]
@@ -353,7 +590,7 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
         overlayStyle={{ minWidth: 'auto', width: 'max-content' }}
       >
         <div className="image-preview__bottom-indicator" style={{ cursor: 'pointer' }}>
-          {currentIndex + 1} / {images.length} <MoreOutlined />
+          {normalizedIndex + 1} / {images.length} <MoreVertical size={ICON_SIZE} />
         </div>
       </Dropdown>
     )
@@ -367,7 +604,7 @@ export default function ImagePreviewWrapper({ children }: ImagePreviewWrapperPro
         <div className="image-preview__container">
           <ImagePreview
             images={images}
-            currentIndex={currentIndex}
+            currentIndex={normalizedIndex}
             onIndexChange={setCurrentIndex}
           />
 

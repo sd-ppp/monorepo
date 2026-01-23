@@ -1,7 +1,7 @@
-import { WidgetableNode, WidgetableWidget } from '@sdppp/common/schemas/schemas';
+import { sdpppSDK, t } from '@sdppp/common';
+import { WidgetableNode } from '@sdppp/common/schemas/schemas';
 import { Client } from '../base/Client';
 import { Task } from '../base/Task';
-import { t, getCurrentLanguage, sdpppSDK } from '@sdppp/common';
 // GoogleGenAI and OpenAI moved to mesh actions
 
 // Gemini and OpenAI interfaces moved to mesh actions - keeping for compatibility
@@ -59,10 +59,51 @@ export class SDPPPCustomAPI extends Client<{
 
     ];
 
-    const defaultInput = {
+    // Add aspectRatio and imageSize only for Google format
+    if (this.config.format === 'google') {
+      widgetableNodes.push(
+        {
+          id: 'aspectRatio',
+          title: t('google.field.aspect_ratio', { defaultMessage: 'Aspect Ratio' }),
+          widgets: [{
+            name: '',
+            uiWeight: 12,
+            outputType: 'combo',
+            options: {
+              required: false,
+              values: ['1:1', '16:9', '9:16', '4:3', '3:4', '21:9', '3:2', '2:3'],
+              labels: ['1:1 (Square)', '16:9 (Landscape)', '9:16 (Portrait)', '4:3 (Landscape)', '3:4 (Portrait)', '21:9 (Ultrawide)', '3:2 (Landscape)', '2:3 (Portrait)']
+            }
+          }],
+          uiWeightSum: 12
+        },
+        {
+          id: 'imageSize',
+          title: t('google.field.image_size', { defaultMessage: 'Image Size' }),
+          widgets: [{
+            name: '',
+            uiWeight: 12,
+            outputType: 'combo',
+            options: {
+              required: false,
+              values: ['1K', '2K', '4K'],
+              labels: ['1K (Standard)', '2K (High)', '4K (Ultra)']
+            }
+          }],
+          uiWeightSum: 12
+        }
+      );
+    }
+
+    const defaultInput: Record<string, any> = {
       image_input: null,
       prompt: ''
     };
+
+    if (this.config.format === 'google') {
+      defaultInput.aspectRatio = '1:1';
+      defaultInput.imageSize = '1K';
+    }
 
     return {
       widgetableNodes,
@@ -71,15 +112,20 @@ export class SDPPPCustomAPI extends Client<{
     };
   }
 
-  async run(model: string, input: { image_input: string | string[], prompt: string }, signal?: AbortSignal): Promise<Task<any>> {
+  async run(model: string, input: { image_input: string | string[], prompt: string, aspectRatio?: string, imageSize?: string }, signal?: AbortSignal): Promise<Task<any>> {
     try {
       // Check if already aborted
       if (signal?.aborted) {
-        throw new DOMException('Task creation aborted', 'AbortError');
+        throw new DOMException(
+          t('common.error.task_creation_aborted', { defaultValue: 'Task creation aborted' }),
+          'AbortError'
+        );
       }
 
       if (!input.image_input || !input.prompt) {
-        throw new Error('Image input and prompt are required');
+        throw new Error(t('customapi.error.input_required', {
+          defaultValue: 'Image input and prompt are required'
+        }));
       }
 
       // Normalize to an array of inputs (tokens or base64)
@@ -94,7 +140,10 @@ export class SDPPPCustomAPI extends Client<{
         statusGetter: async (id: string) => {
           // Check if aborted before making status request
           if (signal?.aborted) {
-            throw new DOMException('Status check aborted', 'AbortError');
+            throw new DOMException(
+              t('common.error.status_check_aborted', { defaultValue: 'Status check aborted' }),
+              'AbortError'
+            );
           }
 
           if (!isCompleted) {
@@ -105,13 +154,24 @@ export class SDPPPCustomAPI extends Client<{
                   console.log('Starting Gemini image generation via mesh action...');
                   // Determine type: if every input is a data URL, treat as base64; otherwise tokens
                   const areAllDataUrls = inputsArray.every(v => typeof v === 'string' && v.startsWith('data:'));
-                  taskResult = await sdpppSDK.plugins.photoshop.geminiImageGenerate({
+                  const geminiParams: any = {
                     apiKey: this.config.apiKey,
                     baseURL: this.config.baseURL,
+                    model,
                     imageInputs: inputsArray as any,
                     imageInputType: (areAllDataUrls ? 'base64' : 'token') as any,
                     prompt: input.prompt
-                  }, signal);
+                  };
+                  
+                  // Add aspectRatio and imageSize if provided
+                  if (input.aspectRatio) {
+                    geminiParams.aspectRatio = input.aspectRatio;
+                  }
+                  if (input.imageSize) {
+                    geminiParams.imageSize = input.imageSize;
+                  }
+                  
+                  taskResult = await sdpppSDK.plugins.photoshop.geminiImageGenerate(geminiParams, signal);
                 } else {
                   console.log('Starting OpenAI image edit via mesh action...');
                   taskResult = await sdpppSDK.plugins.photoshop.openaiImageEdit({
@@ -127,8 +187,13 @@ export class SDPPPCustomAPI extends Client<{
                 isCompleted = true;
                 throw error;
               }
-            }
           }
+        }
+
+          const nonGoogleStatusText = taskResult?.success
+            ? t('common.success', { defaultValue: 'Success' })
+            : t('common.failed', { defaultValue: 'Failed' });
+          const nonGoogleGeneratingText = t('common.generating', { defaultValue: 'Generating...' });
 
           return {
             isCompleted,
@@ -136,20 +201,25 @@ export class SDPPPCustomAPI extends Client<{
             progressMessage: isCompleted
               ? (this.config.format === 'google'
                 ? (taskResult?.success ? t('google.status.success') : t('google.status.failed'))
-                : (taskResult?.success ? 'Success' : 'Failed'))
-              : (this.config.format === 'google' ? t('google.status.generating') : 'Generating...'),
+                : nonGoogleStatusText)
+              : (this.config.format === 'google' ? t('google.status.generating') : nonGoogleGeneratingText),
             rawData: taskResult
           };
         },
         resultGetter: async (id: string, lastStatusResult: any) => {
           // Check if aborted before getting results
           if (signal?.aborted) {
-            throw new DOMException('Result fetch aborted', 'AbortError');
+            throw new DOMException(
+              t('common.error.result_fetch_aborted', { defaultValue: 'Result fetch aborted' }),
+              'AbortError'
+            );
           }
 
           const result = lastStatusResult.rawData;
           if (!result?.success || !result.imageUrl) {
-            throw new Error(result?.error || 'Generation failed');
+            throw new Error(result?.error || t('customapi.error.generation_failed', {
+              defaultValue: 'Generation failed'
+            }));
           }
           return [{ url: result.imageUrl, rawData: result }];
         },
@@ -160,7 +230,9 @@ export class SDPPPCustomAPI extends Client<{
       });
 
       // Set task metadata
-      task.taskName = this.config.format === 'google' ? `Google Gemini - Image Generation` : 'OpenAI - Image Edit';
+      task.taskName = this.config.format === 'google'
+        ? t('customapi.task.name.google', { defaultValue: 'Google Gemini - Image Generation' })
+        : t('customapi.task.name.openai', { defaultValue: 'OpenAI - Image Edit' });
       task.metadata = {
         format: this.config.format,
         model
@@ -173,19 +245,24 @@ export class SDPPPCustomAPI extends Client<{
     }
   }
 
-  async uploadImage(type: 'token' | 'buffer', image: ArrayBuffer | string, format: 'png' | 'jpg' | 'jpeg' | 'webp', signal?: AbortSignal): Promise<string> {
+  async uploadImage(type: 'resource', image: ArrayBuffer | string, format: 'png' | 'jpg' | 'jpeg' | 'webp', signal?: AbortSignal): Promise<string> {
     try {
       // Check if already aborted
       if (signal?.aborted) {
-        throw new DOMException('Upload aborted', 'AbortError');
+        throw new DOMException(
+          t('common.error.upload_aborted', { defaultValue: 'Upload aborted' }),
+          'AbortError'
+        );
       }
 
-      if (type === 'token') {
+      if (type === 'resource') {
         const { base64 } = await sdpppSDK.plugins.photoshop.getImageBase64({ token: image as string })
         return base64 || '';
 
       } else {
-        throw new Error('Unsupported image input type');
+        throw new Error(t('customapi.error.unsupported_image_input', {
+          defaultValue: 'Unsupported image input type'
+        }));
       }
     } catch (error) {
       console.error('Error uploading image:', error);

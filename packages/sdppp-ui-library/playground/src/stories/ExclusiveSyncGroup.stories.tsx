@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { useCallback } from 'react';
-import { ExclusiveSyncGroup } from 'react-antd-tailwind-ui';
-import type { ButtonConfig } from 'react-antd-tailwind-ui';
+import { ExclusiveSyncGroup } from '@sdppp/ui-library';
+import type { ButtonConfig } from '@sdppp/ui-library';
 
 const meta: Meta<typeof ExclusiveSyncGroup> = {
   title: 'Components/ExclusiveSyncGroup',
@@ -24,6 +24,6 @@ export const Default: Story = {
     buttons,
     onSync: async () => {},
     onAutoSyncChange: () => {},
-    buttonWidth: 140,
+    buttonSize: 140,
   },
 };

@@ -1,6 +1,7 @@
-import React, { ReactNode, useMemo, useState } from "react";
+import React, { ReactNode, useMemo, useCallback } from "react";
 
 import type { WidgetableNode, WidgetableStructure, WidgetableValues, WidgetableWidget } from "@sdppp/common/schemas/schemas";
+import type { WidgetRenderMeta } from "./widget-registry";
 import { computeUIWeightCSS } from "./utils";
 
 import './index.less'
@@ -82,65 +83,131 @@ export default function WorkflowEdit({
 
     useWidgetable();
 
+    const nodeIndexes = Array.isArray(widgetableStructure?.nodeIndexes)
+        ? widgetableStructure.nodeIndexes
+        : [];
+    const nodesMap = widgetableStructure?.nodes ?? {};
+    const options = widgetableStructure?.options ?? {};
+    const safeWidgetableValues = widgetableValues ?? {};
+    const safeWidgetableErrors = widgetableErrors ?? {};
+
+    const renderMetaMap = useMemo(() => {
+        const metaMap = new Map<string, WidgetRenderMeta>();
+        const sameTypeTotals = new Map<string, number>();
+
+        nodeIndexes.forEach(nodeID => {
+            const fieldInfo = nodesMap[nodeID];
+            if (!fieldInfo || !Array.isArray(fieldInfo.widgets)) {
+                return;
+            }
+            fieldInfo.widgets.forEach(widget => {
+                if (!widget) return;
+                const widgetType = String(widget.outputType ?? 'unknown');
+                sameTypeTotals.set(widgetType, (sameTypeTotals.get(widgetType) ?? 0) + 1);
+            });
+        });
+
+        const sameTypeSeen = new Map<string, number>();
+        let absoluteIndex = 0;
+
+        nodeIndexes.forEach((nodeID, nodeOrderIndex) => {
+            const fieldInfo = nodesMap[nodeID];
+            if (!fieldInfo || !Array.isArray(fieldInfo.widgets)) {
+                return;
+            }
+            fieldInfo.widgets.forEach((widget, widgetIndex) => {
+                if (!widget) {
+                    return;
+                }
+                const widgetType = String(widget.outputType ?? 'unknown');
+                const sameTypeIndex = sameTypeSeen.get(widgetType) ?? 0;
+                const sameTypeTotal = sameTypeTotals.get(widgetType) ?? 0;
+
+                const meta: WidgetRenderMeta = {
+                    absoluteIndex,
+                    absolutePosition: absoluteIndex + 1,
+                    sameTypeIndex,
+                    sameTypePosition: sameTypeIndex + 1,
+                    sameTypeTotal,
+                    widgetType,
+                    nodeOrderIndex,
+                    nodeId: fieldInfo.id,
+                    widgetIndex,
+                };
+                metaMap.set(`${fieldInfo.id}:${widgetIndex}`, meta);
+
+                sameTypeSeen.set(widgetType, sameTypeIndex + 1);
+                absoluteIndex += 1;
+            });
+        });
+
+        return metaMap;
+    }, [nodeIndexes, nodesMap]);
+
+    const getRenderMeta = useCallback(
+        (fieldInfo: WidgetableNode, widgetIndex: number): WidgetRenderMeta | undefined => {
+            return renderMetaMap.get(`${fieldInfo.id}:${widgetIndex}`);
+        },
+        [renderMetaMap],
+    );
+
     const { renderWidget, renderTitle } = useWidgetableRenderer({
-        widgetableValues: widgetableValues,
+        widgetableValues: safeWidgetableValues,
         onWidgetChange,
         onTitleChange,
-        extraOptions: widgetableStructure.options
+        extraOptions: options,
+        getRenderMeta,
     });
 
-    const allRenderedFields = useMemo(() => {
-        return widgetableStructure.nodeIndexes.map(nodeID => {
-            const fieldInfo = widgetableStructure.nodes[nodeID]
+    const allRenderedFields = nodeIndexes.map(nodeID => {
+        const fieldInfo = nodesMap[nodeID];
+        if (!fieldInfo) {
+            return null;
+        }
 
-            const useShortTitle = fieldInfo.widgets.length == 1 && ((fieldInfo.uiWeightSum <= 8 && (
-                fieldInfo.widgets[0].outputType !== 'number'
-            )))
-            return (
-                <div className="workflow-edit-field param-row" key={fieldInfo.id}>
-                    <div className="workflow-edit-field-title param-label" title={fieldInfo.title} style={{
-                        ...computeUIWeightCSS(useShortTitle ? 4 : 12),
-                    }}>
-                        <WidgetTitleRenderErrorBoundary title={fieldInfo.title}>
-                            {renderTitle(fieldInfo.title, fieldInfo)}
-                        </WidgetTitleRenderErrorBoundary>
-                    </div>
-                    {
-                        fieldInfo.widgets.map((widget, widgetIndex) => {
-                            try {
-                                const renderedWidget = renderWidget(fieldInfo, widget, widgetIndex);
-                                if (renderedWidget) {
-                                    return <WidgetRenderErrorBoundary key={widgetIndex}>{renderedWidget}</WidgetRenderErrorBoundary>;
-                                }
-                                return null;
-                            } catch (error: any) {
-                                return <WidgetRenderErrorBoundary key={widgetIndex}>{error.stack || error.message || error.toString()}</WidgetRenderErrorBoundary>;
-                            }
-                        })
-                    }
-                    {
-                        widgetableErrors[fieldInfo.id] ?
-                            <span className="list-error-label">{widgetableErrors[fieldInfo.id]}</span> : ''
-                    }
+        const widgets = Array.isArray(fieldInfo.widgets) ? fieldInfo.widgets : [];
+        const useShortTitle = widgets.length === 1 && (
+            fieldInfo.uiWeightSum <= 8 &&
+            (widgets[0]?.outputType !== 'number')
+        );
+        return (
+            <div className="workflow-edit-field param-row" key={fieldInfo.id}>
+                <div className="workflow-edit-field-title param-label" title={fieldInfo.title} style={{
+                    ...computeUIWeightCSS(useShortTitle ? 4 : 12),
+                }}>
+                    <WidgetTitleRenderErrorBoundary title={fieldInfo.title}>
+                        {renderTitle(fieldInfo.title, fieldInfo)}
+                    </WidgetTitleRenderErrorBoundary>
                 </div>
-            )
-        }).filter(Boolean)
-    }, [widgetableStructure, widgetableValues, widgetableErrors, renderWidget, renderTitle])
+                {
+                    widgets.map((widget, widgetIndex) => {
+                        try {
+                            const renderedWidget = renderWidget(fieldInfo, widget, widgetIndex);
+                            if (renderedWidget) {
+                                return <WidgetRenderErrorBoundary key={widgetIndex}>{renderedWidget}</WidgetRenderErrorBoundary>;
+                            }
+                            return null;
+                        } catch (error: any) {
+                            return <WidgetRenderErrorBoundary key={widgetIndex}>{error.stack || error.message || error.toString()}</WidgetRenderErrorBoundary>;
+                        }
+                    })
+                }
+                {
+                    safeWidgetableErrors[fieldInfo.id] ?
+                        <span className="list-error-label">{safeWidgetableErrors[fieldInfo.id]}</span> : ''
+                }
+            </div>
+        )
+    }).filter(Boolean);
 
-    const [
-        nodeErrorsInWidgetTable,
-        nodeErrorsNotInWidgetTable
-    ] = useMemo(() => {
-        return [
-            Object.keys(widgetableErrors).filter((key: any) => widgetableStructure.nodes[parseInt(key)]),
-            Object.keys(widgetableErrors).filter((key: any) => !widgetableStructure.nodes[parseInt(key)])
-        ]
-    }, [widgetableErrors, widgetableStructure]);
+    const nodeErrorsInWidgetTable = Object.keys(safeWidgetableErrors).filter((key: any) => nodesMap[parseInt(key)]);
+    const nodeErrorsNotInWidgetTable = Object.keys(safeWidgetableErrors).filter((key: any) => !nodesMap[parseInt(key)]);
+
     let errorLabel: ReactNode | null = null;
     if (nodeErrorsNotInWidgetTable.length > 0) {
-        errorLabel = <span className="list-error-label">{widgetableErrors[+nodeErrorsNotInWidgetTable[0]]}</span>
+        errorLabel = <span className="list-error-label">{safeWidgetableErrors[+nodeErrorsNotInWidgetTable[0]]}</span>
     } else if (nodeErrorsInWidgetTable.length > 0) {
-        errorLabel = <span className="list-error-label">{widgetableErrors[+nodeErrorsInWidgetTable[0]]}</span>
+        errorLabel = <span className="list-error-label">{safeWidgetableErrors[+nodeErrorsInWidgetTable[0]]}</span>
     }
 
     return (

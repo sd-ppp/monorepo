@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { ImageSyncGroupList } from 'react-antd-tailwind-ui';
-import type { ImageSyncGroupData, ButtonConfig } from 'react-antd-tailwind-ui';
+import { ImageSyncGroupList } from '@sdppp/ui-library';
+import type { ImageSyncGroupData, ButtonConfig } from '@sdppp/ui-library';
 
 const meta: Meta<typeof ImageSyncGroupList> = {
   title: 'Components/ImageSyncGroupList',
@@ -124,7 +124,7 @@ export const Default: Story = {
         onRemove={handleRemove}
         onSync={handleSync}
         onAutoSyncChange={handleAutoSyncChange}
-        buttonWidth={140}
+        buttonSize={140}
       />
     );
   },
@@ -156,7 +156,7 @@ export const ReadOnly: Story = {
         onAdd={() => {}}
         onRemove={() => {}}
         onAutoSyncChange={() => {}}
-        buttonWidth={140}
+        buttonSize={140}
       />
     );
   },
@@ -255,7 +255,7 @@ export const ShiftModifierColors: Story = {
         onRemove={handleRemove}
         onSync={handleSync}
         onAutoSyncChange={handleAutoSyncChange}
-        buttonWidth={140}
+        buttonSize={140}
       />
     );
   },

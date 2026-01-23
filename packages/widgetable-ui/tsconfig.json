@@ -23,5 +23,5 @@
     "noFallthroughCasesInSwitch": true
   },
   "include": ["src"],
-  "exclude": ["dist", "node_modules"]
+  "exclude": ["dist", "node_modules", "**/*.stories.tsx", "**/*.stories.ts", "**/*.stories.jsx", "**/*.stories.js"]
 }

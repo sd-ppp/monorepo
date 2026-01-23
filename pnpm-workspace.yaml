@@ -1,4 +1,6 @@
 packages:
   - 'packages/*'
+  - 'plan-packages/*'
   - 'internals/*'
   - 'release-repos/*'
+  - 'capabilities/*'

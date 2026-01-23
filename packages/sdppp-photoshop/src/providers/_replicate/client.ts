@@ -1,8 +1,8 @@
-import Replicate from "replicate";
-import { getDefaultValues, WidgetableWidget, WidgetableNode } from '@sdppp/common/schemas/schemas';
-import { Task } from "../base/Task";
-import { Client } from "../base/Client";
 import { sdpppSDK } from '@sdppp/common';
+import { getDefaultValues, WidgetableNode } from '@sdppp/common/schemas/schemas';
+import Replicate from "replicate";
+import { Client } from "../base/Client";
+import { Task } from "../base/Task";
 
 const log = sdpppSDK.logger.extend('replicate')
 
@@ -13,6 +13,7 @@ const modelIds: Record<string, string> = {
 
 export const availableModels = [
     'google/nano-banana',
+    'google/nano-banana-pro',
     'black-forest-labs/flux-kontext-dev',
     'black-forest-labs/flux-kontext-pro',
     'flux-kontext-apps/multi-image-kontext-pro',
@@ -173,7 +174,7 @@ export class SDPPPReplicate extends Client<{
             throw error;
         }
     }
-    async uploadImage(type: 'token' | 'buffer', image: ArrayBuffer | string, format: 'png' | 'jpg' | 'jpeg' | 'webp', signal?: AbortSignal): Promise<string> {
+    async uploadImage(type: 'resource', image: ArrayBuffer | string, format: 'png' | 'jpg' | 'jpeg' | 'webp', signal?: AbortSignal): Promise<string> {
         log('uploadImage called', { type, format });
 
         try {
@@ -182,7 +183,7 @@ export class SDPPPReplicate extends Client<{
                 throw new DOMException('Upload aborted', 'AbortError');
             }
 
-            if (type === 'token') {
+            if (type === 'resource') {
                 // Check if aborted before file upload
                 if (signal?.aborted) {
                     throw new DOMException('File upload aborted', 'AbortError');

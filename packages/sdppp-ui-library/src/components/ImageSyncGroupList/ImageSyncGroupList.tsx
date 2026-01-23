@@ -1,6 +1,6 @@
 import { type FC, useState } from 'react';
 import { Button } from 'antd';
-import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
+import { Plus, Trash2 } from 'lucide-react';
 import { ImageSyncGroup } from '../ImageSyncGroup/ImageSyncGroup';
 import type { ButtonConfig } from '../ExclusiveSyncGroup/ExclusiveSyncGroup';
 
@@ -18,7 +18,7 @@ export interface ImageSyncGroupListProps {
   onAdd: () => void;
   onRemove: (index: number) => void;
   showAddRemove?: boolean;
-  buttonWidth?: number | string;
+  buttonSize?: number | string;
   // visual options
   background?: 'checkerboard' | 'white';
 }
@@ -30,7 +30,7 @@ export const ImageSyncGroupList: FC<ImageSyncGroupListProps> = ({
   onAdd,
   onRemove,
   showAddRemove = true,
-  buttonWidth,
+  buttonSize,
   background = 'checkerboard',
 }) => {
   const [hoveredRemoveIndex, setHoveredRemoveIndex] = useState<number | null>(null);
@@ -41,7 +41,7 @@ export const ImageSyncGroupList: FC<ImageSyncGroupListProps> = ({
         <div key={index} style={{ width: '100%' }}>
           <ImageSyncGroup
             {...group}
-            buttonWidth={buttonWidth}
+            buttonSize={buttonSize}
             data-testid={`image-sync-group-${index}`}
             onSync={(id, event) => onSync(index, id, event)}
             onAutoSyncChange={(activeId, event) => onAutoSyncChange(index, activeId, event)}
@@ -55,7 +55,7 @@ export const ImageSyncGroupList: FC<ImageSyncGroupListProps> = ({
           <Button
             type="dashed"
             onClick={onAdd}
-            icon={<PlusOutlined />}
+            icon={<Plus size={16} />}
             style={{ width: 120, justifyContent: 'center' }}
           >
             Add
@@ -70,7 +70,7 @@ export const ImageSyncGroupList: FC<ImageSyncGroupListProps> = ({
                     key={`remove-${index}`}
                     size="small"
                     type="default"
-                    icon={isHovered ? <DeleteOutlined /> : undefined}
+                    icon={isHovered ? <Trash2 size={14} /> : undefined}
                     onMouseEnter={() => setHoveredRemoveIndex(index)}
                     onMouseLeave={() => setHoveredRemoveIndex(prev => (prev === index ? null : prev))}
                     onClick={() => onRemove(index)}

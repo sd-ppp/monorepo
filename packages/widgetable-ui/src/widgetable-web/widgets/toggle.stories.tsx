@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { fn } from '@storybook/test';
 import { ToggleWidget } from './toggle';
 
 const meta: Meta<typeof ToggleWidget> = {
@@ -10,7 +9,7 @@ const meta: Meta<typeof ToggleWidget> = {
   },
   tags: ['autodocs'],
   args: {
-    onValueChange: fn(),
+    onValueChange: () => undefined,
   },
 };
 

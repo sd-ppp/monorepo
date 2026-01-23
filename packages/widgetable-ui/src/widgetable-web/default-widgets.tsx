@@ -7,7 +7,15 @@ import { StringWidget } from './widgets/string';
 import { SegmentWidget } from './widgets/segment';
 import { WidgetableNumberWidget, WidgetableComboWidget, WidgetableToggleWidget, WidgetableStringWidget, WidgetableSegmentWidget } from "@sdppp/common/schemas/schemas";
 
-export const renderToggleWidget: WidgetRenderer = ({ fieldInfo, widget, widgetIndex, value, onValueChange, extraOptions }) => {
+export const renderToggleWidget: WidgetRenderer = ({
+    fieldInfo,
+    widget,
+    widgetIndex,
+    value,
+    onValueChange,
+    extraOptions,
+    renderMeta: _renderMeta,
+}) => {
     const toggleWidget = widget as WidgetableToggleWidget;
     return (
         <ToggleWidget
@@ -21,7 +29,15 @@ export const renderToggleWidget: WidgetRenderer = ({ fieldInfo, widget, widgetIn
     );
 };
 
-export const renderNumberWidget: WidgetRenderer = ({ fieldInfo, widget, widgetIndex, value, onValueChange, extraOptions }) => {
+export const renderNumberWidget: WidgetRenderer = ({
+    fieldInfo,
+    widget,
+    widgetIndex,
+    value,
+    onValueChange,
+    extraOptions,
+    renderMeta: _renderMeta,
+}) => {
     const numberWidget = widget as WidgetableNumberWidget;
     const min = numberWidget.options?.min ?? 0;
     const max = numberWidget.options?.max ?? 100;
@@ -44,7 +60,15 @@ export const renderNumberWidget: WidgetRenderer = ({ fieldInfo, widget, widgetIn
     );
 };
 
-export const renderComboWidget: WidgetRenderer = ({ fieldInfo, widget, widgetIndex, value, onValueChange, extraOptions }) => {
+export const renderComboWidget: WidgetRenderer = ({
+    fieldInfo,
+    widget,
+    widgetIndex,
+    value,
+    onValueChange,
+    extraOptions,
+    renderMeta: _renderMeta,
+}) => {
     const comboWidget = widget as WidgetableComboWidget;
     return (
         <ComboWidget
@@ -60,7 +84,15 @@ export const renderComboWidget: WidgetRenderer = ({ fieldInfo, widget, widgetInd
     );
 };
 
-export const renderSegmentWidget: WidgetRenderer = ({ fieldInfo, widget, widgetIndex, value, onValueChange, extraOptions }) => {
+export const renderSegmentWidget: WidgetRenderer = ({
+    fieldInfo,
+    widget,
+    widgetIndex,
+    value,
+    onValueChange,
+    extraOptions,
+    renderMeta: _renderMeta,
+}) => {
     const segmentWidget = widget as WidgetableSegmentWidget;
     return (
         <SegmentWidget
@@ -75,7 +107,15 @@ export const renderSegmentWidget: WidgetRenderer = ({ fieldInfo, widget, widgetI
     );
 };
 
-export const renderStringWidget: WidgetRenderer = ({ fieldInfo, widget, widgetIndex, value, onValueChange, extraOptions }) => {
+export const renderStringWidget: WidgetRenderer = ({
+    fieldInfo,
+    widget,
+    widgetIndex,
+    value,
+    onValueChange,
+    extraOptions,
+    renderMeta: _renderMeta,
+}) => {
     const stringWidget = widget as WidgetableStringWidget;
     return (
         <StringWidget
@@ -88,6 +128,6 @@ export const renderStringWidget: WidgetRenderer = ({ fieldInfo, widget, widgetIn
     );
 };
 
-export const renderErrorWidget: WidgetRenderer = ({ widget }) => {
+export const renderErrorWidget: WidgetRenderer = ({ widget, renderMeta: _renderMeta }) => {
     return <span>{(widget as any).value}</span>;
 };

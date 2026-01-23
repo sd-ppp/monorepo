@@ -1,10 +1,31 @@
-import { sdpppSDK,  } from '@sdppp/common';
+import { sdpppSDK, t } from '@sdppp/common';
 import { MainStore } from '../../tsx/App.store';
-import { BoundaryRectSchema } from '@sdppp/common/schemas/schemas';
-import { z } from 'zod';
 
-type BoundaryRect = z.infer<typeof BoundaryRectSchema>;
+export interface ComfyTaskImageContext {
+    workflowName: string;
+    docId: number;
+    boundaryUri: string | null;
+    maskUri: string | null;
+    replaceExisting?: boolean;
+}
 
+export interface ComfyTaskOptions {
+    handleImageResult?: (image: any, context: ComfyTaskImageContext) => void | Promise<void>;
+    replaceExisting?: boolean;
+}
+
+export const defaultComfyTaskImageHandler = (image: any, context: ComfyTaskImageContext) => {
+    return MainStore.getState().downloadAndAppendImage({
+        url: image.url,
+        source: context.workflowName,
+        docId: context.docId,
+        boundaryUri: context.boundaryUri,
+        maskUri: context.maskUri,
+        maskHandle: null,
+    }, {
+        replaceExisting: context.replaceExisting === true,
+    });
+};
 
 export class ComfyTask {
     public readonly taskId: string;
@@ -14,18 +35,31 @@ export class ComfyTask {
     public taskName: string;
     private cancelled = false;
     private docId: number;
-    private boundary: BoundaryRect;
+    private boundaryUri: string | null;
+    private maskUri: string | null;
+    private readonly handleImageResult: (image: any, context: ComfyTaskImageContext) => void | Promise<void>;
+    private readonly replaceExisting: boolean;
 
-    constructor(runParams: { size: number }, workflowName: string, docId: number, boundary: any) {
+    constructor(
+        runParams: { size: number, mode?: 'app' | 'api' },
+        workflowName: string,
+        docId: number,
+        boundaryUri: string | null,
+        maskUri: string | null = null,
+        options: ComfyTaskOptions = {}
+    ) {
         this.taskId = `comfy_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
-        this.taskName = `ComfyUI - ${workflowName}`;
+        this.taskName = t('comfy.task.name', {
+            workflowName,
+            defaultValue: 'ComfyUI - {{workflowName}}'
+        });
         this.docId = docId;
-        this.boundary = boundary;
+        this.boundaryUri = boundaryUri ?? null;
+        this.maskUri = maskUri ?? null;
+        this.replaceExisting = options.replaceExisting === true;
+        this.handleImageResult = options.handleImageResult ?? defaultComfyTaskImageHandler;
 
-        // 注册到 Photoshop
         this.registerWithPhotoshop();
-
-        // 执行任务
         this.promise = this.executeComfyTask(runParams, workflowName);
     }
 
@@ -43,7 +77,8 @@ export class ComfyTask {
                     provider: 'comfyui',
                     type: 'workflow_execution',
                     docId: this.docId,
-                    boundary: this.boundary
+                    boundaryUri: this.boundaryUri,
+                    maskUri: this.maskUri,
                 }
             });
         } catch (error) {
@@ -51,7 +86,7 @@ export class ComfyTask {
         }
     }
 
-    private async executeComfyTask(runParams: { size: number }, workflowName: string): Promise<any[]> {
+    private async executeComfyTask(runParams: { size: number, mode?: 'app' | 'api' }, workflowName: string): Promise<any[]> {
         try {
             const result = await sdpppSDK.plugins.ComfyCaller.run(runParams);
             const images: any[] = [];
@@ -59,35 +94,36 @@ export class ComfyTask {
 
             for await (const item of result) {
                 if (this.cancelled) {
-                    throw new Error('Task cancelled');
+                    throw new Error(t('comfy.error.task_cancelled', { defaultValue: 'Task cancelled' }));
                 }
 
-                // 更新进度
                 processedCount++;
                 this.progress = Math.min((processedCount / runParams.size) * 100, 95);
-                this.progressMessage = `Processing ${processedCount}/${runParams.size}`;
+                this.progressMessage = t('comfy.task.processing_progress', {
+                    processed: processedCount,
+                    total: runParams.size,
+                    defaultValue: 'Processing {{processed}}/{{total}}'
+                });
 
                 await this.updatePhotoshopProgress();
 
                 if (item.images) {
                     images.push(...item.images);
-                    // 处理图片结果（保持现有逻辑）
-                    item.images.forEach((image: any) => {
-                        MainStore.getState().downloadAndAppendImage({
-                            url: image.url,
-                            source: workflowName,
+                    for (const image of item.images) {
+                        await this.handleImageResult(image, {
+                            workflowName,
                             docId: this.docId,
-                            boundary: this.boundary
+                            boundaryUri: this.boundaryUri,
+                            maskUri: this.maskUri,
+                            replaceExisting: this.replaceExisting,
                         });
-                    });
+                    }
                 }
             }
 
-            // 任务完成
             this.progress = 100;
             await this.updatePhotoshopStatus('completed');
             return images;
-
         } catch (error) {
             await this.updatePhotoshopStatus('failed', (error as Error).message);
             throw error;
@@ -122,7 +158,7 @@ export class ComfyTask {
     async cancel() {
         this.cancelled = true;
         try {
-            await sdpppSDK.plugins.ComfyCaller.stopAll();
+            await sdpppSDK.plugins.ComfyCaller.stopAll({});
             await this.updatePhotoshopStatus('cancelled');
         } catch (error) {
             console.warn('Failed to cancel ComfyUI task:', error);

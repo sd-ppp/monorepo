@@ -1,4 +1,4 @@
-import { sdpppSDK } from '@sdppp/common';
+import { sdpppSDK, t } from '@sdppp/common';
 export interface TaskCtorParams {
     statusGetter: (id: string) => Promise<{
         isCompleted: boolean;
@@ -60,7 +60,7 @@ export class Task<T> {
         try {
             await sdpppSDK.plugins.photoshop.taskAdd({
                 taskId: this.taskId,
-                taskName: this.taskName || 'AI Generation Task',
+                taskName: this.taskName || t('task.default_name', { defaultValue: 'AI Generation Task' }),
                 status: 'running',
                 startTime: new Date().toISOString(),
                 currentStep: 0,

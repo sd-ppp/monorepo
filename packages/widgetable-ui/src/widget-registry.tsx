@@ -9,6 +9,18 @@ import {
     renderErrorWidget
 } from './widgetable-web/default-widgets';
 
+export interface WidgetRenderMeta {
+    absoluteIndex: number;
+    absolutePosition: number;
+    sameTypeIndex: number;
+    sameTypePosition: number;
+    sameTypeTotal: number;
+    widgetType: string;
+    nodeOrderIndex: number;
+    nodeId: WidgetableNode['id'];
+    widgetIndex: number;
+}
+
 export interface WidgetRendererProps {
     fieldInfo: WidgetableNode;
     widget: WidgetableWidget;
@@ -16,6 +28,7 @@ export interface WidgetRendererProps {
     value: any;
     onValueChange: (value: any) => void;
     extraOptions?: any;
+    renderMeta?: WidgetRenderMeta;
 }
 
 export type WidgetRenderer = (props: WidgetRendererProps) => React.ReactElement | null;

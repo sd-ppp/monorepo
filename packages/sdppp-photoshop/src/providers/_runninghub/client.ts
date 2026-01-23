@@ -16,6 +16,13 @@ export class SDPPPRunningHub extends Client<{
     super(config);
   }
 
+  // Simple in-module store to keep latest nodeInfoList per webappId
+  private static nodeInfoListStore: Record<string, any[] | undefined> = {};
+
+  private getUnknownErrorMessage() {
+    return t('common.error.unknown', { defaultValue: 'Unknown error' });
+  }
+
   private getBaseHost(): string {
     const locale = getCurrentLanguage();
     return locale === 'en-US' ? 'www.runninghub.ai' : 'www.runninghub.cn';
@@ -42,7 +49,10 @@ export class SDPPPRunningHub extends Client<{
       });
 
       if (!response.ok) {
-        const errorMsg = `getAccountStatus API failed - HTTP error! status: ${response.status}`;
+        const errorMsg = t('runninghub.error.account_status_http', {
+          status: response.status,
+          defaultValue: 'getAccountStatus API failed - HTTP error! status: {{status}}'
+        });
         log('getAccountStatus error', { status: response.status, url: apiUrl });
         throw new Error(errorMsg);
       }
@@ -50,7 +60,15 @@ export class SDPPPRunningHub extends Client<{
       const result = await response.json();
 
       if (result.code !== 0) {
-        const errorMsg = `getAccountStatus API failed - ${result.msg || 'Failed to fetch account status'}`;
+        const reason =
+          result.msg ||
+          t('runninghub.error.account_status_reason_unknown', {
+            defaultValue: 'Failed to fetch account status'
+          });
+        const errorMsg = t('runninghub.error.account_status_failed', {
+          reason,
+          defaultValue: 'getAccountStatus API failed - {{reason}}'
+        });
         log('getAccountStatus error', { code: result.code, msg: result.msg, url: apiUrl });
         throw new Error(errorMsg);
       }
@@ -79,7 +97,10 @@ export class SDPPPRunningHub extends Client<{
       });
 
       if (!response.ok) {
-        const errorMsg = `getNodes API failed - HTTP error! status: ${response.status}`;
+        const errorMsg = t('runninghub.error.form_data_http', {
+          status: response.status,
+          defaultValue: 'getNodes API failed - HTTP error! status: {{status}}'
+        });
         log('getNodes error', { webappId, status: response.status, url: apiUrl });
         throw new Error(errorMsg);
       }
@@ -87,12 +108,26 @@ export class SDPPPRunningHub extends Client<{
       const formData = await response.json();
 
       if (formData.code !== 0) {
-        const errorMsg = `getNodes API failed - ${formData.msg || 'Failed to fetch form data'}`;
+        const reason =
+          formData.msg ||
+          t('runninghub.error.form_data_reason_unknown', {
+            defaultValue: 'Failed to fetch form data'
+          });
+        const errorMsg = t('runninghub.error.form_data_failed', {
+          reason,
+          defaultValue: 'getNodes API failed - {{reason}}'
+        });
         log('getNodes error', { webappId, code: formData.code, msg: formData.msg, url: apiUrl });
         throw new Error(errorMsg);
       }
       // {"code":0,"msg":"success","data":{"curl":"curl --location --request POST 'https://www.runninghub.cn/task/openapi/ai-app/run' \\\n--header 'Host: www.runninghub.cn' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    \"webappId\": \"null\",\n    \"apiKey\": \"4b80b05c1f724f8fb3958333a982ad58\",\n    \"nodeInfoList\": [\n        {\n            \"nodeId\": \"39\",\n            \"fieldName\": \"image\",\n            \"fieldValue\": \"a293d89506f9c484f4ea5695f93024a80cd62ef98f4ee4543faba357536b37ec.jpg\",\n            \"description\": \"上传图像\"\n        },\n        {\n            \"nodeId\": \"37\",\n            \"fieldName\": \"model\",\n            \"fieldValue\": \"flux-kontext-pro\",\n            \"description\": \"模型切换\"\n        },\n        {\n            \"nodeId\": \"37\",\n            \"fieldName\": \"aspect_ratio\",\n            \"fieldValue\": \"match_input_image\",\n            \"description\": \"输出比例\"\n        },\n        {\n            \"nodeId\": \"52\",\n            \"fieldName\": \"prompt\",\n            \"fieldValue\": \"给这个女人的发型变成齐耳短发,\",\n            \"description\": \"图像编辑文本输入框\"\n        }\n    ]\n}'","nodeInfoList":[{"nodeId":"39","nodeName":"LoadImage","fieldName":"image","fieldValue":"a293d89506f9c484f4ea5695f93024a80cd62ef98f4ee4543faba357536b37ec.jpg","fieldData":"[[\"bd7129b7707661dc1f37ec6a00af5605cca6d18ea51d0d37e26e3ff0d3bdb515.png\", \"e8db2c11b83f0698ff0afcae9fbb802fa038ec228ba4ee84b7f25cbacc673321.png\", \"example.png\", \"keep_this_dic\"], {\"image_upload\": true}]","fieldType":"IMAGE","description":"上传图像","descriptionEn":"Upload image"},{"nodeId":"37","nodeName":"RH_ComfyFluxKontext","fieldName":"model","fieldValue":"flux-kontext-pro","fieldData":"[{\"name\":\"flux-kontext-pro\",\"index\":\"flux-kontext-pro\",\"description\":\"flux-kontext-pro 模型（默认）\"},{\"name\":\"flux-kontext-max\",\"index\":\"flux-kontext-max\",\"description\":\"flux-kontext-maX 模型\"},{\"default\":\"flux-kontext-pro\",\"description\":\"忽略\"}]","fieldType":"LIST","description":"模型切换","descriptionEn":"Model switch"},{"nodeId":"37","nodeName":"RH_ComfyFluxKontext","fieldName":"aspect_ratio","fieldValue":"match_input_image","fieldData":"[{\"name\":\"match_input_image\",\"index\":\"match_input_image\",\"description\":\"匹配上传图像比例\"},{\"name\":\"1:1\",\"index\":\"1:1\",\"description\":\"1:1 正方形，适配社交媒体图文 （Instagram/小红书）\"},{\"name\":\"16:9\",\"index\":\"16:9\",\"description\":\"16:9 横版宽屏，主流视频平台（电视 / YouTube）\"},{\"name\":\"9:16\",\"index\":\"9:16\",\"description\":\"9:16 竖版长屏，适配抖音等短视频竖屏\"},{\"name\":\"4:3\",\"index\":\"4:3\",\"description\":\"4:3 传统比例，老式屏幕 / 教育课件\"},{\"name\":\"3:4\",\"index\":\"3:4\",\"description\":\"3:4 竖版构图，人像摄影 / 竖版海报\"},{\"name\":\"3:2\",\"index\":\"3:2\",\"description\":\"3:2 胶片经典比例，人文风景摄影\"},{\"name\":\"2:3\",\"index\":\"2:3\",\"description\":\"2:3 纵向延伸，书籍封面 / 长图设计\"},{\"name\":\"4:5\",\"index\":\"4:5\",\"description\":\"4:5 手机竖屏适配，移动端拍摄 / 广告\"},{\"name\":\"5:4\",\"index\":\"5:4\",\"description\":\"5:4 横向拓展，艺术摄影 / 杂志封面\"},{\"name\":\"21:9\",\"index\":\"21:9\",\"description\":\"21:9 超宽屏，电影 / 游戏全景场景\"},{\"name\":\"9:21\",\"index\":\"9:21\",\"description\":\"9:21 极端竖版，短视频创意分镜\"},{\"name\":\"2:1\",\"index\":\"2:1\",\"description\":\"2:1 横向长条，横幅海报 / 网页 Banner\"},{\"name\":\"1:2\",\"index\":\"1:2\",\"description\":\"1:2 纵向长条，垂直网页 / 手机长图\"},{\"default\":\"match_input_image\",\"description\":\"忽略\"}]","fieldType":"LIST","description":"输出比例","descriptionEn":"Output ratio"},{"nodeId":"52","nodeName":"RH_Translator","fieldName":"prompt","fieldValue":"给这个女人的发型变成齐耳短发,","fieldData":"[\"STRING\", {\"default\": \"\", \"multiline\": true}]","fieldType":"STRING","description":"图像编辑文本输入框","descriptionEn":"Image editing text input box"}]}}
       const { widgetableNodes, defaultInput } = this.convertFormDataToNodes(formData.data);
+
+      // Cache nodeInfoList for run() usage
+      try {
+        const rawList = Array.isArray(formData?.data?.nodeInfoList) ? formData.data.nodeInfoList : undefined;
+        SDPPPRunningHub.nodeInfoListStore[webappId] = rawList;
+      } catch {}
 
       return {
         widgetableNodes,
@@ -113,12 +148,27 @@ export class SDPPPRunningHub extends Client<{
 
       // If image/file field, submit only the first value
       const ft = String(node.fieldType || '').toUpperCase();
+      if (ft === 'SWITCH') {
+        const normalizedValue = this.normalizeSwitchFieldValue(node, fieldValue);
+        log('switch field normalized', { nodeKey, rawValue: fieldValue, normalizedValue });
+        fieldValue = normalizedValue;
+      }
       if (ft === 'IMAGE' || ft === 'FILE') {
         if (Array.isArray(fieldValue)) {
           const first = fieldValue[0];
-          fieldValue = first && typeof first === 'object' && (first as any).url ? (first as any).url : first;
-        } else if (fieldValue && typeof fieldValue === 'object' && (fieldValue as any).url) {
-          fieldValue = (fieldValue as any).url;
+          if (first && typeof first === 'object' && typeof (first as any).url === 'string') {
+            fieldValue = ((first as any).url ?? '').trim();
+          } else if (typeof first === 'string') {
+            fieldValue = first.trim();
+          } else {
+            fieldValue = '';
+          }
+        } else if (fieldValue && typeof fieldValue === 'object' && typeof (fieldValue as any).url === 'string') {
+          fieldValue = ((fieldValue as any).url ?? '').trim();
+        } else if (typeof fieldValue === 'string') {
+          fieldValue = fieldValue.trim();
+        } else if (fieldValue == null) {
+          fieldValue = '';
         }
       }
 
@@ -127,6 +177,32 @@ export class SDPPPRunningHub extends Client<{
         fieldValue,
       };
     });
+  }
+
+  private normalizeSwitchFieldValue(node: any, rawValue: any): any {
+    if (rawValue === undefined || rawValue === null) return rawValue;
+    const candidates = this.parseFieldData(node?.fieldData);
+    const byName = candidates.find(item => item && typeof item === 'object' && String(item.name) === String(rawValue));
+    if (byName && byName.index !== undefined) return byName.index;
+    const byFastIndex = candidates.find(item => item && typeof item === 'object' && String(item.fastIndex) === String(rawValue));
+    if (byFastIndex && byFastIndex.index !== undefined) return byFastIndex.index;
+    const byIndex = candidates.find(item => item && typeof item === 'object' && String(item.index) === String(rawValue));
+    if (byIndex && byIndex.index !== undefined) return byIndex.index;
+    return rawValue;
+  }
+
+  private parseFieldData(fieldData: any): any[] {
+    if (!fieldData) return [];
+    if (Array.isArray(fieldData)) return fieldData;
+    if (typeof fieldData === 'string') {
+      try {
+        const parsed = JSON.parse(fieldData);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+    return [];
   }
 
   private mapStatusToChineseMessage(status: string): string {
@@ -151,17 +227,27 @@ export class SDPPPRunningHub extends Client<{
     try {
       // Check if already aborted
       if (signal?.aborted) {
-        throw new DOMException('Task creation aborted', 'AbortError');
+        throw new DOMException(
+          t('common.error.task_creation_aborted', { defaultValue: 'Task creation aborted' }),
+          'AbortError'
+        );
       }
 
-      // 动态导入store以避免循环依赖
-      const { runninghubStore } = await import('./renderer/runninghub.store');
-      const { currentNodeInfoList } = runninghubStore.getState();
-
+      // Ensure nodeInfoList is available (fetch on-demand)
+      let currentNodeInfoList = SDPPPRunningHub.nodeInfoListStore[webappId];
       if (!currentNodeInfoList || currentNodeInfoList.length === 0) {
-        const errorMsg = 'run API failed - nodeInfoList is required for task execution';
+        try {
+          await this.getNodes(webappId);
+          currentNodeInfoList = SDPPPRunningHub.nodeInfoListStore[webappId];
+        } catch (e) {
+          // ignore; handled below
+        }
+      }
+      if (!currentNodeInfoList || currentNodeInfoList.length === 0) {
         log('run error', { webappId, error: 'nodeInfoList empty', url: apiUrl });
-        throw new Error(errorMsg);
+        throw new Error(t('runninghub.error.node_info_missing', {
+          defaultValue: 'run API failed - nodeInfoList unavailable. Please call getNodes() first.'
+        }));
       }
 
       const mergedNodeInfoList = this.mergeInputWithNodeInfoList(currentNodeInfoList, input);
@@ -197,7 +283,10 @@ export class SDPPPRunningHub extends Client<{
       });
 
       if (!response.ok) {
-        const errorMsg = `run API failed - HTTP error! status: ${response.status}`;
+        const errorMsg = t('runninghub.error.run_http', {
+          status: response.status,
+          defaultValue: 'run API failed - HTTP error! status: {{status}}'
+        });
         log('run error', { webappId, status: response.status, url: apiUrl });
         throw new Error(errorMsg);
       }
@@ -205,7 +294,15 @@ export class SDPPPRunningHub extends Client<{
       const result = await response.json();
 
       if (result.code !== 0) {
-        const errorMsg = `run API failed - ${result.msg || 'Task execution failed'}`;
+        const reason =
+          result.msg ||
+          t('runninghub.error.run_reason_default', {
+            defaultValue: 'Task execution failed'
+          });
+        const errorMsg = t('runninghub.error.run_failed', {
+          reason,
+          defaultValue: 'run API failed - {{reason}}'
+        });
         log('run error', { webappId, code: result.code, msg: result.msg, url: apiUrl });
         throw new Error(errorMsg);
       }
@@ -219,7 +316,10 @@ export class SDPPPRunningHub extends Client<{
 
           // Check if aborted before making status request
           if (signal?.aborted) {
-            throw new DOMException('Status check aborted', 'AbortError');
+            throw new DOMException(
+              t('common.error.status_check_aborted', { defaultValue: 'Status check aborted' }),
+              'AbortError'
+            );
           }
 
           const requestBody = {
@@ -252,7 +352,10 @@ export class SDPPPRunningHub extends Client<{
           // }
 
           if (!statusResponse.ok) {
-            const errorMsg = `status API failed - HTTP error! status: ${statusResponse.status}`;
+            const errorMsg = t('runninghub.error.status_http', {
+              status: statusResponse.status,
+              defaultValue: 'status API failed - HTTP error! status: {{status}}'
+            });
             log('statusGetter error', { taskId: id, status: statusResponse.status, url: statusUrl });
             throw new Error(errorMsg);
           }
@@ -260,7 +363,15 @@ export class SDPPPRunningHub extends Client<{
           const statusData = await statusResponse.json();
 
           if (statusData.code !== 0) {
-            const errorMsg = `status API failed - ${statusData.msg || 'Failed to get task status'}`;
+            const reason =
+              statusData.msg ||
+              t('runninghub.error.status_reason_unknown', {
+                defaultValue: 'Failed to get task status'
+              });
+            const errorMsg = t('runninghub.error.status_failed', {
+              reason,
+              defaultValue: 'status API failed - {{reason}}'
+            });
             log('statusGetter error', { taskId: id, code: statusData.code, msg: statusData.msg, url: statusUrl });
             throw new Error(errorMsg);
           }
@@ -280,7 +391,10 @@ export class SDPPPRunningHub extends Client<{
 
           // Check if aborted before getting results
           if (signal?.aborted) {
-            throw new DOMException('Result fetch aborted', 'AbortError');
+            throw new DOMException(
+              t('common.error.result_fetch_aborted', { defaultValue: 'Result fetch aborted' }),
+              'AbortError'
+            );
           }
 
           if (lastStatusResult.rawData.data === 'SUCCESS') {
@@ -300,7 +414,10 @@ export class SDPPPRunningHub extends Client<{
             });
 
             if (!outputsResponse.ok) {
-              const errorMsg = `outputs API failed - HTTP error! status: ${outputsResponse.status}`;
+              const errorMsg = t('runninghub.error.outputs_http', {
+                status: outputsResponse.status,
+                defaultValue: 'outputs API failed - HTTP error! status: {{status}}'
+              });
               log('resultGetter error', { taskId: id, status: outputsResponse.status, url: outputUrl });
               throw new Error(errorMsg);
             }
@@ -308,7 +425,13 @@ export class SDPPPRunningHub extends Client<{
             const outputsData = await outputsResponse.json();
 
             if (outputsData.code !== 0) {
-              const errorMsg = `outputs API failed - ${outputsData.msg || '未知错误'}`;
+              const reason =
+                outputsData.msg ||
+                this.getUnknownErrorMessage();
+              const errorMsg = t('runninghub.error.outputs_failed', {
+                reason,
+                defaultValue: 'outputs API failed - {{reason}}'
+              });
               log('resultGetter error', { taskId: id, code: outputsData.code, msg: outputsData.msg, url: outputUrl });
               throw new Error(t('runninghub.error.get_result_failed', { error: errorMsg }));
             }
@@ -320,7 +443,9 @@ export class SDPPPRunningHub extends Client<{
               rawData: output
             }));
           } else if (lastStatusResult.rawData.data === 'FAILED') {
-            throw new Error(t('runninghub.error.task_failed', { error: lastStatusResult.rawData.msg || '未知错误' }));
+            throw new Error(t('runninghub.error.task_failed', {
+              error: lastStatusResult.rawData.msg || this.getUnknownErrorMessage()
+            }));
           } else {
             throw new Error(t('runninghub.error.task_incomplete', { status: this.mapStatusToChineseMessage(lastStatusResult.rawData.data) }));
           }
@@ -340,7 +465,10 @@ export class SDPPPRunningHub extends Client<{
       });
 
       // 设置任务信息
-      task.taskName = `RunningHub - ${webappId}`;
+      task.taskName = t('runninghub.task.title', {
+        webappId,
+        defaultValue: 'RunningHub - {{webappId}}'
+      });
       task.metadata = {
         provider: 'runninghub',
         webappId: webappId,
@@ -356,7 +484,7 @@ export class SDPPPRunningHub extends Client<{
     }
   }
 
-  async uploadImage(type: 'token' | 'buffer', image: ArrayBuffer | string, format: 'png' | 'jpg' | 'jpeg' | 'webp', signal?: AbortSignal): Promise<string> {
+  async uploadImage(type: 'resource', image: ArrayBuffer | string, format: 'png' | 'jpg' | 'jpeg' | 'webp', signal?: AbortSignal): Promise<string> {
     const apiUrl = `https://${this.getBaseHost()}/task/openapi/upload`;
     const filename = `runninghub_${Math.random().toString(36).substring(2, 8)}_${Date.now()}.${format}`;
     log('uploadImage called', { type, format, filename, url: apiUrl });
@@ -364,13 +492,16 @@ export class SDPPPRunningHub extends Client<{
     try {
       // Check if already aborted
       if (signal?.aborted) {
-        throw new DOMException('Upload aborted', 'AbortError');
+        throw new DOMException(
+          t('common.error.upload_aborted', { defaultValue: 'Upload aborted' }),
+          'AbortError'
+        );
       }
 
       // Create form data for file upload
       const formData = new FormData();
       const blob = new Blob([image], {
-        type: `image/${type === 'token' ? 'uxp' : format}`,
+        type: `image/uxp`,
       });
       formData.append('file', blob, filename);
       formData.append('fileType', 'image');
@@ -391,7 +522,10 @@ export class SDPPPRunningHub extends Client<{
       // }
 
       if (!response.ok) {
-        const errorMsg = `uploadImage API failed - HTTP error! status: ${response.status}`;
+        const errorMsg = t('runninghub.error.upload_http', {
+          status: response.status,
+          defaultValue: 'uploadImage API failed - HTTP error! status: {{status}}'
+        });
         log('uploadImage error', { filename, status: response.status, url: apiUrl });
         throw new Error(errorMsg);
       }
@@ -399,7 +533,13 @@ export class SDPPPRunningHub extends Client<{
       const result = await response.json();
 
       if (result.code !== 0) {
-        const errorMsg = `uploadImage API failed - ${result.msg || 'File upload failed'}`;
+        const reason =
+          result.msg ||
+          t('runninghub.error.upload_reason_unknown', { defaultValue: 'File upload failed' });
+        const errorMsg = t('runninghub.error.upload_failed', {
+          reason,
+          defaultValue: 'uploadImage API failed - {{reason}}'
+        });
         log('uploadImage error', { filename, code: result.code, msg: result.msg, url: apiUrl });
         throw new Error(errorMsg);
       }
@@ -436,11 +576,49 @@ export class SDPPPRunningHub extends Client<{
         };
 
         widgetableNodes.push(widgetableNode);
-        defaultInput[widgetableNode.id] = widget.outputType === 'images' ? null : node.fieldValue || this.getDefaultValueForType(widget.outputType);
+        if (widget.outputType === 'images') {
+          defaultInput[widgetableNode.id] = this.normalizeImageDefault(node.fieldValue);
+        } else {
+          const fallbackValue = this.getDefaultValueForType(widget.outputType);
+          defaultInput[widgetableNode.id] = node.fieldValue || fallbackValue;
+        }
       });
     }
 
     return { widgetableNodes, defaultInput };
+  }
+
+  private normalizeImageDefault(fieldValue: any): string[] {
+    if (Array.isArray(fieldValue)) {
+      return fieldValue
+        .map(item => {
+          if (!item) {
+            return null;
+          }
+          if (typeof item === 'string') {
+            const normalized = item.trim();
+            return normalized || null;
+          }
+          if (typeof item === 'object' && item && typeof item.url === 'string') {
+            const normalized = item.url.trim();
+            return normalized || null;
+          }
+          return null;
+        })
+        .filter((item): item is string => !!item);
+    }
+
+    if (typeof fieldValue === 'string') {
+      const normalized = fieldValue.trim();
+      return normalized ? [normalized] : [];
+    }
+
+    if (fieldValue && typeof fieldValue === 'object' && typeof fieldValue.url === 'string') {
+      const normalized = fieldValue.url.trim();
+      return normalized ? [normalized] : [];
+    }
+
+    return [];
   }
 
   private mapFieldTypeToOutputType(fieldType: string): string {

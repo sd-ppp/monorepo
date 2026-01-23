@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Tooltip, Popover } from 'antd';
-import { EditOutlined } from '@ant-design/icons';
+import { Pencil } from 'lucide-react';
 import { useStore } from 'zustand';
 import { sdpppSDK } from '@sdppp/common';
 import { useTranslation } from '@sdppp/common';
@@ -80,7 +80,7 @@ export const WorkBoundary: React.FC<WorkBoundaryProps> = ({ className }) => {
           }
         }));
 
-        // 5. 设置缩略图URL
+        // 5. 设置缩略图
         if (boundaryResult.thumbnail) {
           setThumbnailUrl(boundaryResult.thumbnail);
         }
@@ -172,8 +172,25 @@ export const WorkBoundary: React.FC<WorkBoundaryProps> = ({ className }) => {
             imageQuality: 1,
             cropBySelection: 'no',
           } as any);
-          const thumb = (res as any)?.thumbnail_url;
-          if (thumb && thumb !== thumbnailUrl) setThumbnailUrl(thumb);
+          let thumb = (res as any)?.thumbnail;
+          if (!thumb && res?.resource) {
+            try {
+              const thumbRes = await (sdpppSDK.plugins.photoshop as any).getThumbnail?.({ resource: res.resource, maxSize: 192 });
+              thumb = thumbRes?.thumbnail ?? thumb;
+            } catch (err) {
+              console.warn('[WorkBoundary] getThumbnail failed', err);
+            }
+          }
+          if (thumb && thumb !== thumbnailUrl) {
+            setThumbnailUrl(thumb);
+          }
+          if (typeof (res as any)?.resource === 'string') {
+            try {
+              await (sdpppSDK.plugins.photoshop as any)?.deleteDownloadedImage?.({ resources: [res.resource] });
+            } catch (err) {
+              console.warn('[WorkBoundary] deleteDownloadedImage failed', err);
+            }
+          }
         }
       } catch (e) {
         // ignore errors
@@ -196,8 +213,25 @@ export const WorkBoundary: React.FC<WorkBoundaryProps> = ({ className }) => {
             imageQuality: 1,
             cropBySelection: 'no',
           } as any);
-          const thumb = (res as any)?.thumbnail_url;
-          if (thumb && thumb !== thumbnailUrl) setThumbnailUrl(thumb);
+          let thumb = (res as any)?.thumbnail;
+          if (!thumb && res?.resource) {
+            try {
+              const thumbRes = await (sdpppSDK.plugins.photoshop as any).getThumbnail?.({ resource: res.resource, maxSize: 192 });
+              thumb = thumbRes?.thumbnail ?? thumb;
+            } catch (err) {
+              console.warn('[WorkBoundary] getThumbnail failed', err);
+            }
+          }
+          if (thumb && thumb !== thumbnailUrl) {
+            setThumbnailUrl(thumb);
+          }
+          if (typeof (res as any)?.resource === 'string') {
+            try {
+              await (sdpppSDK.plugins.photoshop as any)?.deleteDownloadedImage?.({ resources: [res.resource] });
+            } catch (err) {
+              console.warn('[WorkBoundary] deleteDownloadedImage failed', err);
+            }
+          }
         }
       } catch (e) {
         // ignore errors
@@ -220,7 +254,7 @@ export const WorkBoundary: React.FC<WorkBoundaryProps> = ({ className }) => {
         <div className="work-boundary-right">
           {isHovered && (
             <div className="work-boundary-edit-icon">
-              <EditOutlined />
+              <Pencil size={16} />
             </div>
           )} 
           {/* Current selected max size badge (placed left of boundary display) */}

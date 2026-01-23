@@ -10,7 +10,19 @@
   "author": "",
   "license": "ISC",
   "description": "",
+  "pnpm": {
+    "overrides": {
+      "react-docgen": "7.1.0",
+      "react": "18.3.1",
+      "react-dom": "18.3.1",
+      "@types/react": "18.3.1",
+      "@types/react-dom": "18.3.1",
+      "@modelcontextprotocol/sdk": "1.16.0",
+      "@google/genai": "1.20.0"
+    }
+  },
   "devDependencies": {
+    "@esbuild/linux-x64": "0.25.12",
     "@types/node": "^20.11.24",
     "@vitejs/plugin-react": "^4.5.0",
     "cross-env": "^7.0.3",
