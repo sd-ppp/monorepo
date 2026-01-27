@@ -1,0 +1,33 @@
+{
+  "name": "@sdppp/formily-widgets",
+  "private": false,
+  "version": "0.0.0",
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*"
+  },
+  "scripts": {},
+  "dependencies": {
+    "@formily/core": "^2.3.2",
+    "@formily/react": "^2.3.2",
+    "@sdppp/common": "workspace:*",
+    "@sdppp/ui-library": "workspace:*",
+    "@sdppp/widgetable-ui": "workspace:*",
+    "i18next": "^25.2.1",
+    "lucide-react": "^0.553.0",
+    "react-i18next": "^15.5.2",
+    "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.1",
+    "@types/react-dom": "^18.3.1",
+    "typescript": "~5.8.3"
+  },
+  "peerDependencies": {
+    "antd": "5.25.4",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  }
+}

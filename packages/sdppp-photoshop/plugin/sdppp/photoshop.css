@@ -587,6 +587,9 @@ video {
 .h-\[30rem\] {
   height: 30rem;
 }
+.h-\[32rem\] {
+  height: 32rem;
+}
 .h-\[35px\] {
   height: 35px;
 }
@@ -601,6 +604,9 @@ video {
 }
 .h-full {
   height: 100%;
+}
+.w-1\/2 {
+  width: 50%;
 }
 .w-12 {
   width: 3rem;
@@ -632,9 +638,6 @@ video {
 .w-\[20rem\] {
   width: 20rem;
 }
-.w-\[25rem\] {
-  width: 25rem;
-}
 .w-\[28rem\] {
   width: 28rem;
 }
@@ -649,6 +652,9 @@ video {
 }
 .w-\[42rem\] {
   width: 42rem;
+}
+.w-\[48rem\] {
+  width: 48rem;
 }
 .w-\[50rem\] {
   width: 50rem;
@@ -700,6 +706,9 @@ video {
 }
 .gap-2 {
   gap: 0.5rem;
+}
+.gap-6 {
+  gap: 1.5rem;
 }
 .space-x-2 > :not([hidden]) ~ :not([hidden]) {
   --tw-space-x-reverse: 0;

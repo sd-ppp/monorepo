@@ -1,9 +1,9 @@
 import { create } from 'zustand'
-import { Providers } from '../providers'
+import { Providers } from '../platforms'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import { sdpppSDK } from '@sdppp/common'
-import type { ResourceHandle } from '@sdppp/resourcing/src/@sideweb/resource-handles'
-import { createFileResourceFromExternal } from '@sdppp/resourcing/src/@sideweb/file-resource-actions'
+import type { ResourceHandle } from '@sdppp/resourcing/src/@mainweb/resource-handles'
+import { createFileResourceFromExternal } from '@sdppp/resourcing/src/@mainweb/file-resource-actions'
 import { loadRemoteConfig } from '@sdppp/vite-remote-config-loader'
 import { buildBoundaryUri } from '@sdppp/resourcing/src/resource-uris'
 

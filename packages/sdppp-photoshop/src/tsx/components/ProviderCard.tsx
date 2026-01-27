@@ -1,5 +1,5 @@
 import { useTranslation } from '@sdppp/common';
-import { ProviderMetadata } from '../../providers';
+import { ProviderMetadata } from '../../platforms';
 import './ProviderCard.less';
 
 interface ProviderCardProps {

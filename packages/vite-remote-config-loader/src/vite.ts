@@ -46,7 +46,8 @@ export function remoteConfigLoader(options: RemoteConfigLoaderOptions): Plugin {
         
         console.log(`[vite-remote-config-loader] Successfully downloaded config: ${config.id}`);
       } catch (error) {
-        console.warn(`[vite-remote-config-loader] Failed to download config: ${config.id}`, error);
+        console.error(`[vite-remote-config-loader] Failed to download config: "${config.id}" from URL: ${config.url}`);
+        console.error(`[vite-remote-config-loader] Error details:`, error);
         // 保持默认的空对象
       }
     });

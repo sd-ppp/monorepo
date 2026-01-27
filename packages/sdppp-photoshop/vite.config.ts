@@ -178,6 +178,14 @@ export default defineConfig({
         {
           id: 'banners',
           url: 'https://sdppp.zombee.tech/banners/banners2.json'
+        },
+        {
+          id: 'tenant',
+          url: 'https://sdppp.zombee.tech/tenants/4aba746e-c31a-4d6a-a88f-1dd71ee3ca8c.json?t=123'
+        },
+        {
+          id: 'sdppp_sponsor',
+          url: 'https://sdppp.zombee.tech/CCFK/banners/config.json'
         }
       ]
     })

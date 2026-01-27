@@ -1,5 +1,5 @@
 import { useStore } from "zustand";
-import { Providers, PROVIDER_METADATA } from "../../providers";
+import { Providers, PROVIDER_METADATA } from "../../platforms";
 import { MainStore } from "../App.store";
 import { Select } from "antd";
 import { useEffect, useMemo } from "react";

@@ -2,12 +2,28 @@
   "name": "@sdppp/auth",
   "version": "1.0.0",
   "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "@mainweb/index.ts",
+  "types": "@mainweb/index.ts",
+  "exports": {
+    ".": "./@mainweb/index.ts",
+    "./@mainweb": "./@mainweb/index.ts",
+    "./@mainweb/authing": "./@mainweb/authing/index.ts",
+    "./@mainweb/authing/*": "./@mainweb/authing/*",
+    "./@uxp": "./@uxp/index.ts",
+    "./@uxp/*": "./@uxp/*"
+  },
   "scripts": {},
   "dependencies": {
+    "@sdppp/common": "workspace:*",
     "@sdppp/ps-uxp": "workspace:*",
     "@sdppp/vite-remote-config-loader": "workspace:*",
+    "@sdppp/mcp-mesh-photoshop": "workspace:*",
+    "@supabase/supabase-js": "^2.39.0",
+    "antd": "^5.24.3",
+    "authing-js-sdk": "^4.23.52",
+    "lucide-react": "^0.468.0",
+    "react": "^18.3.1",
+    "zustand": "^5.0.5",
     "zod": "^3.25.76"
   },
   "sdpppV": {

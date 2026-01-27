@@ -17,5 +17,5 @@
     "declaration": true,
     "outDir": "dist"
   },
-  "include": ["@uxp"]
+  "include": ["@uxp", "@mainweb"]
 }
