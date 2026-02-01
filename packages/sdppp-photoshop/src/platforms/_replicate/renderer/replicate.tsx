@@ -12,6 +12,7 @@ import { ModelSelector } from '../../base/components/ModelSelector';
 import '../../base/styles/workflow-controls.less';
 import { UploadPassProvider } from '../../base/upload-pass-context';
 import { useTaskExecutor } from '../../base/useTaskExecutor';
+import { useTaskExecutionStore } from '../../base/taskExecutionStore';
 import { WidgetablePhotoshopProvider, createImageMaskWidgetRegistry } from '../../base/widgetable-photoshop';
 import './replicate.less';
 import { changeSelectedModel, createTask, replicateStore } from './replicate.store';
@@ -98,19 +99,25 @@ function ReplicateRendererModels() {
     return (
         <UploadPassProvider
             uploader={async (uploadInput, signal) => {
-                const inferFormat = (mime?: string) => {
-                    if (!mime) return 'png';
-                    const subtype = mime.split('/')[1] || '';
-                    if (subtype === 'jpeg') return 'jpg';
-                    if (subtype.includes('png')) return 'png';
-                    if (subtype.includes('jpg')) return 'jpg';
-                    if (subtype.includes('webp')) return 'webp';
-                    return 'png';
-                };
+                if (uploadInput.type === 'buffer') {
+                    const source = uploadInput.resource as any;
+                    const arrayBuffer = source?.data ?? uploadInput.resource;
+                    const bytes = new Uint8Array(arrayBuffer);
+                    const binary = Array.from(bytes)
+                        .map((b) => String.fromCharCode(b))
+                        .join('');
+                    const base64 = typeof btoa === 'function'
+                        ? btoa(binary)
+                        : Buffer.from(arrayBuffer).toString('base64');
+                    const mime = uploadInput.mimeType ?? 'image/png';
+                    return `data:${mime};base64,${base64}`;
+                }
 
-                const format = inferFormat(uploadInput.mimeType) as 'png' | 'jpg' | 'jpeg' | 'webp';
-
-                return await client.uploadImage('resource', uploadInput.resource, format, signal);
+                const resourceToken =
+                    (uploadInput as any).resource ??
+                    (uploadInput as any).resourceId ??
+                    uploadInput.tokenOrBuffer;
+                return (resourceToken as string) || '';
             }}
         >
             <WidgetablePhotoshopProvider>
@@ -157,7 +164,10 @@ function ReplicateRendererForm({
     const setCurrentValues = replicateStore((state) => state.setCurrentValues);
     const runningTasks = replicateStore((state) => state.runningTasks);
 
-    const { runError, progressMessage, handleRun, handleCancel, isRunning, canCancel } = useTaskExecutor({
+    const runError = useTaskExecutionStore(state => state.runError);
+    const progressMessage = useTaskExecutionStore(state => state.progressMessage);
+
+    const { handleRun, handleCancel, isRunning, canCancel } = useTaskExecutor({
         selectedModel,
         currentValues,
         getCurrentValues: () => replicateStore.getState().currentValues,
@@ -171,10 +181,12 @@ function ReplicateRendererForm({
                 if (node.widgets[0].outputType === 'images') {
                     const fieldValue = processedValues[node.id];
                     if (fieldValue) {
+                        const maxCount = (node.widgets[0] as any)?.options?.maxCount;
                         if (Array.isArray(fieldValue)) {
-                            processedValues[node.id] = fieldValue.map((item: any) =>
+                            const normalized = fieldValue.map((item: any) =>
                                 (typeof item === 'object' && item.url) ? item.url : item
                             );
+                            processedValues[node.id] = maxCount === 1 ? normalized[0] : normalized;
                         } else if (typeof fieldValue === 'object' && fieldValue.url) {
                             processedValues[node.id] = fieldValue.url;
                         }

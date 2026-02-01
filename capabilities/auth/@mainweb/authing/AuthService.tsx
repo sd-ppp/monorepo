@@ -29,6 +29,7 @@ export interface LoginProvider {
   register(params: RegisterParams): Promise<void>;
   login(params: LoginParams): Promise<{
     token: string;
+    refreshToken?: string | null;
   }>;
   isQRCodeSupported(): boolean;
   loginByQRCode(): AsyncGenerator<{
@@ -84,6 +85,54 @@ export const AuthService = {
     return requireProvider().getUserProfile(token);
   },
 };
+
+export async function restoreAuthSession(providers: LoginProvider[] = []) {
+  await authActions.initAuth();
+
+  const currentToken = sdpppSDK?.stores?.WebviewStore?.getState?.()?.token;
+  if (!currentToken) {
+    authActions.clearAuth();
+    return;
+  }
+
+  if (providers.length === 0) {
+    const activeProvider = AuthService.getProvider();
+    if (!activeProvider) {
+      authActions.clearAuth();
+      return;
+    }
+    try {
+      const userInfo = await activeProvider.getUserProfile(currentToken);
+      authActions.setAuthState({
+        isLogin: true,
+        token: currentToken,
+        userInfo: userInfo,
+        isGuest: false,
+      });
+    } catch {
+      authActions.clearAuth();
+    }
+    return;
+  }
+
+  for (const provider of providers) {
+    try {
+      const userInfo = await provider.getUserProfile(currentToken);
+      AuthService.setProvider(provider);
+      authActions.setAuthState({
+        isLogin: true,
+        token: currentToken,
+        userInfo: userInfo,
+        isGuest: false,
+      });
+      return;
+    } catch {
+      // try next provider
+    }
+  }
+
+  authActions.clearAuth();
+}
 
 interface AuthProviderProps {
   children: ReactNode;

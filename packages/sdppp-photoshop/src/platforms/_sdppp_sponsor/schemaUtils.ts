@@ -67,12 +67,12 @@ function transformUploadField(field: FormilySchema): FormilySchema {
   
   if (hasSourceHints) {
     // 使用延迟上传组件
-    nextField['x-component'] = 'TaskRouterDeferredUploadSelector';
+    nextField['x-component'] = 'DeferredUploadSelector';
     nextField.type = 'object';  // DeferredUploadValue 是对象类型
     nextField.default = undefined;  // 延迟组件自己生成值
   } else {
     // 使用手动上传组件
-    nextField['x-component'] = 'TaskRouterUploadSelector';
+    nextField['x-component'] = 'UploadSelector';
     nextField.type = 'array';
     
     // Ensure the new component always receives an array value.

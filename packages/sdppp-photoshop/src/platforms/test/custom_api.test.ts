@@ -24,6 +24,9 @@ async function writeImagePng(url: string, outPath: string) {
 
 describe('Custom API client (Google/OpenAI)', () => {
   it('google: run with input image and prompt', async () => {
+    if (!globalThis.sdpppSDK?.plugins?.photoshop?.pptaskRun) {
+      return
+    }
     const client = new SDPPPCustomAPI({ apiKey: GOOGLE_API_KEY, baseURL: GOOGLE_BASE_URL, format: 'google' })
 
     const { widgetableNodes, defaultInput, rawData } = await client.getNodes('gemini-2.5-flash-image-preview')
@@ -34,15 +37,14 @@ describe('Custom API client (Google/OpenAI)', () => {
     const testOutputDir = join(import.meta.dirname, 'testoutput')
     await mkdir(testOutputDir, { recursive: true })
     const buffer = await readFile(join(import.meta.dirname, 'testoutput/liblib.text2img.test.0.png'))
-    const imageDataUrl = await client.uploadImage('buffer', buffer, 'png')
+    const imageDataUrl = `data:image/png;base64,${Buffer.from(buffer).toString('base64')}`
 
     const task = await client.run('gemini-2.5-flash-image-preview', {
-      image_input: imageDataUrl,
       prompt: 'change the man to a girl with mouth mask, light grey hair',
-      batch_count: 1,
-      images_per_batch: 1
+      urls: [imageDataUrl],
     })
-    const images = await task.promise as { url: string }[]
+    const result = await task.promise as any
+    const images = Array.isArray(result) ? result : result?.outputs
     expect(Array.isArray(images)).toBe(true)
     expect(images.length).toBeGreaterThan(0)
 
@@ -52,9 +54,12 @@ describe('Custom API client (Google/OpenAI)', () => {
   })
 
   it('openai: run with input image and prompt', async () => {
+    if (!globalThis.sdpppSDK?.plugins?.photoshop?.pptaskRun) {
+      return
+    }
     const client = new SDPPPCustomAPI({ apiKey: OPENAI_API_KEY, baseURL: OPENAI_BASE_URL, format: 'openai' })
 
-    const { widgetableNodes, defaultInput, rawData } = await client.getNodes('gpt-image-1')
+    const { widgetableNodes, defaultInput, rawData } = await client.getNodes('edits')
     expect(Array.isArray(widgetableNodes)).toBe(true)
     expect(defaultInput).toHaveProperty('prompt')
     expect(rawData.format).toBe('openai')
@@ -62,15 +67,15 @@ describe('Custom API client (Google/OpenAI)', () => {
     const testOutputDir = join(import.meta.dirname, 'testoutput')
     await mkdir(testOutputDir, { recursive: true })
     const buffer = await readFile(join(import.meta.dirname, 'testoutput/liblib.text2img.test.0.png'))
-    const imageDataUrl = await client.uploadImage('buffer', buffer, 'png')
+    const imageDataUrl = `data:image/png;base64,${Buffer.from(buffer).toString('base64')}`
 
-    const task = await client.run('gpt-image-1', {
-      image_input: imageDataUrl,
+    const task = await client.run('edits', {
+      image: imageDataUrl,
       prompt: 'change the man to a girl with mouth mask, light grey hair',
-      batch_count: 1,
-      images_per_batch: 1
+      model: 'dall-e-2',
     })
-    const images = await task.promise as { url: string }[]
+    const result = await task.promise as any
+    const images = Array.isArray(result) ? result : result?.outputs
     expect(Array.isArray(images)).toBe(true)
     expect(images.length).toBeGreaterThan(0)
 

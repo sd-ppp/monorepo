@@ -194,10 +194,15 @@ export async function changeSelectedModel(webappId: string) {
         const values = runninghubStore.getState().allValues[webappId] || nodeResult.defaultInput;
         const appName = nodeResult.rawData?.data?.webappName || '';
 
+        const nodeInfoList =
+            nodeResult.rawData?.data?.nodeInfoList ||
+            nodeResult.rawData?.metadata?.rawData?.data?.nodeInfoList ||
+            [];
+
         runninghubStore.setState({
             currentValues: values,
             currentNodes: nodeResult.widgetableNodes,
-            currentNodeInfoList: nodeResult.rawData.data.nodeInfoList || [],
+            currentNodeInfoList: nodeInfoList,
             selectedModel: webappId,
             webappId: webappId,
             appName: appName

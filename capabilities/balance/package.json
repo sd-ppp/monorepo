@@ -1,0 +1,27 @@
+{
+  "name": "@sdppp/balance",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "@uxp/index.ts",
+  "types": "@uxp/index.ts",
+  "exports": {
+    ".": "./@uxp/index.ts",
+    "./@uxp": "./@uxp/index.ts",
+    "./@uxp/*": "./@uxp/*"
+  },
+  "scripts": {},
+  "dependencies": {
+    "@sdppp/auth": "workspace:*",
+    "@sdppp/ps-uxp": "workspace:*",
+    "@sdppp/sdpppx-services": "workspace:*",
+    "@sdppp/vite-remote-config-loader": "workspace:*"
+  },
+  "sdpppV": {
+    "uxpPlugins": [
+      {
+        "kind": "store-provider",
+        "entry": "./@uxp/store-provider.ts"
+      }
+    ]
+  }
+}

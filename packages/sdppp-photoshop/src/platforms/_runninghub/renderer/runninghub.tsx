@@ -12,6 +12,7 @@ import { ModelSelector } from '../../base/components/ModelSelector';
 import '../../base/styles/workflow-controls.less';
 import { UploadPassProvider } from '../../base/upload-pass-context';
 import { useTaskExecutor } from '../../base/useTaskExecutor';
+import { useTaskExecutionStore } from '../../base/taskExecutionStore';
 import { WidgetablePhotoshopProvider, createImageMaskWidgetRegistry } from '../../base/widgetable-photoshop';
 import './runninghub.less';
 import { changeSelectedModel, createTask, runninghubStore } from './runninghub.store';
@@ -209,27 +210,49 @@ function RunningHubRendererForm({
     const runningTasks = runninghubStore((state) => state.runningTasks);
     const appName = runninghubStore((state) => state.appName);
 
-    const { runError, progressMessage, handleRun, handleCancel, isRunning, canCancel } = useTaskExecutor({
+    const runError = useTaskExecutionStore(state => state.runError);
+    const progressMessage = useTaskExecutionStore(state => state.progressMessage);
+
+    const { handleRun, handleCancel, isRunning, canCancel } = useTaskExecutor({
         selectedModel: webappId,
         currentValues,
         getCurrentValues: () => runninghubStore.getState().currentValues,
         createTask,
         runningTasks,
         beforeCreateTaskHook: (values) => {
-            // 处理图片字段，从对象中提取URL
+            // 处理图片字段，从对象中提取URL，并规范空值为 ['']
             const processedValues = { ...values };
 
             currentNodes.forEach((node) => {
                 if (node.widgets[0].outputType === 'images') {
                     const fieldValue = processedValues[node.id];
-                    if (fieldValue) {
-                        if (Array.isArray(fieldValue)) {
-                            processedValues[node.id] = fieldValue.map((item: any) =>
-                                (typeof item === 'object' && item.url) ? item.url : item
-                            );
-                        } else if (typeof fieldValue === 'object' && fieldValue.url) {
-                            processedValues[node.id] = fieldValue.url;
+                    const maxCount = (node.widgets[0] as any)?.options?.maxCount;
+
+                    if (fieldValue == null || fieldValue === '') {
+                        processedValues[node.id] = [''];
+                        return;
+                    }
+
+                    if (Array.isArray(fieldValue)) {
+                        if (fieldValue.length === 0) {
+                            processedValues[node.id] = [''];
+                            return;
                         }
+                        const normalized = fieldValue.map((item: any) =>
+                            (typeof item === 'object' && item.url) ? item.url : item
+                        );
+                        const hasNonEmpty = normalized.some((item: any) => (item ?? '') !== '');
+                        if (!hasNonEmpty) {
+                            processedValues[node.id] = [''];
+                            return;
+                        }
+                        processedValues[node.id] = maxCount === 1 ? normalized[0] : normalized;
+                        return;
+                    }
+
+                    if (typeof fieldValue === 'object' && fieldValue.url) {
+                        processedValues[node.id] = fieldValue.url;
+                        return;
                     }
                 }
             });

@@ -1,5 +1,8 @@
 import { sdpppSDK, t } from '@sdppp/common';
 import { WidgetableNode } from '@sdppp/common/schemas/schemas';
+import type { FormilySchema } from '@sdppp/pptask';
+import { createInlineExecutor } from '@sdppp/pptask/executors/inline';
+import type { InlineExecutor } from '@sdppp/pptask/executors/inline';
 import { Client } from '../base/Client';
 import { Task } from '../base/Task';
 // GoogleGenAI and OpenAI moved to mesh actions
@@ -17,9 +20,12 @@ export class SDPPPCustomAPI extends Client<{
   baseURL: string
   format: 'google' | 'openai'
 }> {
+  private readonly inline: InlineExecutor;
+  private readonly schemaCache = new Map<string, FormilySchema>();
+
   constructor(config: { apiKey: string, baseURL: string, format: 'google' | 'openai' }) {
     super(config);
-    // Gemini generator removed - using mesh actions now
+    this.inline = createInlineExecutor();
   }
 
   async getNodes(_model: string): Promise<{
@@ -27,92 +33,31 @@ export class SDPPPCustomAPI extends Client<{
     defaultInput: Record<string, any>,
     rawData: any
   }> {
-    const widgetableNodes: WidgetableNode[] = [
-      {
-        id: 'image_input',
-        title: t('google.field.image_input', { defaultMessage: 'Input Image' }),
-        widgets: [{
-          name: '',
-          uiWeight: 12,
-          outputType: 'images',
-          options: {
-            maxCount: 4,
-            required: true
-          }
-        }],
-        uiWeightSum: 12
-      },
-      {
-        id: 'prompt',
-        title: t('google.field.prompt', { defaultMessage: 'Prompt' }),
-        widgets: [{
-          name: '',
-          uiWeight: 12,
-          outputType: 'string',
-          options: {
-            required: true,
-            multiline: true
-          }
-        }],
-        uiWeightSum: 12
-      },
-
-    ];
-
-    // Add aspectRatio and imageSize only for Google format
-    if (this.config.format === 'google') {
-      widgetableNodes.push(
-        {
-          id: 'aspectRatio',
-          title: t('google.field.aspect_ratio', { defaultMessage: 'Aspect Ratio' }),
-          widgets: [{
-            name: '',
-            uiWeight: 12,
-            outputType: 'combo',
-            options: {
-              required: false,
-              values: ['1:1', '16:9', '9:16', '4:3', '3:4', '21:9', '3:2', '2:3'],
-              labels: ['1:1 (Square)', '16:9 (Landscape)', '9:16 (Portrait)', '4:3 (Landscape)', '3:4 (Portrait)', '21:9 (Ultrawide)', '3:2 (Landscape)', '2:3 (Portrait)']
-            }
-          }],
-          uiWeightSum: 12
-        },
-        {
-          id: 'imageSize',
-          title: t('google.field.image_size', { defaultMessage: 'Image Size' }),
-          widgets: [{
-            name: '',
-            uiWeight: 12,
-            outputType: 'combo',
-            options: {
-              required: false,
-              values: ['1K', '2K', '4K'],
-              labels: ['1K (Standard)', '2K (High)', '4K (Ultra)']
-            }
-          }],
-          uiWeightSum: 12
-        }
-      );
-    }
-
-    const defaultInput: Record<string, any> = {
-      image_input: null,
-      prompt: ''
+    const locator = this.buildLocator(_model);
+    const describe = await this.inline.describe({ locator });
+    const formSchema = describe.formSchema as FormilySchema;
+    const formValues = (describe.formValues ?? {}) as Record<string, any>;
+    this.schemaCache.set(locator, formSchema);
+    const mergedValues = {
+      ...formValues,
     };
 
-    if (this.config.format === 'google') {
-      defaultInput.aspectRatio = '1:1';
-      defaultInput.imageSize = '1K';
-    }
-
     return {
-      widgetableNodes,
-      defaultInput,
-      rawData: { format: this.config.format, model: _model }
+      widgetableNodes: [],
+      defaultInput: mergedValues,
+      rawData: {
+        format: this.config.format,
+        model: _model,
+        locator,
+        schema: formSchema,
+        values: mergedValues,
+        metadata: describe.metadata,
+        cancelable: describe.cancelable,
+      },
     };
   }
 
-  async run(model: string, input: { image_input: string | string[], prompt: string, aspectRatio?: string, imageSize?: string }, signal?: AbortSignal): Promise<Task<any>> {
+  async run(model: string, input: Record<string, any>, signal?: AbortSignal): Promise<Task<any>> {
     try {
       // Check if already aborted
       if (signal?.aborted) {
@@ -122,19 +67,11 @@ export class SDPPPCustomAPI extends Client<{
         );
       }
 
-      if (!input.image_input || !input.prompt) {
-        throw new Error(t('customapi.error.input_required', {
-          defaultValue: 'Image input and prompt are required'
-        }));
-      }
-
-      // Normalize to an array of inputs (tokens or base64)
-      const inputsArray = Array.isArray(input.image_input) ? input.image_input : [input.image_input];
-      const firstInput = inputsArray[0];
-
       const taskId = `${this.config.format}_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
       let taskResult: any = null;
+      let remoteTaskId: string | null = null;
       let isCompleted = false;
+      const locator = this.buildLocator(model);
 
       const task = new Task(taskId, {
         statusGetter: async (id: string) => {
@@ -146,64 +83,36 @@ export class SDPPPCustomAPI extends Client<{
             );
           }
 
-          if (!isCompleted) {
-            // Start the generation if not started
-            if (!taskResult) {
-              try {
-                if (this.config.format === 'google') {
-                  console.log('Starting Gemini image generation via mesh action...');
-                  // Determine type: if every input is a data URL, treat as base64; otherwise tokens
-                  const areAllDataUrls = inputsArray.every(v => typeof v === 'string' && v.startsWith('data:'));
-                  const geminiParams: any = {
-                    apiKey: this.config.apiKey,
-                    baseURL: this.config.baseURL,
-                    model,
-                    imageInputs: inputsArray as any,
-                    imageInputType: (areAllDataUrls ? 'base64' : 'token') as any,
-                    prompt: input.prompt
-                  };
-                  
-                  // Add aspectRatio and imageSize if provided
-                  if (input.aspectRatio) {
-                    geminiParams.aspectRatio = input.aspectRatio;
-                  }
-                  if (input.imageSize) {
-                    geminiParams.imageSize = input.imageSize;
-                  }
-                  
-                  taskResult = await sdpppSDK.plugins.photoshop.geminiImageGenerate(geminiParams, signal);
-                } else {
-                  console.log('Starting OpenAI image edit via mesh action...');
-                  taskResult = await sdpppSDK.plugins.photoshop.openaiImageEdit({
-                    apiKey: this.config.apiKey,
-                    baseURL: this.config.baseURL,
-                    imageToken: firstInput as string,
-                    prompt: input.prompt,
-                    model
-                  }, signal);
-                }
-                isCompleted = true;
-              } catch (error) {
-                isCompleted = true;
+          if (!isCompleted && !taskResult) {
+            try {
+              const response = await sdpppSDK.plugins.photoshop.pptaskRun({
+                locator,
+                payload: input as Record<string, any>,
+                platformConfig: this.buildPlatformConfig(),
+                context: { format: this.config.format },
+                schema: this.schemaCache.get(locator),
+              });
+              if (response?.ok === false || response?.error) {
+                const errorMessage = response?.error?.message || 'CustomAPI task failed';
+                const error = new Error(errorMessage);
+                (error as any).payload = response?.error?.payload ?? response;
                 throw error;
               }
+              remoteTaskId = response?.taskId ?? null;
+              taskResult = response?.result ?? null;
+            } catch (error) {
+              isCompleted = true;
+              throw error;
+            }
           }
-        }
 
-          const nonGoogleStatusText = taskResult?.success
-            ? t('common.success', { defaultValue: 'Success' })
-            : t('common.failed', { defaultValue: 'Failed' });
-          const nonGoogleGeneratingText = t('common.generating', { defaultValue: 'Generating...' });
+          isCompleted = true;
 
           return {
             isCompleted,
-            progress: isCompleted ? 100 : 50,
-            progressMessage: isCompleted
-              ? (this.config.format === 'google'
-                ? (taskResult?.success ? t('google.status.success') : t('google.status.failed'))
-                : nonGoogleStatusText)
-              : (this.config.format === 'google' ? t('google.status.generating') : nonGoogleGeneratingText),
-            rawData: taskResult
+            progress: 100,
+            progressMessage: t('common.success', { defaultValue: 'Success' }),
+            rawData: taskResult,
           };
         },
         resultGetter: async (id: string, lastStatusResult: any) => {
@@ -216,16 +125,16 @@ export class SDPPPCustomAPI extends Client<{
           }
 
           const result = lastStatusResult.rawData;
-          if (!result?.success || !result.imageUrl) {
-            throw new Error(result?.error || t('customapi.error.generation_failed', {
+          if (!result) {
+            throw new Error(t('customapi.error.generation_failed', {
               defaultValue: 'Generation failed'
             }));
           }
-          return [{ url: result.imageUrl, rawData: result }];
+          return result;
         },
         canceler: async (id: string) => {
-          // Gemini generation is synchronous, so cancellation is not supported
-          // This is mainly for UI consistency
+          if (!remoteTaskId) return;
+          await sdpppSDK.plugins.photoshop.pptaskCancel({ taskId: remoteTaskId });
         }
       });
 
@@ -235,12 +144,13 @@ export class SDPPPCustomAPI extends Client<{
         : t('customapi.task.name.openai', { defaultValue: 'OpenAI - Image Edit' });
       task.metadata = {
         format: this.config.format,
-        model
+        model,
+        locator,
       };
 
       return task;
     } catch (error) {
-      console.error('Error running Google task:', error);
+      console.error('Error running CustomAPI task:', error);
       throw error;
     }
   }
@@ -282,4 +192,30 @@ export class SDPPPCustomAPI extends Client<{
   }
 
   // OpenAI generation moved to mesh actions in run()
+  private buildLocator(model: string): string {
+    if (this.config.format === 'google') {
+      const normalized = model?.trim() || 'gemini-2.5-flash-image-preview';
+      return `gemini:///${normalized}`;
+    }
+
+    const endpoint = normalizeOpenAIEndpoint(model);
+    return `openai://${endpoint}`;
+  }
+
+  private buildPlatformConfig(): Record<string, any> {
+    const baseURL = this.config.baseURL?.trim() || undefined;
+    return {
+      apiKey: this.config.apiKey,
+      ...(baseURL ? { baseURL, baseUrl: baseURL } : {}),
+    };
+  }
+
+}
+
+function normalizeOpenAIEndpoint(raw: string): 'edits' | 'generations' | 'variations' {
+  const normalized = (raw || '').trim().toLowerCase();
+  if (['edit', 'edits', 'image-edit'].includes(normalized)) return 'edits';
+  if (['generate', 'generations', 'image-generate'].includes(normalized)) return 'generations';
+  if (['variation', 'variations', 'image-variation'].includes(normalized)) return 'variations';
+  return 'edits';
 }

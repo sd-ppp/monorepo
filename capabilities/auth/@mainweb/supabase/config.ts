@@ -14,14 +14,7 @@ const sponsorConfig: SponsorRemoteConfig | null = (() => {
   }
 })();
 
-const tenantConfig: { id?: string | null } | null = (() => {
-  try {
-    return loadRemoteConfig('tenant') as { id?: string | null } | null;
-  } catch (error) {
-    console.error('[auth] failed to load tenant config', error);
-    return null;
-  }
-})();
+const TENANT_ID = '65b95867-1c57-42ed-baa5-849a89790b51';
 
 const normalize = (value?: string | null): string => {
   if (typeof value !== 'string') return '';
@@ -31,7 +24,7 @@ const normalize = (value?: string | null): string => {
 export const SUPABASE_CONFIG = {
   url: normalize(sponsorConfig?.supabaseUrl),
   anonKey: normalize(sponsorConfig?.supabaseAnonKey),
-  tenantId: normalize(tenantConfig?.id),
+  tenantId: TENANT_ID,
   bridgeFunctionName: 'authing-bridge3',
   bridgeRegion: 'ap-southeast-1',
 } as const;

@@ -6,7 +6,7 @@ import RunningHubRenderer from "./_runninghub/renderer/runninghub";
 import CustomAPIRenderer from "./_customapi/renderer/customapi";
 import { ComfyFrontendRenderer } from "./_comfy_frontend/renderer/comfy_frontend.tsx";
 import { SDPPPSponsor } from "./_sdppp_sponsor/client";
-import SDPPPSponsorRenderer from "./_sdppp_sponsor/renderer/sdppp_sponsor";
+import SDPPPSponsorRenderer from "./_sdppp_sponsor/index";
 
 // Use public paths to access logos without bundling
 const ComfyUILogo = './assets/provider-logos/comfy_160x160.jpg';
@@ -35,16 +35,25 @@ const CustomAPIProvider = {
 } as const;
 
 export const Providers = {
-    Replicate: {
-        client: SDPPPReplicate,
-        Renderer: ReplicateRenderer,
-        availableModels: replicateAvailableModels,
+    ComfyUI: {
+        Renderer: ComfyFrontendRenderer,
         metadata: {
-            id: 'Replicate',
-            name: 'Replicate',
-            description: 'provider.replicate.description',
-            brandColor: '#f03a68',
-            logoPath: ReplicateLogo
+            id: 'ComfyUI',
+            name: 'ComfyUI',
+            description: 'provider.comfyui.description',
+            brandColor: '#172Ed8',
+            logoPath: ComfyUILogo
+        }
+    },
+    SDPPPSponsor: {
+        client: SDPPPSponsor,
+        Renderer: SDPPPSponsorRenderer,
+        metadata: {
+            id: 'SDPPPSponsor',
+            name: 'SDPPP API',
+            description: 'provider.sdppp_sponsor.description',
+            brandColor: '#4CAF50',
+            logoPath: SDPPPSponsorLogo
         }
     },
     RunningHub: {
@@ -58,34 +67,25 @@ export const Providers = {
             logoPath: RunningHubLogo
         }
     },
-    ComfyUI: {
-        Renderer: ComfyFrontendRenderer,
+    Replicate: {
+        client: SDPPPReplicate,
+        Renderer: ReplicateRenderer,
+        availableModels: replicateAvailableModels,
         metadata: {
-            id: 'ComfyUI',
-            name: 'ComfyUI',
-            description: 'provider.comfyui.description',
-            brandColor: '#172Ed8',
-            logoPath: ComfyUILogo
+            id: 'Replicate',
+            name: 'Replicate',
+            description: 'provider.replicate.description',
+            brandColor: '#f03a68',
+            logoPath: ReplicateLogo
         }
     },
-    CustomAPI: CustomAPIProvider,
-    SDPPPSponsor: {
-        client: SDPPPSponsor,
-        Renderer: SDPPPSponsorRenderer,
-        metadata: {
-            id: 'SDPPPSponsor',
-            name: 'SDPPP Sponsor',
-            description: 'provider.sdppp_sponsor.description',
-            brandColor: '#4CAF50',
-            logoPath: SDPPPSponsorLogo
-        }
-    }
+    CustomAPI: CustomAPIProvider
 }
 
 export const PROVIDER_METADATA: Record<string, ProviderMetadata> = {
-    Replicate: Providers.Replicate.metadata,
-    RunningHub: Providers.RunningHub.metadata,
     ComfyUI: Providers.ComfyUI.metadata,
-    CustomAPI: Providers.CustomAPI.metadata,
-    SDPPPSponsor: Providers.SDPPPSponsor.metadata
+    SDPPPSponsor: Providers.SDPPPSponsor.metadata,
+    RunningHub: Providers.RunningHub.metadata,
+    Replicate: Providers.Replicate.metadata,
+    CustomAPI: Providers.CustomAPI.metadata
 };

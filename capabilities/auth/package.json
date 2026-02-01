@@ -14,6 +14,7 @@
   },
   "scripts": {},
   "dependencies": {
+    "@sdppp/balance": "workspace:*",
     "@sdppp/common": "workspace:*",
     "@sdppp/ps-uxp": "workspace:*",
     "@sdppp/vite-remote-config-loader": "workspace:*",
@@ -30,7 +31,7 @@
     "uxpPlugins": [
       {
         "kind": "store-provider",
-        "entry": "./@uxp/ps-uxp-store-provider.ts"
+        "entry": "./@uxp/ps-uxp-store-provider.tsx"
       }
     ]
   }
