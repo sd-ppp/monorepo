@@ -51,7 +51,7 @@ export function AuthingLoginDialog() {
     const isGuest = useStore(sdkNode.store, (state) => (state as any).isGuest);
     const token = useStore(sdkNode.store, (state) => (state as any).token);
     const userInfo = useStore(sdkNode.store, (state) => (state as any).userInfo);
-    const balance = useStore(mcpMesh.store, (state) => (state as any).balance ?? null);
+    const balance = useStore(sdkNode.store, (state) => (state as any).balance ?? null);
 
     useEffect(() => {
         if (isLogin && token && !userInfo) {
@@ -74,6 +74,12 @@ export function AuthingLoginDialog() {
             void refreshBalance();
         }
     }, [requestingLogin]);
+
+    useEffect(() => {
+        if (isLogin) {
+            void refreshBalance();
+        }
+    }, [isLogin]);
 
     const handleEmailLogin = async () => {
         const { email, password } = formStore.getState();

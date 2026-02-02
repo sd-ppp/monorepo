@@ -64932,6 +64932,36 @@ async function cancelReplicateTask(_url, taskId, platformConfig, options) {
     throw err;
   }
 }
+const REPLICATE_SCHEME = "replicate";
+function ensureReplicateUrl(locator) {
+  const { scheme, url } = parseLocator(locator);
+  if (scheme !== REPLICATE_SCHEME) {
+    throw new Error(`replicate provider received unsupported locator: ${locator}`);
+  }
+  return url;
+}
+const replicateProviderDefinition = {
+  async describeResource(params) {
+    const url = ensureReplicateUrl(params.locator);
+    return describeReplicate(url, params.platformConfig, params.options);
+  },
+  async createTaskAsync(params) {
+    const url = ensureReplicateUrl(params.locator);
+    return createReplicateTask(url, params.payload ?? {}, params.platformConfig, params.options);
+  },
+  async checkStatus(params) {
+    const url = ensureReplicateUrl(params.locator);
+    return checkReplicateStatus(url, params.taskId, params.platformConfig, params.options);
+  },
+  async getResult(params) {
+    const url = ensureReplicateUrl(params.locator);
+    return getReplicateResult(url, params.taskId, params.platformConfig, params.options);
+  },
+  async cancelTask(params) {
+    const url = ensureReplicateUrl(params.locator);
+    await cancelReplicateTask(url, params.taskId, params.platformConfig, params.options);
+  }
+};
 async function uploadReplicateFile(formData, platformConfig, options) {
   var _a3;
   const { apiKey } = ensureReplicateConfig(platformConfig);
@@ -64964,36 +64994,6 @@ async function toBlob(entry) {
   }
   throw new Error("Unsupported file entry for replicate upload");
 }
-const REPLICATE_SCHEME = "replicate";
-function ensureReplicateUrl(locator) {
-  const { scheme, url } = parseLocator(locator);
-  if (scheme !== REPLICATE_SCHEME) {
-    throw new Error(`replicate provider received unsupported locator: ${locator}`);
-  }
-  return url;
-}
-const replicateProviderDefinition = {
-  async describeResource(params) {
-    const url = ensureReplicateUrl(params.locator);
-    return describeReplicate(url, params.platformConfig, params.options);
-  },
-  async createTaskAsync(params) {
-    const url = ensureReplicateUrl(params.locator);
-    return createReplicateTask(url, params.payload ?? {}, params.platformConfig, params.options);
-  },
-  async checkStatus(params) {
-    const url = ensureReplicateUrl(params.locator);
-    return checkReplicateStatus(url, params.taskId, params.platformConfig, params.options);
-  },
-  async getResult(params) {
-    const url = ensureReplicateUrl(params.locator);
-    return getReplicateResult(url, params.taskId, params.platformConfig, params.options);
-  },
-  async cancelTask(params) {
-    const url = ensureReplicateUrl(params.locator);
-    await cancelReplicateTask(url, params.taskId, params.platformConfig, params.options);
-  }
-};
 const replicateUploadProviderDefinition = {
   async upload(params) {
     return uploadReplicateFile(params.formData, params.platformConfig, params.options);
@@ -65597,7 +65597,7 @@ function createRunningHubError(context, payload) {
   error2.payload = payload;
   return error2;
 }
-async function uploadRunninghubFile(formData, platformConfig, options) {
+async function uploadRunninghubFile$1(formData, platformConfig, options) {
   var _a3;
   const UPLOAD_API_KEY = "c32dbc1cdd024b9ea3a0498eeca22f73";
   const signal = options == null ? void 0 : options.signal;
@@ -65669,9 +65669,9 @@ async function cancelTask$2(params) {
     params.options
   );
 }
-const runninghubUploadProviderDefinition$1 = {
+const runninghubUploadProviderDefinition$2 = {
   async upload(params) {
-    return uploadRunninghubFile(
+    return uploadRunninghubFile$1(
       params.formData,
       params.platformConfig,
       params.options
@@ -65685,7 +65685,7 @@ const appImpl = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.definePrope
   createTaskAsync: createTaskAsync$1,
   describeResource: describeResource$2,
   getResult: getResult$2,
-  runninghubUploadProviderDefinition: runninghubUploadProviderDefinition$1
+  runninghubUploadProviderDefinition: runninghubUploadProviderDefinition$2
 }, Symbol.toStringTag, { value: "Module" }));
 function parseRunninghubApiPath(url) {
   if (url.hostname !== "api") {
@@ -66066,7 +66066,43 @@ const runninghubProviderDefinition = {
     return impl.cancelTask(params);
   }
 };
-const runninghubUploadProviderDefinition = runninghubUploadProviderDefinition$1;
+async function uploadRunninghubFile(formData, platformConfig, options) {
+  var _a3;
+  const UPLOAD_API_KEY = "c32dbc1cdd024b9ea3a0498eeca22f73";
+  const signal = options == null ? void 0 : options.signal;
+  if (isRequestAborted$4(signal)) throw createAbortError$4("Upload aborted");
+  if (!formData.has("apiKey")) {
+    formData.set("apiKey", UPLOAD_API_KEY);
+  }
+  if (!formData.has("fileType")) {
+    formData.set("fileType", "image");
+  }
+  let language;
+  try {
+    const config = platformConfig;
+    language = config == null ? void 0 : config.language;
+  } catch {
+  }
+  const baseHost = getBaseHost(language);
+  const uploadUrl = `https://${baseHost}/task/openapi/upload`;
+  const response = await fetch(uploadUrl, {
+    method: "POST",
+    body: formData
+  });
+  if (!response.ok) throw new Error(`runninghub upload HTTP ${response.status}`);
+  const payload = await response.json();
+  if ((payload == null ? void 0 : payload.code) !== 0) throw createRunningHubError("upload", payload);
+  return {
+    provider: "runninghub",
+    url: (_a3 = payload == null ? void 0 : payload.data) == null ? void 0 : _a3.fileName,
+    raw: payload
+  };
+}
+const runninghubUploadProviderDefinition = {
+  async upload(params) {
+    return uploadRunninghubFile(params.formData, params.platformConfig, params.options);
+  }
+};
 function ensureGrsaiConfig(platformConfig) {
   const apiKey = platformConfig == null ? void 0 : platformConfig.apiKey;
   const baseURL = platformConfig == null ? void 0 : platformConfig.baseURL;
@@ -66242,7 +66278,7 @@ async function describeGrsai(url, platformConfig, options) {
       aspectRatio: "auto",
       imageSize: "1K"
     },
-    recommendUploadProvider: "runninghub",
+    recommendUploadProvider: "grsai",
     cancelable: false
   };
 }
@@ -66383,6 +66419,77 @@ const grsaiProviderDefinition = {
   async cancelTask(params) {
     const url = ensureGrsaiUrl(params.locator);
     await cancelGrsaiTask(url, params.taskId, params.platformConfig, params.options);
+  }
+};
+async function uploadGrsaiZHFile(formData, platformConfig, options) {
+  var _a3;
+  const GRSAI_ZH_BASE_URL = "https://grsai.dakka.com.cn";
+  const GRSAI_ZH_API_KEY = "sk-a0cf3753548344e1a5cbdf2c2dc460c6";
+  const signal = options == null ? void 0 : options.signal;
+  if (isRequestAborted$3(signal)) {
+    throw createAbortError$3("Upload aborted");
+  }
+  const fileEntry = formData.get("file");
+  if (!fileEntry) {
+    throw new Error('grsai upload requires formData field "file"');
+  }
+  let fileExt = "png";
+  if (fileEntry instanceof File && fileEntry.name) {
+    const ext = (_a3 = fileEntry.name.split(".").pop()) == null ? void 0 : _a3.toLowerCase();
+    if (ext) fileExt = ext;
+  }
+  const tokenEndpoint = `${GRSAI_ZH_BASE_URL}/client/resource/newUploadTokenZH`;
+  const tokenResponse = await fetch(tokenEndpoint, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${GRSAI_ZH_API_KEY}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ sux: fileExt }),
+    signal
+  });
+  if (!tokenResponse.ok) {
+    throw new Error(
+      `Grsai upload token request failed: ${tokenResponse.status} ${tokenResponse.statusText}`
+    );
+  }
+  const tokenResult = await tokenResponse.json();
+  if (tokenResult.code !== void 0 && tokenResult.code !== 0) {
+    throw new Error(`Grsai API error: ${tokenResult.msg || "Unknown error"}`);
+  }
+  const data2 = tokenResult == null ? void 0 : tokenResult.data;
+  if (!(data2 == null ? void 0 : data2.url) || !(data2 == null ? void 0 : data2.token) || !(data2 == null ? void 0 : data2.key) || !(data2 == null ? void 0 : data2.domain)) {
+    throw new Error(
+      "Grsai upload token response missing required fields (url, token, key, domain)"
+    );
+  }
+  const uploadFormData = new FormData();
+  uploadFormData.append("token", data2.token);
+  uploadFormData.append("key", data2.key);
+  uploadFormData.append("file", fileEntry);
+  const uploadResponse = await fetch(data2.url, {
+    method: "POST",
+    body: uploadFormData,
+    signal
+  });
+  if (!uploadResponse.ok) {
+    throw new Error(
+      `Grsai file upload failed: ${uploadResponse.status} ${uploadResponse.statusText}`
+    );
+  }
+  const finalUrl = `${data2.domain.replace(/\/+$/, "")}/${data2.key.replace(/^\/+/, "")}`;
+  return {
+    provider: "grsai",
+    url: finalUrl,
+    raw: {
+      tokenResult,
+      uploadStatus: uploadResponse.status
+    }
+  };
+}
+const grsaiUploadProviderDefinition = {
+  async upload(params) {
+    return uploadGrsaiZHFile(params.formData, params.platformConfig, params.options);
   }
 };
 function buildGeminiFormSchema() {
@@ -67469,6 +67576,9 @@ function ensureDefaultProvidersRegistered() {
   if (!getProvider("grsai")) {
     registerProvider$1("grsai", grsaiProviderDefinition);
   }
+  if (!getUploadProvider("grsai")) {
+    registerUploadProvider$1("grsai", grsaiUploadProviderDefinition);
+  }
   if (!getProvider("gemini")) {
     registerProvider$1("gemini", geminiProviderDefinition);
   }
@@ -67628,7 +67738,7 @@ function AuthingLoginDialog() {
   const isGuest = useStore(sdkNode2.store, (state) => state.isGuest);
   const token = useStore(sdkNode2.store, (state) => state.token);
   const userInfo = useStore(sdkNode2.store, (state) => state.userInfo);
-  const balance = useStore(mcpMesh.store, (state) => state.balance ?? null);
+  const balance = useStore(sdkNode2.store, (state) => state.balance ?? null);
   reactExports.useEffect(() => {
     if (isLogin && token && !userInfo) {
       sdkNode2.actions.authGetUserProfile({ token }).catch(() => {
@@ -67649,6 +67759,11 @@ function AuthingLoginDialog() {
       void refreshBalance();
     }
   }, [requestingLogin]);
+  reactExports.useEffect(() => {
+    if (isLogin) {
+      void refreshBalance();
+    }
+  }, [isLogin]);
   const handleEmailLogin = async () => {
     const { email, password } = formStore.getState();
     if (!email || !password) {
@@ -67687,7 +67802,7 @@ function AuthingLoginDialog() {
     false,
     {
       fileName: "/apdcephfs/txcfs/_CODE_/sdppp/official/capabilities/auth/@uxp/components/AuthingLoginDialog.tsx",
-      lineNumber: 104,
+      lineNumber: 110,
       columnNumber: 9
     },
     this
@@ -67793,7 +67908,7 @@ function BalanceIcon() {
             false,
             {
               fileName: "/apdcephfs/txcfs/_CODE_/sdppp/official/capabilities/auth/@uxp/ps-uxp-store-provider.tsx",
-              lineNumber: 25,
+              lineNumber: 27,
               columnNumber: 9
             },
             this
@@ -67803,7 +67918,7 @@ function BalanceIcon() {
         false,
         {
           fileName: "/apdcephfs/txcfs/_CODE_/sdppp/official/capabilities/auth/@uxp/ps-uxp-store-provider.tsx",
-          lineNumber: 17,
+          lineNumber: 19,
           columnNumber: 7
         },
         this
@@ -67813,37 +67928,44 @@ function BalanceIcon() {
     false,
     {
       fileName: "/apdcephfs/txcfs/_CODE_/sdppp/official/capabilities/auth/@uxp/ps-uxp-store-provider.tsx",
-      lineNumber: 12,
+      lineNumber: 14,
       columnNumber: 5
     },
     this
   );
 }
 function AuthUserEntry() {
-  const balance = useStore(mcpMesh.store, (state) => state.balance);
+  const sdkNode2 = mcpMesh.getNode("sdk");
+  const balance = useStore(sdkNode2.store, (state) => state.balance ?? null);
+  const isLogin = useStore(sdkNode2.store, (state) => state.isLogin ?? false);
+  reactExports.useEffect(() => {
+    if (isLogin) {
+      void refreshBalance();
+    }
+  }, [isLogin]);
   return /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV("div", { className: "flex items-center text-[var(--uxp-host-text-color)]", children: [
     /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV("div", { style: { marginRight: 4 }, children: /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV(BalanceIcon, {}, void 0, false, {
       fileName: "/apdcephfs/txcfs/_CODE_/sdppp/official/capabilities/auth/@uxp/ps-uxp-store-provider.tsx",
-      lineNumber: 39,
+      lineNumber: 50,
       columnNumber: 9
     }, this) }, void 0, false, {
       fileName: "/apdcephfs/txcfs/_CODE_/sdppp/official/capabilities/auth/@uxp/ps-uxp-store-provider.tsx",
-      lineNumber: 38,
+      lineNumber: 49,
       columnNumber: 7
     }, this),
     /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV("span", { className: "text-[10px] leading-none opacity-80 tabular-nums", style: { marginRight: 6 }, children: typeof balance === "number" ? balance.toFixed(2) : "0.00" }, void 0, false, {
       fileName: "/apdcephfs/txcfs/_CODE_/sdppp/official/capabilities/auth/@uxp/ps-uxp-store-provider.tsx",
-      lineNumber: 41,
+      lineNumber: 52,
       columnNumber: 7
     }, this),
     /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV(UserIcon, { size: 0.8 }, void 0, false, {
       fileName: "/apdcephfs/txcfs/_CODE_/sdppp/official/capabilities/auth/@uxp/ps-uxp-store-provider.tsx",
-      lineNumber: 44,
+      lineNumber: 55,
       columnNumber: 7
     }, this)
   ] }, void 0, true, {
     fileName: "/apdcephfs/txcfs/_CODE_/sdppp/official/capabilities/auth/@uxp/ps-uxp-store-provider.tsx",
-    lineNumber: 37,
+    lineNumber: 48,
     columnNumber: 5
   }, this);
 }
@@ -67863,7 +67985,7 @@ async function execute() {
         },
         children: /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV(AuthUserEntry, {}, void 0, false, {
           fileName: "/apdcephfs/txcfs/_CODE_/sdppp/official/capabilities/auth/@uxp/ps-uxp-store-provider.tsx",
-          lineNumber: 65,
+          lineNumber: 76,
           columnNumber: 7
         }, this)
       },
@@ -67871,7 +67993,7 @@ async function execute() {
       false,
       {
         fileName: "/apdcephfs/txcfs/_CODE_/sdppp/official/capabilities/auth/@uxp/ps-uxp-store-provider.tsx",
-        lineNumber: 55,
+        lineNumber: 66,
         columnNumber: 5
       },
       this

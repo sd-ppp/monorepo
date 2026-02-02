@@ -11,7 +11,7 @@ export const createSponsorTask = async <T>(
   sponsorExecutionStore.setState({
     runningTasks: [...sponsorExecutionStore.getState().runningTasks, task],
   });
-  task.promise.then(() => {
+  task.promise.finally(() => {
     sponsorExecutionStore.setState({
       runningTasks: sponsorExecutionStore.getState().runningTasks.filter((t) => t !== task),
     });

@@ -22,7 +22,8 @@ const normalizeConfigValue = (value?: string | null): string | null => {
 };
 
 export const SDPPP_SPONSOR_BASE_URL = normalizeConfigValue(
-  sdpppSponsorRemoteConfig?.taskrouterBaseUrl  // 使用远程配置的字段名
+  'http://localhost:9001'
+  // sdpppSponsorRemoteConfig?.taskrouterBaseUrl  // 使用远程配置的字段名
 );
 
 export const SDPPP_SPONSOR_RECHARGE_URL = normalizeConfigValue(

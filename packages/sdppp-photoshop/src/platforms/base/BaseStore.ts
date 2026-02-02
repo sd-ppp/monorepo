@@ -129,9 +129,9 @@ export async function createTask<T>(
     const task = await client.run(modelName, input);
     store.setState({ runningTasks: [...store.getState().runningTasks, task] });
     
-    task.promise.then(() => {
-        store.setState({ 
-            runningTasks: store.getState().runningTasks.filter((t: Task<any>) => t !== task) 
+    task.promise.finally(() => {
+        store.setState({
+            runningTasks: store.getState().runningTasks.filter((t: Task<any>) => t !== task)
         });
     });
     

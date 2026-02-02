@@ -1,5 +1,4 @@
 import { create } from 'zustand'
-import { Providers } from '../platforms'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import { sdpppSDK } from '@sdppp/common'
 import type { ResourceHandle } from '@sdppp/resourcing/src/@mainweb/resource-handles'
@@ -8,9 +7,10 @@ import { loadRemoteConfig } from '@sdppp/vite-remote-config-loader'
 import { buildBoundaryUri } from '@sdppp/resourcing/src/resource-uris'
 
 export type SendMode = 'smartobject' | 'newdoc' | 'selection';
+type ProviderKey = keyof typeof import('../platforms').Providers;
 
 export const MainStore = create<{
-    provider: (keyof typeof Providers) | ''
+    provider: ProviderKey | ''
     previewImageList: {
         url: string,
         resource?: string,

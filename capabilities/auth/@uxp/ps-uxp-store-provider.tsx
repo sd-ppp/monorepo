@@ -2,9 +2,11 @@
 // 这个文件会被通用插件系统自动发现和加载
 // 约定：必须导出 execute 函数
 
+import { useEffect } from 'react';
 import { PSUXPInternalStore } from '@sdppp/ps-uxp/src/logics/PSUXPInternalStore';
 import { mcpMesh } from '@sdppp/ps-uxp/src/mesh/mesh';
 import UserIcon from '@sdppp/ps-uxp/src/tsx/components/Icons/UserIcon';
+import { refreshBalance } from '@sdppp/balance';
 import { useStore } from 'zustand';
  
 function BalanceIcon() {
@@ -32,7 +34,16 @@ function BalanceIcon() {
 }
 
 function AuthUserEntry() {
-  const balance = useStore(mcpMesh.store, state => state.balance);
+  const sdkNode = mcpMesh.getNode('sdk');
+  const balance = useStore(sdkNode.store, state => (state as any).balance ?? null);
+  const isLogin = useStore(sdkNode.store, state => (state as any).isLogin ?? false);
+
+  useEffect(() => {
+    if (isLogin) {
+      void refreshBalance();
+    }
+  }, [isLogin]);
+
   return (
     <div className="flex items-center text-[var(--uxp-host-text-color)]">
       <div style={{ marginRight: 4 }}>

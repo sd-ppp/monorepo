@@ -3,7 +3,7 @@ import { WidgetableNode } from '@sdppp/common/schemas/schemas';
 import type { WorkflowStatusDescriptor } from '@sdppp/ui-library';
 import { loadRemoteConfig } from '@sdppp/vite-remote-config-loader';
 import { WidgetableProvider, WorkflowEditApiFormat } from '@sdppp/widgetable-ui';
-import { Alert, Button, Flex, Input, Tooltip } from 'antd';
+import { Alert, Button, Checkbox, Flex, Input, Tooltip } from 'antd';
 import Link from 'antd/es/typography/Link';
 import { CircleStop, HelpCircle } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
@@ -25,18 +25,27 @@ export default function RunningHubRenderer({ showingPreview }: { showingPreview:
     const { t, language } = useTranslation()
     const { apiKey, setApiKey } = runninghubStore();
     const [error, setError] = useState<string>('');
+    const [useSponsorDeduction, setUseSponsorDeduction] = useState(false);
 
     return (
         <Flex className="runninghub-renderer" vertical gap={8}>
             {!showingPreview ? <Flex gap={8}>
-                <Password
-                    placeholder={t('runninghub.apikey_placeholder')}
-                    value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
-                />
+                <Checkbox
+                    checked={useSponsorDeduction}
+                    onChange={(e) => setUseSponsorDeduction(e.target.checked)}
+                >
+                    赞助分抵扣
+                </Checkbox>
+                {!useSponsorDeduction && (
+                    <Password
+                        placeholder={t('runninghub.apikey_placeholder')}
+                        value={apiKey}
+                        onChange={(e) => setApiKey(e.target.value)}
+                    />
+                )}
             </Flex> : null}
             {
-                !apiKey && <Link underline onClick={async () => {
+                !apiKey && !useSponsorDeduction && <Link underline onClick={async () => {
                     const banners = loadRemoteConfig('banners');
                     const runninghubURL = banners.find((banner: any) => banner.type === 'runninghub' && banner.locale == language)?.link;
                     sdpppSDK.plugins.photoshop.openExternalLink({ url: runninghubURL })
@@ -250,8 +259,9 @@ function RunningHubRendererForm({
                         return;
                     }
 
-                    if (typeof fieldValue === 'object' && fieldValue.url) {
-                        processedValues[node.id] = fieldValue.url;
+                    if (typeof fieldValue === 'object' && 'url' in (fieldValue as any)) {
+                        const url = (fieldValue as any).url;
+                        processedValues[node.id] = url ? url : [''];
                         return;
                     }
                 }

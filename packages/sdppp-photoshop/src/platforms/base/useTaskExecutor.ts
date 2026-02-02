@@ -2,7 +2,6 @@ import { t, sdpppSDK } from '@sdppp/common';
 import { buildBoundaryUri } from '@sdppp/resourcing/src/resource-uris';
 import { useEffect } from 'react';
 import { MainStore } from '../../tsx/App.store';
-import { createFileResourceFromExternal } from '@sdppp/resourcing/src/@mainweb/file-resource-actions';
 import { useTaskExecutionStore } from './taskExecutionStore';
 
 export interface UseTaskExecutorOptions {
@@ -229,7 +228,7 @@ export function useTaskExecutor({
                     setIsRunning(false);
                     setLastStartTime(0);
                     
-                    // 直接将结果图片发送到画布，不经过预览区
+                    // 将结果图片发送到预览区
                     for (let i = 0; i < outputs.length; i++) {
                         const output = outputs[i];
                         console.log(`[TaskRouter] Processing image ${i + 1}/${outputs.length}, output:`, output);
@@ -239,73 +238,18 @@ export function useTaskExecutor({
                             setProgressMessage(`正在导入图片 ${i + 1}/${outputs.length}...`);
                             sdpppSDK.logger?.(`[TaskRouter] Set progress message: 正在导入图片 ${i + 1}/${outputs.length}...`);
                             
-                            // 1. 下载图片并创建资源
-                            const res = await createFileResourceFromExternal({
+                            await MainStore.getState().downloadAndAppendImage({
                                 url: output.url,
+                                source: selectedModel || 'task',
                                 fileName: `taskrouter_result_${Date.now()}_${i}.png`,
-                            });
-                            console.log('[TaskRouter] createFileResourceFromExternal result:', res);
-                            
-                            const primary = res && Array.isArray(res.batch) && res.batch.length ? res.batch[0] ?? res : res;
-                            const resource = (primary as any)?.resource as string | undefined;
-                            const handle = (primary as any)?.handle as any;
-                            const width = (primary as any)?.width as number | undefined;
-                            const height = (primary as any)?.height as number | undefined;
-                            
-                            console.log('[TaskRouter] Resource info - resource:', resource, 'width:', width, 'height:', height);
-                            
-                            if (!resource) {
-                                console.error('[TaskRouter] Failed to create resource from', output.url);
-                                continue;
-                            }
-                            
-                            // 2. 等待资源准备就绪（如果需要）
-                            let resourceIdentifier = resource;
-                            if (!resourceIdentifier && handle?.getResource) {
-                                await new Promise(resolve => setTimeout(resolve, 200));
-                                resourceIdentifier = handle.getResource();
-                            }
-                            
-                            if (!resourceIdentifier) {
-                                console.error('[TaskRouter] Resource not ready for', output.url);
-                                continue;
-                            }
-                            
-                            // 3. 确定导入类型（始终使用 smartobject，与预览区保持一致）
-                            const importType = 'smartobject';
-                            
-                            console.log('[TaskRouter] Calling importImage with params:', {
-                                type: importType,
-                                resource: resourceIdentifier,
+                                docId: docIdAtStart,
                                 boundaryUri: boundaryUriAtStart,
                                 maskUri: maskFileResourceUri,
-                                sourceWidth: width,
-                                sourceHeight: height,
+                                maskHandle: null,
                             });
-                            
-                            // 4. 发送到 Photoshop 画布
-                            const importResult = await sdpppSDK.plugins.photoshop.importImage({
-                                type: importType,
-                                resource: resourceIdentifier,
-                                boundaryUri: boundaryUriAtStart,
-                                maskUri: maskFileResourceUri,
-                                sourceWidth: width,
-                                sourceHeight: height,
-                            });
-                            
-                            console.log(`[TaskRouter] importImage result:`, importResult);
-                            console.log(`[TaskRouter] Image ${i + 1}/${outputs.length} sent to canvas`);
-                            
-                            // 5. 清理资源句柄
-                            if (handle?.dispose) {
-                                try {
-                                    handle.dispose();
-                                } catch (disposeError) {
-                                    console.warn('[TaskRouter] Failed to dispose resource handle:', disposeError);
-                                }
-                            }
+                            console.log(`[TaskRouter] Image ${i + 1}/${outputs.length} sent to preview`);
                         } catch (sendError: any) {
-                            console.error('[TaskRouter] Failed to send image to canvas:', sendError);
+                            console.error('[TaskRouter] Failed to send image to preview:', sendError);
                             setRunError(`Failed to send image ${i + 1}: ${sendError.message || sendError.toString()}`);
                         }
                     }
@@ -323,6 +267,9 @@ export function useTaskExecutor({
                     sdpppSDK.logger?.(`[TaskRouter] error.error: ${error?.error}`);
                     sdpppSDK.logger?.(`[TaskRouter] error.errorMessage: ${error?.errorMessage}`);
                     sdpppSDK.logger?.(`[TaskRouter] error.status: ${error?.status}`);
+                    if (error?.stack) {
+                        sdpppSDK.logger?.(`[TaskRouter] error.stack: ${error.stack}`);
+                    }
                     sdpppSDK.logger?.(`[TaskRouter] error object: ${JSON.stringify(error, null, 2)}`);
                     sdpppSDK.logger?.('[TaskRouter] ===== END ERROR DEBUG =====');
                     
