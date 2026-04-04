@@ -1,8 +1,10 @@
-import { sdpppSDK } from '@sdppp/common';
+import { sdpppSDK, t as translate } from '@sdppp/common';
 import { createFileResourceFromExternal } from '@sdppp/resourcing/src/@mainweb/file-resource-actions';
 import { buildBoundaryUri } from '@sdppp/resourcing/src/resource-uris';
 import { message } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
+import { useStore } from 'zustand';
+import { supabaseSessionStore } from '@sdppp/auth';
 import { useTaskExecutionStore } from '../../../base/taskExecutionStore';
 import { sponsorAuthStore } from '../auth/authStore';
 import { sponsorUiStore } from '../uiStore';
@@ -15,7 +17,7 @@ export const useHistory = (options: { active: boolean; pageSize?: number; t?: (k
   const [sendingUrl, setSendingUrl] = useState<string | null>(null);
   const pageSize = options.pageSize ?? DEFAULT_HISTORY_PAGE_SIZE;
   const initialized = sponsorUiStore(state => state.initialized);
-  const hasSession = !!sponsorAuthStore(state => state.supabaseSession);
+  const hasSession = !!useStore(supabaseSessionStore, (state) => state.session);
   const authLoading = sponsorAuthStore(state => state.authLoading);
   const history = sponsorHistoryStore(state => state.history);
   const selectedId = sponsorHistoryStore(state => state.selectedId);
@@ -66,7 +68,11 @@ export const useHistory = (options: { active: boolean; pageSize?: number; t?: (k
     try {
       const client = sponsorAuthStore.getState().client;
       if (!client) {
-        throw new Error('TaskRouter client is not initialized');
+        throw new Error(
+          translate('taskrouter.history.client_missing', {
+            defaultValue: 'TaskRouter client is not initialized',
+          })
+        );
       }
       const detailRecord = await fetchHistoryDetail(client, record);
       setDetailRecord(detailRecord);
@@ -122,11 +128,15 @@ export const useHistory = (options: { active: boolean; pageSize?: number; t?: (k
 
       const setProgressMessage = useTaskExecutionStore.getState().setProgressMessage;
       const setRunError = useTaskExecutionStore.getState().setRunError;
-      const t = options.t;
+      const t = options.t ?? translate;
 
       try {
         const { boundaryUri } = resolveCurrentDocContext();
-        setProgressMessage(t?.('taskrouter.history.importing', { defaultValue: 'Importing history image...' }) ?? 'Importing history image...');
+        setProgressMessage(
+          t('taskrouter.history.importing', {
+            defaultValue: 'Importing history image...',
+          })
+        );
 
         const res = await createFileResourceFromExternal({
           url,
@@ -140,7 +150,11 @@ export const useHistory = (options: { active: boolean; pageSize?: number; t?: (k
         const height = (primary as any)?.height as number | undefined;
 
         if (!resource) {
-          throw new Error(t?.('taskrouter.history.send_failed_resource', { defaultValue: 'Failed to create file resource' }) ?? 'Failed to create file resource');
+          throw new Error(
+            t('taskrouter.history.send_failed_resource', {
+              defaultValue: 'Failed to create file resource',
+            })
+          );
         }
 
         let resourceIdentifier = resource;
@@ -150,7 +164,11 @@ export const useHistory = (options: { active: boolean; pageSize?: number; t?: (k
         }
 
         if (!resourceIdentifier) {
-          throw new Error(t?.('taskrouter.history.send_failed_identifier', { defaultValue: 'Invalid resource identifier' }) ?? 'Invalid resource identifier');
+          throw new Error(
+            t('taskrouter.history.send_failed_identifier', {
+              defaultValue: 'Invalid resource identifier',
+            })
+          );
         }
 
         await sdpppSDK.plugins.photoshop.importImage({
@@ -172,7 +190,11 @@ export const useHistory = (options: { active: boolean; pageSize?: number; t?: (k
         setProgressMessage('');
         setRunError('');
 
-        message.success(t?.('taskrouter.history.send_success', { defaultValue: 'Image imported to canvas' }) ?? 'Image imported to canvas');
+        message.success(
+          t('taskrouter.history.send_success', {
+            defaultValue: 'Image imported to canvas',
+          })
+        );
       } catch (error: any) {
         console.error('[TaskRouter] send history image failed', error);
         setRunError(error?.message ?? String(error));

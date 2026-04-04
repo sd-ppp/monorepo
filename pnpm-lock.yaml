@@ -29,9 +29,18 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^4.5.0
         version: 4.7.0(vite@6.4.1(@types/node@20.19.25)(jiti@1.21.7)(less@4.4.2)(tsx@4.21.0)(yaml@2.8.2))
+      baseline-browser-mapping:
+        specifier: ^2.9.19
+        version: 2.9.19
       cross-env:
         specifier: ^7.0.3
         version: 7.0.3
+      electron-to-chromium:
+        specifier: ^1.5.286
+        version: 1.5.286
+      fastq:
+        specifier: ^1.20.1
+        version: 1.20.1
       rimraf:
         specifier: ^6.0.1
         version: 6.1.2
@@ -62,6 +71,9 @@ importers:
       '@sdppp/ps-uxp':
         specifier: workspace:*
         version: link:../../internals/ps-uxp
+      '@sdppp/sdpppx-services':
+        specifier: workspace:*
+        version: link:../../packages/sdpppx-services
       '@sdppp/vite-remote-config-loader':
         specifier: workspace:*
         version: link:../../packages/vite-remote-config-loader
@@ -365,6 +377,9 @@ importers:
       autoprefixer:
         specifier: ^10.4.21
         version: 10.4.22(postcss@8.5.6)
+      electron-to-chromium:
+        specifier: ^1.5.286
+        version: 1.5.286
       postcss:
         specifier: ^8.5.5
         version: 8.5.6
@@ -414,6 +429,9 @@ importers:
       '@sdppp/mcp-postmessage-transport':
         specifier: workspace:*
         version: link:../mcp-postmessage-transport
+      '@sdppp/sdpppx-services':
+        specifier: workspace:*
+        version: link:../../packages/sdpppx-services
       '@sdppp/vite-remote-config-loader':
         specifier: workspace:*
         version: link:../../packages/vite-remote-config-loader
@@ -613,9 +631,6 @@ importers:
       '@sdppp/auth':
         specifier: workspace:*
         version: link:../../capabilities/auth
-      '@sdppp/balance':
-        specifier: workspace:*
-        version: link:../../capabilities/balance
       '@sdppp/common':
         specifier: workspace:*
         version: link:../ps-common
@@ -628,9 +643,6 @@ importers:
       '@sdppp/pptask':
         specifier: workspace:*
         version: link:../pptask
-      '@sdppp/ps-uxp':
-        specifier: workspace:*
-        version: link:../../internals/ps-uxp
       '@sdppp/resourcing':
         specifier: workspace:*
         version: link:../../capabilities/resourcing
@@ -3189,6 +3201,10 @@ packages:
   base64-js@1.5.1:
     resolution: {integrity: sha512-AKpaYlHn8t4SVbOHCy+b5+KKgvR4vrsD8vbvrbiQJps7fKDTkjkDry6ji0rUJjC0kzbNePLwzxq8iypo41qeWA==}
 
+  baseline-browser-mapping@2.9.19:
+    resolution: {integrity: sha512-ipDqC8FrAl/76p2SSWKSI+H9tFwm7vYqXQrItCuiVPt26Km0jS+NzSsBWAaBusvSbQcfJG+JitdMm+wZAgTYqg==}
+    hasBin: true
+
   baseline-browser-mapping@2.9.4:
     resolution: {integrity: sha512-ZCQ9GEWl73BVm8bu5Fts8nt7MHdbt5vY9bP6WGnUh+r3l8M7CgfyTlwsgCbMC66BNxPr6Xoce3j66Ms5YUQTNA==}
     hasBin: true
@@ -3666,8 +3682,8 @@ packages:
   ee-first@1.1.1:
     resolution: {integrity: sha512-WMwm9LhRUo+WUaRN+vRuETqG89IgZphVSNkdFgeb6sS/E4OrDIN7t48CAewSHXc6C8lefD8KKfr5vY61brQlow==}
 
-  electron-to-chromium@1.5.266:
-    resolution: {integrity: sha512-kgWEglXvkEfMH7rxP5OSZZwnaDWT7J9EoZCujhnpLbfi0bbNtRkgdX2E3gt0Uer11c61qCYktB3hwkAS325sJg==}
+  electron-to-chromium@1.5.286:
+    resolution: {integrity: sha512-9tfDXhJ4RKFNerfjdCcZfufu49vg620741MNs26a9+bhLThdB+plgMeou98CAaHu/WATj2iHOOHTp1hWtABj2A==}
 
   elliptic@6.6.1:
     resolution: {integrity: sha512-RaddvvMatK2LJHqFJ+YA4WysVN5Ita9E35botqIYspQ4TkRAlCicdzKOjlyv/1Za5RyTNn7di//eEV0uTAfe3g==}
@@ -3915,6 +3931,9 @@ packages:
 
   fastq@1.19.1:
     resolution: {integrity: sha512-GwLTyxkCXjXbxqIhTsMI2Nui8huMPtnxg7krajPJAjnEG/iiOS7i+zCtWGZR9G0NBKbXKh6X9m9UIsYX/N6vvQ==}
+
+  fastq@1.20.1:
+    resolution: {integrity: sha512-GGToxJ/w1x32s/D2EKND7kTil4n8OVk/9mycTc4VDza13lOvpUZTGX3mFSCtV9ksdGBVzvsyAVLM6mHFThxXxw==}
 
   fdir@6.5.0:
     resolution: {integrity: sha512-tIbYtZbucOs0BRGqPJkshJUYdL+SDH7dVM8gjy+ERp3WAUjLEFJE+02kanyHtwjWOnwrKYBiwAmM0p4kLJAnXg==}
@@ -9037,6 +9056,8 @@ snapshots:
 
   base64-js@1.5.1: {}
 
+  baseline-browser-mapping@2.9.19: {}
+
   baseline-browser-mapping@2.9.4: {}
 
   bcrypt-pbkdf@1.0.2:
@@ -9132,7 +9153,7 @@ snapshots:
     dependencies:
       baseline-browser-mapping: 2.9.4
       caniuse-lite: 1.0.30001759
-      electron-to-chromium: 1.5.266
+      electron-to-chromium: 1.5.286
       node-releases: 2.0.27
       update-browserslist-db: 1.2.2(browserslist@4.28.1)
 
@@ -9558,7 +9579,7 @@ snapshots:
 
   ee-first@1.1.1: {}
 
-  electron-to-chromium@1.5.266: {}
+  electron-to-chromium@1.5.286: {}
 
   elliptic@6.6.1:
     dependencies:
@@ -9911,6 +9932,10 @@ snapshots:
       strnum: 1.1.2
 
   fastq@1.19.1:
+    dependencies:
+      reusify: 1.1.0
+
+  fastq@1.20.1:
     dependencies:
       reusify: 1.1.0
 

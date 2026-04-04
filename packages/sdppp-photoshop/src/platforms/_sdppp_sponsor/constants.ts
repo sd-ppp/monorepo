@@ -21,9 +21,9 @@ const normalizeConfigValue = (value?: string | null): string | null => {
   return trimmed.length > 0 ? trimmed : null;
 };
 
-export const SDPPP_SPONSOR_BASE_URL = normalizeConfigValue(
-  'http://localhost:9001'
-  // sdpppSponsorRemoteConfig?.taskrouterBaseUrl  // 使用远程配置的字段名
+export const SDPPP_SPONSOR_BASE_URL = normalizeConfigValue( 
+  sdpppSponsorRemoteConfig?.taskrouterBaseUrl  // 使用远程配置的字段名
+  // 'https://sdpppx.zombee.tech/ppserver-test'
 );
 
 export const SDPPP_SPONSOR_RECHARGE_URL = normalizeConfigValue(

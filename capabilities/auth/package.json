@@ -16,6 +16,7 @@
   "dependencies": {
     "@sdppp/balance": "workspace:*",
     "@sdppp/common": "workspace:*",
+    "@sdppp/sdpppx-services": "workspace:*",
     "@sdppp/ps-uxp": "workspace:*",
     "@sdppp/vite-remote-config-loader": "workspace:*",
     "@sdppp/mcp-mesh-photoshop": "workspace:*",

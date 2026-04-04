@@ -1,6 +1,8 @@
 import { Flex } from 'antd';
 import { memo } from 'react';
 import type { StoreApi, UseBoundStore } from 'zustand';
+import { useStore } from 'zustand';
+import { supabaseSessionStore } from '@sdppp/auth';
 import type { SponsorAuthState } from '../auth/authStore';
 import type { SponsorHistoryState, TaskHistoryRecord } from './historyStore';
 import TaskHistoryDetail from './TaskHistoryDetail';
@@ -43,7 +45,7 @@ const SponsorHistory = memo(function SponsorHistory({
   const detailError = historyStore(state => state.detailError);
   const detailVisible = historyStore(state => state.detailVisible);
   const authLoading = authStore(state => state.authLoading);
-  const hasSession = !!authStore(state => state.supabaseSession);
+  const hasSession = !!useStore(supabaseSessionStore, (state) => state.session);
 
   const selectedRecord = history.find(item => item.id === selectedId) ?? null;
 

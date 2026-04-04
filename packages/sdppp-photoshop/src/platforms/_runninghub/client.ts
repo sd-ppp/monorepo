@@ -4,6 +4,7 @@ import { adaptFormilySchemaToWidgetable } from '@sdppp/formily-widgetable-adapte
 import type { FormilySchema } from '@sdppp/pptask';
 import { createInlineExecutor } from '@sdppp/pptask/executors/inline';
 import type { InlineExecutor } from '@sdppp/pptask/executors/inline';
+import type { SDPPPXServices } from '@sdppp/sdpppx-services';
 import { Client } from '../base/Client';
 import { Task } from '../base/Task';
 
@@ -13,13 +14,24 @@ const log = sdpppSDK.logger.extend('runninghub')
 sdpppSDK.plugins.fetchProxy.registerProxyDomains('runninghub.cn');
 sdpppSDK.plugins.fetchProxy.registerProxyDomains('runninghub.ai');
 
+const SPONSOR_TEMPLATE_ID = 'b9f3228f-2f37-4ed9-a56b-9ff5b221a9f4';
+
 export class SDPPPRunningHub extends Client<{
   apiKey: string
+  useSponsorDeduction?: () => boolean
+  getSponsorServices?: () => SDPPPXServices | null
+  getSponsorTenantId?: () => string | null
 }> {
   private readonly inline: InlineExecutor;
   private readonly schemaCache = new Map<string, FormilySchema>();
+  private lastSponsorUploadProvider: string | null = null;
 
-  constructor(config: { apiKey: string }) {
+  constructor(config: {
+    apiKey: string;
+    useSponsorDeduction?: () => boolean;
+    getSponsorServices?: () => SDPPPXServices | null;
+    getSponsorTenantId?: () => string | null;
+  }) {
     super(config);
     this.inline = createInlineExecutor({
       platformConfig: () => this.buildPlatformConfig(),
@@ -42,11 +54,33 @@ export class SDPPPRunningHub extends Client<{
     return `runninghub://app/${webappId}`;
   }
 
+  private buildSponsorLocator(): string {
+    return `sdpppx://template/${SPONSOR_TEMPLATE_ID}`;
+  }
+
   private buildPlatformConfig(): Record<string, any> {
-    return {
-      apiKey: this.config.apiKey,
+    const platformConfig: Record<string, any> = {
       language: getCurrentLanguage(),
     };
+
+    if (!this.isSponsorMode()) {
+      platformConfig.apiKey = this.config.apiKey;
+    }
+
+    const tenantId = this.config.getSponsorTenantId?.();
+    if (tenantId) {
+      platformConfig.tenantId = tenantId;
+    }
+
+    return platformConfig;
+  }
+
+  private getSponsorServices(): SDPPPXServices | null {
+    return this.config.getSponsorServices?.() ?? null;
+  }
+
+  private isSponsorMode(): boolean {
+    return !!this.config.useSponsorDeduction?.();
   }
 
   async getAccountStatus(): Promise<{
@@ -111,10 +145,14 @@ export class SDPPPRunningHub extends Client<{
     log('getNodes called', { webappId, locator });
 
     try {
-      const describe = await this.inline.describe({ locator });
+      const describe = this.isSponsorMode()
+        ? await this.describeSponsor(webappId)
+        : await this.inline.describe({ locator });
       const formSchema = describe.formSchema as FormilySchema;
       const formValues = (describe.formValues ?? {}) as Record<string, any>;
-      this.schemaCache.set(locator, formSchema);
+      if (!this.isSponsorMode()) {
+        this.schemaCache.set(locator, formSchema);
+      }
       const { nodes, defaultValues, warnings } = adaptFormilySchemaToWidgetable(formSchema);
       const mergedValues = { ...defaultValues, ...formValues };
 
@@ -127,6 +165,7 @@ export class SDPPPRunningHub extends Client<{
           values: mergedValues,
           warnings,
           metadata: describe.metadata,
+          recommendUploadProvider: describe.recommendUploadProvider,
         },
       };
     } catch (error: any) {
@@ -227,6 +266,10 @@ export class SDPPPRunningHub extends Client<{
         );
       }
 
+      if (this.isSponsorMode()) {
+        return await this.runViaSponsor(webappId, input, signal);
+      }
+
       const taskId = `runninghub_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
       let taskResult: any = null;
       let remoteTaskId: string | null = null;
@@ -316,6 +359,22 @@ export class SDPPPRunningHub extends Client<{
       });
       formData.append('file', blob, filename);
       formData.append('fileType', 'image');
+
+      if (this.isSponsorMode()) {
+        const services = this.getSponsorServices();
+        if (!services) {
+          throw new Error(t('runninghub.error.services_unavailable'));
+        }
+        const uploadProvider = (this.lastSponsorUploadProvider || 'sdpppx').trim();
+        const result = await services.upload({
+          uploadProvider,
+          formData,
+          platformConfig: this.buildPlatformConfig(),
+          options: signal ? { signal } : undefined,
+        });
+        return result.url;
+      }
+
       formData.append('apiKey', this.config.apiKey);
 
       const url = await this.inline.upload({
@@ -329,6 +388,57 @@ export class SDPPPRunningHub extends Client<{
       console.error('Error uploading image:', error);
       throw error;
     }
+  }
+
+  private async describeSponsor(webappId: string) {
+    const services = this.getSponsorServices();
+    if (!services) {
+      throw new Error(t('runninghub.error.services_unavailable'));
+    }
+    const locator = this.buildLocator(webappId);
+    const describe = await services.describe({
+      templateId: SPONSOR_TEMPLATE_ID,
+      extra: { locator },
+      platformConfig: this.buildPlatformConfig(),
+    });
+    const recommended = typeof describe.recommendUploadProvider === 'string'
+      ? describe.recommendUploadProvider.trim()
+      : '';
+    this.lastSponsorUploadProvider = recommended || null;
+    return describe;
+  }
+
+  private async runViaSponsor(webappId: string, input: any, signal?: AbortSignal): Promise<Task<any>> {
+    const sponsorLocator = this.buildSponsorLocator();
+    const runninghubLocator = this.buildLocator(webappId);
+    const reporterBridge = Task.createReporterBridge();
+
+    const handle = await this.inline.run({
+      locator: sponsorLocator,
+      payload: {
+        locator: runninghubLocator,
+        formValues: input ?? {},
+      },
+      options: {
+        signal,
+        reporter: reporterBridge.reporter,
+      },
+    });
+
+    const task = new Task(handle.taskId, {
+      handle,
+      attachReporter: reporterBridge.attach,
+    });
+    task.taskName = t('runninghub.task.title', {
+      webappId,
+      defaultValue: 'RunningHub - {{webappId}}'
+    });
+    task.metadata = {
+      provider: 'sdpppx',
+      webappId,
+      locator: sponsorLocator,
+    };
+    return task;
   }
 
   private convertFormDataToNodes(formData: any): {

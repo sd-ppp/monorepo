@@ -1,12 +1,14 @@
 import { sdpppSDK, useTranslation } from '@sdppp/common';
 import { WidgetableNode } from '@sdppp/common/schemas/schemas';
+import { supabaseSessionStore } from '@sdppp/auth';
 import type { WorkflowStatusDescriptor } from '@sdppp/ui-library';
 import { loadRemoteConfig } from '@sdppp/vite-remote-config-loader';
 import { WidgetableProvider, WorkflowEditApiFormat } from '@sdppp/widgetable-ui';
 import { Alert, Button, Checkbox, Flex, Input, Tooltip } from 'antd';
 import Link from 'antd/es/typography/Link';
 import { CircleStop, HelpCircle } from 'lucide-react';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useStore } from 'zustand';
 import { SimpleWorkflowControlPanel } from '../../_comfy_frontend/renderer/components/workflow-detail/components/SimpleWorkflowControlPanel';
 import { ModelSelector } from '../../base/components/ModelSelector';
 import '../../base/styles/workflow-controls.less';
@@ -14,6 +16,12 @@ import { UploadPassProvider } from '../../base/upload-pass-context';
 import { useTaskExecutor } from '../../base/useTaskExecutor';
 import { useTaskExecutionStore } from '../../base/taskExecutionStore';
 import { WidgetablePhotoshopProvider, createImageMaskWidgetRegistry } from '../../base/widgetable-photoshop';
+import { SDPPP_SPONSOR_RECHARGE_URL } from '../../_sdppp_sponsor/constants';
+import { sponsorAuthStore } from '../../_sdppp_sponsor/views/auth/authStore';
+import { useSponsorAuth } from '../../_sdppp_sponsor/views/auth/useSponsorAuth';
+import SponsorBalance from '../../_sdppp_sponsor/views/balance/SponsorBalance';
+import { useBalance } from '../../_sdppp_sponsor/views/balance/useBalance';
+import { sponsorUiStore } from '../../_sdppp_sponsor/views/uiStore';
 import './runninghub.less';
 import { changeSelectedModel, createTask, runninghubStore } from './runninghub.store';
 
@@ -23,27 +31,51 @@ const { Password } = Input;
 
 export default function RunningHubRenderer({ showingPreview }: { showingPreview: boolean }) {
     const { t, language } = useTranslation()
-    const { apiKey, setApiKey } = runninghubStore();
+    const { apiKey, setApiKey, useSponsorDeduction, setUseSponsorDeduction } = runninghubStore();
     const [error, setError] = useState<string>('');
-    const [useSponsorDeduction, setUseSponsorDeduction] = useState(false);
+
+    useSponsorAuth();
+    const { refreshBalance } = useBalance();
+    const hasFetchedBalance = sponsorUiStore(state => state.hasFetchedBalance);
+    const loadingBalance = sponsorUiStore(state => state.balanceLoading);
+    const authLoading = sponsorAuthStore(state => state.authLoading);
+    const supabaseSession = useStore(supabaseSessionStore, (state) => state.session);
+
+    useEffect(() => {
+        if (!useSponsorDeduction) return;
+        if (!supabaseSession) return;
+        if (authLoading) return;
+        if (hasFetchedBalance) return;
+        if (loadingBalance) return;
+        void refreshBalance();
+    }, [authLoading, hasFetchedBalance, loadingBalance, refreshBalance, supabaseSession, useSponsorDeduction]);
+
+    const handleOpenRecharge = useCallback(() => {
+        const rechargeUrl = SDPPP_SPONSOR_RECHARGE_URL;
+        if (!rechargeUrl) return;
+        try {
+            sdpppSDK.plugins.photoshop.openExternalLink({ url: rechargeUrl });
+        } catch (error) {
+            console.error('[sdppp_sponsor] failed to open recharge url', error);
+        }
+    }, []);
+
+    const sponsorBalance = useMemo(() => {
+        if (!useSponsorDeduction) return null;
+        return (
+            <SponsorBalance
+                t={t}
+                balanceStore={sdpppSDK.stores.WebviewStore}
+                uiStore={sponsorUiStore}
+                rechargeUrl={SDPPP_SPONSOR_RECHARGE_URL}
+                onOpenRecharge={handleOpenRecharge}
+                onRefreshBalance={refreshBalance}
+            />
+        );
+    }, [handleOpenRecharge, refreshBalance, t, useSponsorDeduction]);
 
     return (
         <Flex className="runninghub-renderer" vertical gap={8}>
-            {!showingPreview ? <Flex gap={8}>
-                <Checkbox
-                    checked={useSponsorDeduction}
-                    onChange={(e) => setUseSponsorDeduction(e.target.checked)}
-                >
-                    赞助分抵扣
-                </Checkbox>
-                {!useSponsorDeduction && (
-                    <Password
-                        placeholder={t('runninghub.apikey_placeholder')}
-                        value={apiKey}
-                        onChange={(e) => setApiKey(e.target.value)}
-                    />
-                )}
-            </Flex> : null}
             {
                 !apiKey && !useSponsorDeduction && <Link underline onClick={async () => {
                     const banners = loadRemoteConfig('banners');
@@ -62,10 +94,20 @@ export default function RunningHubRenderer({ showingPreview }: { showingPreview:
                 />
             )}
 
-            {apiKey && <AccountStatus />}
+            <RunningHubStatusRow sponsorBalance={sponsorBalance} />
+
+            {!showingPreview ? <Flex gap={8}>
+                {!useSponsorDeduction && (
+                    <Password
+                        placeholder={t('runninghub.apikey_placeholder')}
+                        value={apiKey}
+                        onChange={(e) => setApiKey(e.target.value)}
+                    />
+                )}
+            </Flex> : null}
 
             <Flex gap={8} vertical>
-                {apiKey && <RunningHubRendererModels />}
+                {(apiKey || useSponsorDeduction) && <RunningHubRendererModels />}
             </Flex>
         </Flex>
     );
@@ -339,24 +381,39 @@ function RunningHubRendererForm({
     )
 }
 
-function AccountStatus() {
+function RunningHubStatusRow({ sponsorBalance }: { sponsorBalance: ReactNode | null }) {
     const { t } = useTranslation()
-    const { accountStatus } = runninghubStore();
+    const { accountStatus, useSponsorDeduction, setUseSponsorDeduction, apiKey } = runninghubStore();
 
-    if (!accountStatus) {
-        return null;
-    }
+    const showAccountStatus = !!accountStatus && !!apiKey && !useSponsorDeduction;
+    const showTaskCount = showAccountStatus && accountStatus.currentTaskCounts > 0;
 
     return (
-        <Flex justify='space-between' gap={16} style={{ color: 'var(--sdppp-host-text-color-secondary)', fontSize: '12px' }}>
-            <div>
-                <span>{t('runninghub.rh_coins')}</span>
-                <span>{accountStatus.remainCoins}</span>
-            </div>
-            <div>
-                <span>{t('runninghub.current_tasks')}</span>
-                <span>{accountStatus.currentTaskCounts}</span>
-            </div>
+        <Flex justify='space-between' gap={16} align="center" style={{ color: 'var(--sdppp-host-text-color-secondary)', fontSize: '12px' }}>
+            <Checkbox
+                checked={useSponsorDeduction}
+                onChange={(e) => setUseSponsorDeduction(e.target.checked)}
+            >
+                赞助分抵扣
+            </Checkbox>
+            {useSponsorDeduction ? (
+                sponsorBalance
+            ) : (
+                showAccountStatus ? (
+                    <Flex gap={12} align="center">
+                        {showTaskCount ? (
+                            <span>
+                                {t('runninghub.current_tasks')}
+                                {accountStatus.currentTaskCounts}
+                            </span>
+                        ) : null}
+                        <span>
+                            {t('runninghub.rh_coins')}
+                            {accountStatus.remainCoins}
+                        </span>
+                    </Flex>
+                ) : null
+            )}
         </Flex>
     );
 }

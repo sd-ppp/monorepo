@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { t } from '@sdppp/common';
 import type { UploadPassInput } from '../../base/upload-pass-context';
 import { UploadPassProvider } from '../../base/upload-pass-context';
 import { WrappedSdpppWidgetProvider } from '../../base/widgetable-photoshop';
@@ -15,10 +16,10 @@ export default function SponsorRendererContainer() {
         .getState()
         .getRecommendedUploadProvider(templateId);
       if (!client) {
-        throw new Error('TaskRouter 客户端未初始化');
+        throw new Error(t('taskrouter.error.client_missing'));
       }
       if (!templateId) {
-        throw new Error('未选择任务模板');
+        throw new Error(t('taskrouter.error.template_missing'));
       }
       return client.uploadResource(templateId, resourceId, {
         fileName: options?.fileName,
@@ -31,7 +32,7 @@ export default function SponsorRendererContainer() {
 
   const taskRouterUpload = useCallback(
     async (_uploadInput: UploadPassInput, _signal?: AbortSignal) => {
-      throw new Error('UploadPassProvider is not fully compatible with TaskRouter upload mechanism. Please use the uploadResource prop instead.');
+      throw new Error(t('taskrouter.error.upload_provider_incompatible'));
     },
     []
   );

@@ -1,15 +1,19 @@
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient, type Session } from '@supabase/supabase-js';
 import { SUPABASE_CONFIG } from './config';
 import { sdpppSDK } from '@sdppp/common';
-
-type SupabaseSession = {
-  access_token: string;
-  refresh_token?: string | null;
-};
+import { supabaseSessionStore } from './session-store';
 
 type SupabaseSessionResult = {
   client: SupabaseClient;
-  session: SupabaseSession;
+  session: Session;
+};
+
+type SupabaseBridgeResponse = {
+  access_token?: string;
+  refresh_token?: string;
+  token_type?: string;
+  expires_in?: number;
+  user?: unknown;
 };
 
 const createMemoryStorage = () => {
@@ -30,12 +34,18 @@ const createMemoryStorage = () => {
 let globalClient: SupabaseClient | null = null;
 let globalInitPromise: Promise<SupabaseSessionResult> | null = null;
 
+function getSDK(): typeof sdpppSDK | undefined {
+  return sdpppSDK ?? (globalThis as typeof globalThis & { sdpppSDK?: typeof sdpppSDK }).sdpppSDK;
+}
+
 function getAccessTokenFromStore(): string | null {
-  return sdpppSDK?.stores?.WebviewStore?.getState?.()?.token ?? null;
+  const sdk = getSDK();
+  return sdk?.stores?.WebviewStore?.getState?.()?.token ?? null;
 }
 
 function getRefreshTokenFromStore(): string | null {
-  return sdpppSDK?.stores?.WebviewStore?.getState?.()?.refreshToken ?? null;
+  const sdk = getSDK();
+  return sdk?.stores?.WebviewStore?.getState?.()?.refreshToken ?? null;
 }
 
 function isSupabaseJwt(token: string): boolean {
@@ -47,6 +57,34 @@ function isSupabaseJwt(token: string): boolean {
   } catch {
     return false;
   }
+}
+
+async function exchangeAuthingToken(
+  client: SupabaseClient,
+  authingToken: string
+): Promise<{ accessToken: string; refreshToken: string }> {
+  const { data, error } = await client.functions.invoke(SUPABASE_CONFIG.bridgeFunctionName, {
+    body: {
+      token: authingToken,
+      tenantId: SUPABASE_CONFIG.tenantId,
+      nonce: undefined,
+    },
+    region: SUPABASE_CONFIG.bridgeRegion,
+  });
+
+  if (error) {
+    throw new Error(`Failed to exchange Authing token: ${error.message}`);
+  }
+
+  const response = data as SupabaseBridgeResponse | null;
+  if (!response?.access_token || !response?.refresh_token) {
+    throw new Error('Invalid response from authing-bridge3: missing tokens');
+  }
+
+  return {
+    accessToken: response.access_token,
+    refreshToken: response.refresh_token,
+  };
 }
 
 export async function initializeSupabaseFromSDPPPSB(): Promise<SupabaseSessionResult> {
@@ -70,18 +108,22 @@ export async function initializeSupabaseFromSDPPPSB(): Promise<SupabaseSessionRe
       },
     });
 
-    if (!isSupabaseJwt(token)) {
-      throw new Error('Expected Supabase token in store; got non-Supabase token');
-    }
-    const refreshToken = getRefreshTokenFromStore();
-    if (!refreshToken) {
-      throw new Error('Supabase refresh token not found. User must login again.');
-    }
-    const session: SupabaseSession = { access_token: token, refresh_token: refreshToken };
+    let accessToken = token;
+    let refreshToken = getRefreshTokenFromStore();
 
-    const { error: sessionError } = await client.auth.setSession({
-      access_token: session.access_token,
-      refresh_token: session.refresh_token ?? undefined,
+    if (isSupabaseJwt(token)) {
+      if (!refreshToken) {
+        throw new Error('Supabase refresh token not found. User must login again.');
+      }
+    } else {
+      const exchanged = await exchangeAuthingToken(client, token);
+      accessToken = exchanged.accessToken;
+      refreshToken = exchanged.refreshToken;
+    }
+
+    const { data, error: sessionError } = await client.auth.setSession({
+      access_token: accessToken,
+      refresh_token: refreshToken ?? undefined,
     });
 
     if (sessionError) {
@@ -89,8 +131,12 @@ export async function initializeSupabaseFromSDPPPSB(): Promise<SupabaseSessionRe
     }
 
     globalClient = client;
-    sdpppSDK?.stores?.WebviewStore?.setState?.({ supabaseClientReadyAt: Date.now() });
-    return { client, session };
+    supabaseSessionStore.getState().setSession(data.session ?? null);
+    getSDK()?.stores?.WebviewStore?.setState?.({ supabaseClientReadyAt: Date.now() });
+    if (!data.session) {
+      throw new Error('Supabase session missing after setSession');
+    }
+    return { client, session: data.session };
   })();
 
   try {
@@ -107,4 +153,5 @@ export function getSupabaseClientFromSDPPPSB(): SupabaseClient | null {
 export function clearSupabaseFromSDPPPSB() {
   globalClient = null;
   globalInitPromise = null;
+  supabaseSessionStore.getState().setSession(null);
 }

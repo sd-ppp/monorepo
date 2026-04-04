@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { sponsorAuthStore } from '../auth/authStore';
+import { useStore } from 'zustand';
+import { supabaseSessionStore } from '@sdppp/auth';
 import { sponsorSchemaStore } from '../schema/schemaStore';
 import { sponsorTemplateStore } from '../templates/templateStore';
 import { sponsorUiStore } from '../uiStore';
 
 export const useAutoTemplateSelection = (loadSchema: (templateId?: string) => void) => {
   const initialized = sponsorUiStore(state => state.initialized);
-  const supabaseSession = sponsorAuthStore(state => state.supabaseSession);
+  const supabaseSession = useStore(supabaseSessionStore, (state) => state.session);
   const templates = sponsorTemplateStore(state => state.templates);
   const loadingTemplates = sponsorTemplateStore(state => state.loadingTemplates);
   const templateId = sponsorTemplateStore(state => state.templateId);

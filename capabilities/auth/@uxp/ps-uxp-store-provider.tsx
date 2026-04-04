@@ -6,7 +6,6 @@ import { useEffect } from 'react';
 import { PSUXPInternalStore } from '@sdppp/ps-uxp/src/logics/PSUXPInternalStore';
 import { mcpMesh } from '@sdppp/ps-uxp/src/mesh/mesh';
 import UserIcon from '@sdppp/ps-uxp/src/tsx/components/Icons/UserIcon';
-import { refreshBalance } from '@sdppp/balance';
 import { useStore } from 'zustand';
  
 function BalanceIcon() {
@@ -37,12 +36,6 @@ function AuthUserEntry() {
   const sdkNode = mcpMesh.getNode('sdk');
   const balance = useStore(sdkNode.store, state => (state as any).balance ?? null);
   const isLogin = useStore(sdkNode.store, state => (state as any).isLogin ?? false);
-
-  useEffect(() => {
-    if (isLogin) {
-      void refreshBalance();
-    }
-  }, [isLogin]);
 
   return (
     <div className="flex items-center text-[var(--uxp-host-text-color)]">

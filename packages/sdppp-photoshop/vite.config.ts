@@ -1,6 +1,6 @@
 import { remoteConfigLoader } from '@sdppp/vite-remote-config-loader/vite';
 import react from '@vitejs/plugin-react';
-import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync } from 'fs';
 import { resolve } from 'path';
 import { defineConfig } from 'vite';
 
@@ -152,8 +152,7 @@ function copyPublicAssetsPlugin() {
             mkdirSync(logosTargetDir, { recursive: true });
 
             // 复制所有 logo 文件
-            const fs = require('fs');
-            const logoFiles = fs.readdirSync(logosSourceDir);
+            const logoFiles = readdirSync(logosSourceDir);
             logoFiles.forEach(file => {
               copyFileSync(
                 resolve(logosSourceDir, file),
@@ -185,7 +184,7 @@ export default defineConfig({
         },
         {
           id: 'sdppp_sponsor',
-          url: 'https://sdppp.zombee.tech/CCFK/banners/config.json'
+          url: 'https://sdppp.zombee.tech/banners/sdppp/config.json'
         }
       ]
     })

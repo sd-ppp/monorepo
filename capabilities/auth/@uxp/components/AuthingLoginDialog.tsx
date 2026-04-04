@@ -1,9 +1,8 @@
 import { createStore } from "zustand";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useStore } from "zustand";
 import { mcpMesh } from "@sdppp/ps-uxp/src/mesh/mesh";
 import { AuthingLoginDialogPresentation } from "./AuthingLoginDialogPresentation";
-import { refreshBalance } from "@sdppp/balance";
 
 type AuthingLoginState = {
     email: string;
@@ -43,6 +42,7 @@ export function AuthingLoginDialog() {
     const sdkNode = mcpMesh.getNode("sdk");
     const formStore = useAuthingLoginStore();
     const viewStore = useAuthingLoginViewStore();
+    const prevRequestingLoginRef = useRef(false);
     const requestingLogin = useStore(
         mcpMesh.store,
         (state) => (state as any).requestingLogin ?? false
@@ -60,6 +60,13 @@ export function AuthingLoginDialog() {
     }, [isLogin, token, userInfo, sdkNode.actions]);
 
     useEffect(() => {
+        if (requestingLogin && !prevRequestingLoginRef.current) {
+            sdkNode.actions.fetchBalance?.().catch(() => {});
+        }
+        prevRequestingLoginRef.current = requestingLogin;
+    }, [requestingLogin, sdkNode.actions]);
+
+    useEffect(() => {
         viewStore.setState({
             requestingLogin,
             isLogin,
@@ -68,18 +75,6 @@ export function AuthingLoginDialog() {
             balance,
         });
     }, [requestingLogin, isLogin, isGuest, userInfo, balance, viewStore]);
-
-    useEffect(() => {
-        if (requestingLogin) {
-            void refreshBalance();
-        }
-    }, [requestingLogin]);
-
-    useEffect(() => {
-        if (isLogin) {
-            void refreshBalance();
-        }
-    }, [isLogin]);
 
     const handleEmailLogin = async () => {
         const { email, password } = formStore.getState();

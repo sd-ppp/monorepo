@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
+import { t } from '@sdppp/common';
 import { useTaskExecutor } from '../../../base/useTaskExecutor';
 import { sponsorAuthStore } from '../auth/authStore';
 import { sponsorSchemaStore } from '../schema/schemaStore';
@@ -33,7 +34,7 @@ export const useExecution = (options: { onRunFinished?: () => void } = {}) => {
     createTask: async (model, values) => {
       const client = sponsorAuthStore.getState().client;
       if (!client) {
-        throw new Error('TaskRouter 客户端未初始化');
+        throw new Error(t('taskrouter.error.client_missing'));
       }
       return createSponsorTask(client, model, values);
     },

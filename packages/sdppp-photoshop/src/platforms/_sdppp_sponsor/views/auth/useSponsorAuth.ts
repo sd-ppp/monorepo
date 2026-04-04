@@ -1,5 +1,6 @@
-import { sdpppSDK } from '@sdppp/common';
+import { sdpppSDK, t } from '@sdppp/common';
 import type { HeadersResolver } from '@sdppp/sdpppx-services';
+import { supabaseSessionStore } from '@sdppp/auth';
 import { useEffect } from 'react';
 import { useStore } from 'zustand';
 import { SDPPP_SPONSOR_BASE_URL, SUPABASE_ANON_KEY, SUPABASE_URL } from '../../constants';
@@ -17,6 +18,7 @@ import { createTaskrouterServices } from './taskrouterServices';
 export const useSponsorAuth = () => {
   const isLogin = useStore(sdpppSDK.stores.WebviewStore, (state: any) => state.isLogin);
   const authToken = useStore(sdpppSDK.stores.WebviewStore, (state: any) => state.token);
+  const supabaseSession = useStore(supabaseSessionStore, (state) => state.session);
 
   useEffect(() => {
     if (!isLogin) {
@@ -36,17 +38,24 @@ export const useSponsorAuth = () => {
     const ensureAuth = async () => {
       const authState = sponsorAuthStore.getState();
       if (authState.authLoading) return;
-      if (authState.client && authState.supabaseClient && authState.supabaseSession) return;
+      if (authState.client && authState.supabaseClient && supabaseSessionStore.getState().session) return;
 
       const baseUrl = SDPPP_SPONSOR_BASE_URL;
       const supabaseUrl = SUPABASE_URL;
       const supabaseAnonKey = SUPABASE_ANON_KEY;
       if (!baseUrl || !supabaseUrl || !supabaseAnonKey) {
         const missing: string[] = [];
-        if (!baseUrl) missing.push('TaskRouter 服务地址');
-        if (!supabaseUrl) missing.push('Supabase URL');
-        if (!supabaseAnonKey) missing.push('Supabase 匿名密钥');
-        sponsorAuthStore.getState().setAuthError(`缺少 TaskRouter 远端配置：${missing.join('、')}。请检查远端配置后重试。`);
+        if (!baseUrl) missing.push(t('taskrouter.config.base_url'));
+        if (!supabaseUrl) missing.push(t('taskrouter.config.supabase_url'));
+        if (!supabaseAnonKey) missing.push(t('taskrouter.config.supabase_anon_key'));
+        const separator = t('common.list_separator');
+        sponsorAuthStore
+          .getState()
+          .setAuthError(
+            t('taskrouter.error.remote_config_missing', {
+              missing: missing.join(separator),
+            })
+          );
         return;
       }
 
@@ -65,7 +74,7 @@ export const useSponsorAuth = () => {
         });
 
         const resolveAuthHeaders: HeadersResolver = async () => {
-          const currentSession = sponsorAuthStore.getState().supabaseSession;
+          const currentSession = supabaseSessionStore.getState().session;
           const token = currentSession?.access_token;
           if (!token) {
             const fallbackUserId = currentSession?.user?.id ?? session.user?.id ?? '';
@@ -90,7 +99,7 @@ export const useSponsorAuth = () => {
         });
 
         sponsorAuthStore.getState().setSupabaseClient(supabase);
-        sponsorAuthStore.getState().setSession(session);
+        sponsorAuthStore.getState().setSession(supabaseSessionStore.getState().session ?? session);
         sponsorAuthStore.getState().setTenantId(tenantId);
         sponsorAuthStore.getState().setServices(services);
         sponsorAuthStore.getState().setClient(client);
@@ -104,4 +113,8 @@ export const useSponsorAuth = () => {
 
     void ensureAuth();
   }, [isLogin, authToken]);
+
+  useEffect(() => {
+    sponsorAuthStore.getState().setSession(supabaseSession);
+  }, [supabaseSession]);
 };

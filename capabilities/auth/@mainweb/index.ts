@@ -11,6 +11,7 @@
 export {
   clearSupabaseFromSDPPPSB, getSupabaseClientFromSDPPPSB, initializeSupabaseFromSDPPPSB
 } from './supabase/sdppp-sb-session';
+export { supabaseSessionStore } from './supabase/session-store';
 
 export type { SupabaseInitOptions, SupabaseSessionResult } from './supabase/types';
 

@@ -1,4 +1,5 @@
 import type { Form } from '@formily/core';
+import { t } from '@sdppp/common';
 import type { DeferredUploadValue } from '@sdppp/formily-widgets';
 
 /**
@@ -65,7 +66,9 @@ async function deepTransformDeferredFields(
         resourceId: obj.resourceId,
         error: message,
       });
-      throw new Error(`延迟上传失败: ${message}`);
+      throw new Error(
+        t('taskrouter.error.deferred_upload_failed', { error: message })
+      );
     }
   }
 

@@ -1,10 +1,12 @@
 import { SDPPPRunningHub } from "../client";
 import { BaseStoreState, createBaseStore, AsyncOperationManager, createTask as createBaseTask } from "../../base/BaseStore";
 import { MainStore } from "../../../tsx/App.store";
+import { sponsorAuthStore } from "../../_sdppp_sponsor/views/auth/authStore";
 
 // RunningHub特有的状态接口
 interface RunningHubStoreState extends BaseStoreState<SDPPPRunningHub> {
     apiKey: string
+    useSponsorDeduction: boolean
     webappId: string
     currentNodeInfoList: any[]
     accountStatus: {
@@ -14,6 +16,7 @@ interface RunningHubStoreState extends BaseStoreState<SDPPPRunningHub> {
     appName: string
     webappHistory: Array<{ webappId: string; appName: string }>
     setApiKey: (apiKey: string) => void
+    setUseSponsorDeduction: (useSponsorDeduction: boolean) => void
     setWebappId: (webappId: string) => void
     setAccountStatus: (status: { remainCoins: number; currentTaskCounts: number } | null) => void
     setAppName: (appName: string) => void
@@ -27,12 +30,14 @@ export const runninghubStore = createBaseStore<SDPPPRunningHub, RunningHubStoreS
     '',
     {
         apiKey: '',
+        useSponsorDeduction: false,
         webappId: '',
         currentNodeInfoList: [],
         accountStatus: null,
         appName: '',
         webappHistory: [],
         setApiKey: (apiKey) => runninghubStore.setState({ apiKey }),
+        setUseSponsorDeduction: (useSponsorDeduction) => runninghubStore.setState({ useSponsorDeduction }),
         setWebappId: (webappId) => runninghubStore.setState({ webappId }),
         setAccountStatus: (accountStatus) => runninghubStore.setState({ accountStatus }),
         setAppName: (appName) => runninghubStore.setState({ appName }),
@@ -41,6 +46,13 @@ export const runninghubStore = createBaseStore<SDPPPRunningHub, RunningHubStoreS
             const existing = state.webappHistory.find(item => item.webappId === webappId);
             if (!existing) {
                 const newHistory = [...state.webappHistory, { webappId, appName }];
+                runninghubStore.setState({ webappHistory: newHistory });
+                return;
+            }
+            if (existing.appName !== appName && appName) {
+                const newHistory = state.webappHistory.map(item =>
+                    item.webappId === webappId ? { ...item, appName } : item
+                );
                 runninghubStore.setState({ webappHistory: newHistory });
             }
         },
@@ -52,6 +64,7 @@ export const runninghubStore = createBaseStore<SDPPPRunningHub, RunningHubStoreS
     },
     (state) => ({
         apiKey: state.apiKey,
+        useSponsorDeduction: state.useSponsorDeduction,
         webappId: state.webappId,
         selectedModel: state.selectedModel,
         allValues: state.allValues,
@@ -61,12 +74,27 @@ export const runninghubStore = createBaseStore<SDPPPRunningHub, RunningHubStoreS
 
 // 客户端重置逻辑
 async function resetClient(state: RunningHubStoreState, prevState: RunningHubStoreState) {
-    if (state.apiKey && (state.apiKey !== prevState.apiKey)) {
-        const client = new SDPPPRunningHub({ apiKey: state.apiKey });
+    const useSponsorDeduction = state.useSponsorDeduction;
+    const apiKeyChanged = state.apiKey !== prevState.apiKey;
+    const sponsorChanged = state.useSponsorDeduction !== prevState.useSponsorDeduction;
+
+    if ((state.apiKey || useSponsorDeduction) && (apiKeyChanged || sponsorChanged || !state.client)) {
+        const client = new SDPPPRunningHub({
+            apiKey: state.apiKey,
+            useSponsorDeduction: () => runninghubStore.getState().useSponsorDeduction,
+            getSponsorServices: () => sponsorAuthStore.getState().services,
+            getSponsorTenantId: () => sponsorAuthStore.getState().tenantId,
+        });
         runninghubStore.setState({ client });
-        
+
         // 获取账户状态 - 使用 setTimeout 避免在同一个 setState 调用中再次调用 setState
         setTimeout(async () => {
+            if (runninghubStore.getState().useSponsorDeduction) {
+                stopExecutingRefresh();
+                stopIdleRefresh();
+                runninghubStore.setState({ accountStatus: null });
+                return;
+            }
             // 只有当runninghub是当前provider时才轮询账户状态
             if (MainStore.getState().provider !== 'RunningHub') {
                 return;
@@ -84,7 +112,7 @@ async function resetClient(state: RunningHubStoreState, prevState: RunningHubSto
                 runninghubStore.setState({ accountStatus: null });
             }
         }, 0);
-    } else if (!state.apiKey && prevState.apiKey) {
+    } else if (!state.apiKey && !useSponsorDeduction && (prevState.apiKey || prevState.useSponsorDeduction)) {
         // API key 被清空时，停止所有刷新并清空账户状态
         stopExecutingRefresh();
         stopIdleRefresh();
@@ -105,6 +133,11 @@ runninghubStore.subscribe((state, prevState) => {
     else if (prevState.runningTasks.length > 0 && state.runningTasks.length === 0) {
         stopExecutingRefresh();
         startIdleRefresh();
+    }
+
+    if (state.useSponsorDeduction !== prevState.useSponsorDeduction && state.webappId) {
+        const previousValues = state.currentValues;
+        void changeSelectedModel(state.webappId, { previousValues });
     }
 });
 
@@ -178,7 +211,7 @@ function stopIdleRefresh() {
 }
 
 // RunningHub特有的changeSelectedModel实现（这里实际上是changeWebApp）
-export async function changeSelectedModel(webappId: string) {
+export async function changeSelectedModel(webappId: string, options?: { previousValues?: Record<string, any> }) {
     await asyncManager.executeWithAbort(async (abortController) => {
         const client = runninghubStore.getState().client;
         if (!client) {
@@ -191,8 +224,15 @@ export async function changeSelectedModel(webappId: string) {
             return;
         }
 
-        const values = runninghubStore.getState().allValues[webappId] || nodeResult.defaultInput;
-        const appName = nodeResult.rawData?.data?.webappName || '';
+        const currentValues = options?.previousValues ?? runninghubStore.getState().allValues[webappId];
+        const values = mergeValues(nodeResult.defaultInput, currentValues);
+        const appName =
+            nodeResult.rawData?.data?.webappName ||
+            nodeResult.rawData?.metadata?.rawData?.data?.webappName ||
+            nodeResult.rawData?.metadata?.rawData?.data?.webAppName ||
+            nodeResult.rawData?.metadata?.rawData?.data?.name ||
+            runninghubStore.getState().appName ||
+            '';
 
         const nodeInfoList =
             nodeResult.rawData?.data?.nodeInfoList ||
@@ -214,6 +254,22 @@ export async function changeSelectedModel(webappId: string) {
             addWebappHistory(webappId, appName);
         }
     });
+}
+
+function mergeValues(defaultInput: Record<string, any>, previousValues?: Record<string, any>) {
+    if (!previousValues) {
+        return defaultInput;
+    }
+
+    const merged: Record<string, any> = {};
+    Object.keys(defaultInput).forEach((key) => {
+        if (Object.prototype.hasOwnProperty.call(previousValues, key) && previousValues[key] !== undefined) {
+            merged[key] = previousValues[key];
+        } else {
+            merged[key] = defaultInput[key];
+        }
+    });
+    return merged;
 }
 
 export function isChangingModel(): boolean {

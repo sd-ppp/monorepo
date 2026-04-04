@@ -1,4 +1,5 @@
 import { onFormValuesChange } from '@formily/core';
+import { t } from '@sdppp/common';
 import { useCallback, useEffect, useRef } from 'react';
 import { customapiFormStore } from './customapi.formStore';
 import { customapiSchemaStore } from './customapi.schemaStore';
@@ -81,7 +82,7 @@ export const useCustomApiSchemaForm = () => {
   const loadSchema = useCallback(async (model?: string) => {
     const targetModel = (model ?? customapiStore.getState().selectedModel).trim();
     if (!targetModel) {
-      setSchemaError('请输入模型名称');
+      setSchemaError(t('customapi.error.model_required'));
       return;
     }
     await performLoadSchema(targetModel);

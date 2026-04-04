@@ -1,5 +1,5 @@
 import { useStore } from "zustand";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { mcpMesh } from "@sdppp/ps-uxp/src/mesh/mesh";
 
 export function AuthingQRCode() {
@@ -24,6 +24,7 @@ function AuthingQRCodeLogic() {
     const [qrcodeURL, setQrcodeURL] = useState<string>('')
     const [prevRequestingLogin, setPrevRequestingLogin] = useState<boolean>(false)
     const [qrStatus, setQrStatus] = useState<'loading' | 'ready' | 'scanned' | 'expired' | 'error' | 'cancel'>('loading')
+    const pollIdRef = useRef(0)
 
     // 提取公共样式
     const buttonStyle = {
@@ -59,21 +60,36 @@ function AuthingQRCodeLogic() {
 
     // 提取二维码生成和轮询逻辑
     const generateAndPollQRCode = async () => { 
+        const pollId = ++pollIdRef.current
         setQrStatus('loading')
         setQrcodeURL('')
         try { 
             let response: any = await sdkNode.actions.authLoginByQRCode({});
+            if (pollIdRef.current !== pollId) {
+                return;
+            }
             setQrcodeURL(response.qrcodeURL);
             setQrStatus(response.status as any);
 
             while (!['success', 'cancel', 'expired', 'error'].includes(response.status)) {
+                if (pollIdRef.current !== pollId) {
+                    return;
+                }
                 response = await sdkNode.actions.authLoginByQRCode({ sessionId: response.sessionId });
+                if (pollIdRef.current !== pollId) {
+                    return;
+                }
                 setQrcodeURL(response.qrcodeURL);
                 setQrStatus(response.status as any);
             }
 
-            mcpMesh.store.setState({ requestingLogin: false });
+            if (pollIdRef.current === pollId) {
+                mcpMesh.store.setState({ requestingLogin: false });
+            }
         } catch (error) {
+            if (pollIdRef.current !== pollId) {
+                return;
+            }
             console.error('Failed to generate QR code:', error);
             setQrStatus('error');
             mcpMesh.store.setState({ requestingLogin: false });
@@ -86,6 +102,15 @@ function AuthingQRCodeLogic() {
         }
         setPrevRequestingLogin(requestingLogin)
     }, [isLogin, requestingLogin]);
+
+    useEffect(() => {
+        if (!requestingLogin) {
+            pollIdRef.current += 1;
+        }
+        return () => {
+            pollIdRef.current += 1;
+        };
+    }, [requestingLogin]);
 
     const handleRefresh = () => {
         generateAndPollQRCode()

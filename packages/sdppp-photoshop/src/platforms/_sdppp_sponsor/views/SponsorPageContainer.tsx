@@ -1,4 +1,5 @@
 import { sdpppSDK, useTranslation } from '@sdppp/common';
+import { supabaseSessionStore } from '@sdppp/auth';
 import { useCallback, useEffect, useMemo } from 'react';
 import { useStore } from 'zustand';
 import { SDPPP_SPONSOR_RECHARGE_URL } from '../constants';
@@ -60,7 +61,7 @@ function SponsorPageContent({ t, isLogin }: { t: (key: string, options?: any) =>
   const { handleTabChange } = useSponsorTabs();
 
   const activeTab = sponsorUiStore(state => state.activeTab);
-  const supabaseSession = sponsorAuthStore(state => state.supabaseSession);
+  const supabaseSession = useStore(supabaseSessionStore, (state) => state.session);
   const templates = sponsorTemplateStore(state => state.templates);
   const loadingTemplates = sponsorTemplateStore(state => state.loadingTemplates);
   const hasFetchedBalance = sponsorUiStore(state => state.hasFetchedBalance);

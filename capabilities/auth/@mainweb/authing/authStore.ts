@@ -2,7 +2,10 @@
 // No separate zustand store needed - WebviewStore IS the auth store
 
 import { sdpppSDK } from '@sdppp/common';
+import { createSDPPPXServices } from '@sdppp/sdpppx-services';
+import { SUPABASE_CONFIG } from '../supabase/config';
 import { clearSupabaseFromSDPPPSB, getSupabaseClientFromSDPPPSB, initializeSupabaseFromSDPPPSB } from '../supabase/sdppp-sb-session';
+import { supabaseSessionStore } from '../supabase/session-store';
 
 const AUTH_STORAGE_KEY = 'sdppp-auth-storage';
 
@@ -12,6 +15,43 @@ interface AuthData {
   refreshToken?: string;
   userInfo: Record<string, any>;
   isGuest: boolean;
+}
+
+async function refreshBalanceWithSupabase() {
+  const tenantId = typeof SUPABASE_CONFIG.tenantId === 'string' ? SUPABASE_CONFIG.tenantId.trim() : '';
+  if (!tenantId) {
+    console.warn('[authActions] tenantId missing, skip balance refresh');
+    return;
+  }
+
+  const session = supabaseSessionStore.getState().session;
+  if (!session) {
+    console.warn('[authActions] session missing, skip balance refresh');
+    return;
+  }
+
+  const client = getSupabaseClientFromSDPPPSB();
+  if (!client) {
+    console.warn('[authActions] supabase client missing, skip balance refresh');
+    return;
+  }
+
+  try {
+    console.log('[authActions] refresh balance via services');
+    const services = createSDPPPXServices({
+      baseUrl: 'http://localhost',
+      supabase: {
+        getClient: async () => client,
+      },
+    });
+    const result = await services.fetchBalance(undefined, tenantId);
+    const balance = typeof result.balance === 'number' ? result.balance : null;
+    console.log('[authActions] balance result', balance);
+    sdpppSDK?.stores?.WebviewStore?.setState({ balance });
+  } catch (error) {
+    console.warn('[authActions] refresh balance failed', error);
+    sdpppSDK?.stores?.WebviewStore?.setState({ balance: null });
+  }
 }
 
 // Helper functions to update WebviewStore auth state
@@ -26,9 +66,12 @@ export const authActions = {
     const hasClient = !!getSupabaseClientFromSDPPPSB();
     if (!nextToken) {
       clearSupabaseFromSDPPPSB();
+      sdpppSDK?.stores?.WebviewStore?.setState({ balance: null });
     } else if (tokenChanged || !hasClient) {
       clearSupabaseFromSDPPPSB();
-      initializeSupabaseFromSDPPPSB().catch((error) => {
+      initializeSupabaseFromSDPPPSB().then(() => {
+        return refreshBalanceWithSupabase();
+      }).catch((error) => {
         console.error('[authActions] initialize supabase failed:', error);
       });
     }
@@ -50,6 +93,7 @@ export const authActions = {
     };
     sdpppSDK.stores.WebviewStore.setState(clearedState);
     clearSupabaseFromSDPPPSB();
+    sdpppSDK?.stores?.WebviewStore?.setState({ balance: null });
     authActions.persistAuth();
   },
 

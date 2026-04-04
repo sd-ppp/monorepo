@@ -1,5 +1,6 @@
 import { Client } from '../base/Client';
 import { Task } from '../base/Task';
+import { t } from '@sdppp/common';
 import type { WidgetableNode } from '@sdppp/common/schemas/schemas';
 import type { DescribeResult } from '@sdppp/pptask';
 import { createInlineExecutor } from '@sdppp/pptask/executors/inline';
@@ -109,7 +110,7 @@ export class SDPPPSponsor extends Client<SDPPPSponsorClientConfig> {
   }
 
   async uploadImage(): Promise<string> {
-    throw new Error('当前任务路由暂不支持上传控件');
+    throw new Error(t('taskrouter.error.upload_control_unsupported'));
   }
 
   async fetchTemplates(): Promise<{ items?: Array<{ value: string; label: string; locator?: string | null }> }> {
@@ -144,7 +145,7 @@ export class SDPPPSponsor extends Client<SDPPPSponsorClientConfig> {
   ): Promise<string> {
     const normalized = resourceId.trim();
     if (!normalized) {
-      throw new Error('缺少可上传的资源');
+      throw new Error(t('taskrouter.error.upload_resource_missing'));
     }
 
     const formData = new FormData();

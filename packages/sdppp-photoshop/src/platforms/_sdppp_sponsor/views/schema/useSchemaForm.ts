@@ -1,4 +1,5 @@
 import { onFormValuesChange } from '@formily/core';
+import { t } from '@sdppp/common';
 import { useCallback, useEffect, useRef } from 'react';
 import { sponsorAuthStore } from '../auth/authStore';
 import { sponsorFormStore } from '../form/formStore';
@@ -79,7 +80,7 @@ export const useSchemaForm = () => {
   const loadSchema = useCallback(async (templateId?: string) => {
     const targetTemplateId = (templateId ?? sponsorTemplateStore.getState().templateId).trim();
     if (!targetTemplateId) {
-      setSchemaError('请先选择应用');
+      setSchemaError(t('taskrouter.no_schema'));
       return;
     }
     await performLoadSchema(targetTemplateId);

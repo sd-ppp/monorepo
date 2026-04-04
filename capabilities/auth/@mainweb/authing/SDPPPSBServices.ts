@@ -11,6 +11,8 @@ export class SDPPPSBServices implements LoginProvider {
   private client: SupabaseClient;
   private tenantId?: string;
   private authingId?: string;
+  private supabaseUrl: string;
+  private supabaseAnonKey: string;
 
   constructor(options: SDPPPSBServicesOptions = {}) {
     if (!SUPABASE_CONFIG.url || !SUPABASE_CONFIG.anonKey) {
@@ -18,7 +20,9 @@ export class SDPPPSBServices implements LoginProvider {
     }
     this.tenantId = options.tenantId;
     this.authingId = options.authingId;
-    this.client = createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey, {
+    this.supabaseUrl = SUPABASE_CONFIG.url;
+    this.supabaseAnonKey = SUPABASE_CONFIG.anonKey;
+    this.client = createClient(this.supabaseUrl, this.supabaseAnonKey, {
       auth: {
         autoRefreshToken: false,
         persistSession: false,
@@ -165,5 +169,18 @@ export class SDPPPSBServices implements LoginProvider {
       username: (data.user.user_metadata as any)?.username,
       email: data.user.email,
     };
+  }
+
+  async logout(): Promise<void> {
+    try {
+      await this.client.auth.signOut();
+    } finally {
+      this.client = createClient(this.supabaseUrl, this.supabaseAnonKey, {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      });
+    }
   }
 }

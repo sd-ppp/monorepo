@@ -211,7 +211,9 @@ export function useTaskExecutor({
                             (result as any)?.errorMessage ||
                             (result as any)?.error ||
                             (result as any)?.message ||
-                            `Task failed: ${resultStatusRaw}`;
+                            t('task.error.failed_status', {
+                                status: resultStatusRaw ?? '',
+                            });
                         setRunError(String(errorMessage));
                         return;
                     }
@@ -235,7 +237,9 @@ export function useTaskExecutor({
                         
                         try {
                             // 🎯 显示图片导入进度
-                            setProgressMessage(`正在导入图片 ${i + 1}/${outputs.length}...`);
+                            setProgressMessage(
+                                t('task.importing_image', { index: i + 1, total: outputs.length })
+                            );
                             sdpppSDK.logger?.(`[TaskRouter] Set progress message: 正在导入图片 ${i + 1}/${outputs.length}...`);
                             
                             await MainStore.getState().downloadAndAppendImage({
@@ -250,7 +254,12 @@ export function useTaskExecutor({
                             console.log(`[TaskRouter] Image ${i + 1}/${outputs.length} sent to preview`);
                         } catch (sendError: any) {
                             console.error('[TaskRouter] Failed to send image to preview:', sendError);
-                            setRunError(`Failed to send image ${i + 1}: ${sendError.message || sendError.toString()}`);
+                            setRunError(
+                                t('task.error.send_image_failed', {
+                                    index: i + 1,
+                                    error: sendError.message || sendError.toString(),
+                                })
+                            );
                         }
                     }
                     
@@ -274,7 +283,12 @@ export function useTaskExecutor({
                     sdpppSDK.logger?.('[TaskRouter] ===== END ERROR DEBUG =====');
                     
                     // 尝试从不同字段提取错误信息
-                    const errorMessage = error?.message || error?.error || error?.errorMessage || error?.toString() || 'Unknown error';
+                    const errorMessage =
+                        error?.message ||
+                        error?.error ||
+                        error?.errorMessage ||
+                        error?.toString() ||
+                        t('common.error.unknown');
                     setRunError(errorMessage);
                 } finally {
                     setIsImporting(false);
@@ -304,7 +318,11 @@ export function useTaskExecutor({
             sdpppSDK.logger?.(`[TaskRouter] error object: ${JSON.stringify(error, null, 2)}`);
             sdpppSDK.logger?.('[TaskRouter] ===== END OUTER ERROR DEBUG =====');
             
-            const errorMessage = error?.message || error?.error || error?.toString() || 'Unknown error';
+            const errorMessage =
+                error?.message ||
+                error?.error ||
+                error?.toString() ||
+                t('common.error.unknown');
             setRunError(errorMessage);
             setIsRunning(false);
         } finally {

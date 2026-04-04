@@ -4,6 +4,7 @@ import { useStore } from 'zustand';
 import z from 'zod';
 import { sdpppSDK } from '@sdppp/common';
 import { authActions } from './authStore';
+import { initializeSupabaseFromSDPPPSB } from '../supabase/sdppp-sb-session';
 import {
   UXPAuthLoginRequestSchema,
   UXPAuthRegisterRequestSchema,
@@ -159,6 +160,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children, provider }
       if (!currentToken) {
         setInitialized(true);
         return;
+      }
+
+      try {
+        await initializeSupabaseFromSDPPPSB();
+      } catch (error) {
+        console.warn('[AuthProvider] Supabase session init failed:', error);
       }
 
       const activeProvider = AuthService.getProvider();

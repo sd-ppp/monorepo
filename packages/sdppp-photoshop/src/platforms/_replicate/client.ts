@@ -137,7 +137,7 @@ export class SDPPPReplicate extends Client<{
                 resultGetter: async (_id, lastStatusResult) => {
                     const result = lastStatusResult.rawData;
                     if (!result) {
-                        throw new Error('Result fetch failed');
+                        throw new Error(t('replicate.error.result_fetch_failed'));
                     }
                     return result;
                 },
@@ -157,11 +157,14 @@ export class SDPPPReplicate extends Client<{
 
         try {
             if (signal?.aborted) {
-                throw new DOMException('Upload aborted', 'AbortError');
+                throw new DOMException(
+                    t('common.error.upload_aborted', { defaultValue: 'Upload aborted' }),
+                    'AbortError'
+                );
             }
 
             if (type !== 'resource') {
-                throw new Error('Unsupported upload type');
+                throw new Error(t('upload_pass.error.unsupported_type', { type }));
             }
 
             if (typeof image === 'string') {
