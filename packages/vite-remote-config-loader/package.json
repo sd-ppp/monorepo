@@ -20,6 +20,14 @@
     "README.md"
   ],
   "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "nx": {
+    "tags": [
+      "scope:infra",
+      "platform:web",
+      "type:lib"
+    ]
   },
   "keywords": [
     "vite",
@@ -34,6 +42,7 @@
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^20.0.0",
+    "typescript": "^5.8.3",
     "vite": "^6.3.5"
   }
 }

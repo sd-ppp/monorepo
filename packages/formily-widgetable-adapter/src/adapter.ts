@@ -30,7 +30,7 @@ export function adaptFormilySchemaToWidgetable(
     return { nodes, defaultValues, warnings };
   }
 
-  const requiredSet = new Set(schema.required ?? []);
+  const requiredSet = new Set<string>(schema.required ?? []);
   const entries = Object.entries(schema.properties) as Array<[string, FormilyFieldSchema]>;
   const orderBy = options.orderBy ?? 'x-order';
 

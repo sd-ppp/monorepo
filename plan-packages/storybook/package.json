@@ -4,7 +4,24 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "storybook": "storybook dev -p 7007 --config-dir ./.storybook --no-open"
+    "dev": "storybook dev -p 7007 --config-dir ./.storybook --no-open",
+    "build": "storybook build --config-dir ./.storybook",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "storybook": "pnpm run dev"
+  },
+  "nx": {
+    "targets": {
+      "build": {
+        "outputs": [
+          "{projectRoot}/storybook-static"
+        ]
+      }
+    },
+    "tags": [
+      "scope:tool",
+      "platform:web",
+      "type:app"
+    ]
   },
   "dependencies": {
     "@formily/core": "^2.3.0",

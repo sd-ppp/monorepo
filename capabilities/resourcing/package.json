@@ -8,6 +8,13 @@
     "lint": "tsc -p tsconfig.json --noEmit",
     "test": "vitest"
   },
+  "nx": {
+    "tags": [
+      "scope:capability",
+      "platform:cross",
+      "type:lib"
+    ]
+  },
   "dependencies": {
     "@sdppp/common": "workspace:*",
     "@sdppp/cbm-calculator": "workspace:*",

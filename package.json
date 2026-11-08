@@ -4,8 +4,16 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "build": "node build/build.js",
-    "dev": "cross-env NODE_ENV=development pnpm --filter '*' --filter '!.' --parallel dev"
+    "build": "nx run sdppp-mono:workspace-build",
+    "dev": "cross-env NODE_ENV=development nx run-many -t dev --all --parallel --exclude=sdppp-mono",
+    "graph": "nx graph",
+    "show:project": "nx show project",
+    "boundaries": "nx run-many -t boundaries --all --exclude=sdppp-mono",
+    "affected:build": "nx affected -t build --exclude=sdppp-mono",
+    "affected:boundaries": "nx affected -t boundaries --exclude=sdppp-mono",
+    "affected:test": "nx affected -t test --exclude=sdppp-mono",
+    "affected:lint": "nx affected -t lint --exclude=sdppp-mono",
+    "affected:typecheck": "nx affected -t typecheck --exclude=sdppp-mono"
   },
   "author": "",
   "license": "ISC",
@@ -23,16 +31,68 @@
   "devDependencies": {
     "@esbuild/linux-x64": "0.25.12",
     "@types/node": "^20.11.24",
+    "@nx/eslint": "22.5.4",
+    "@nx/eslint-plugin": "22.5.4",
+    "@typescript-eslint/parser": "^8.46.2",
     "@vitejs/plugin-react": "^4.5.0",
     "baseline-browser-mapping": "^2.9.19",
     "cross-env": "^7.0.3",
     "electron-to-chromium": "^1.5.286",
+    "eslint": "^9.39.1",
     "fastq": "^1.20.1",
+    "nx": "22.5.4",
     "rimraf": "^6.0.1",
     "typescript": "^5.8.3",
     "vite": "^6.3.5",
     "vite-plugin-dts": "^4.5.4",
     "vitest": "^3.1.4"
+  },
+  "nx": {
+    "tags": [
+      "scope:workspace",
+      "type:orchestrator"
+    ],
+    "targets": {
+      "workspace-build": {
+        "dependsOn": [
+          "build-release"
+        ],
+        "cache": false,
+        "command": "node -e \"console.log('workspace build complete')\""
+      },
+      "build-all-non-release": {
+        "cache": false,
+        "command": "pnpm --filter !./packages/sdppp-photoshop... --filter !./release-repos/sd-ppp... build"
+      },
+      "build-photoshop": {
+        "dependsOn": [
+          "build-all-non-release"
+        ],
+        "cache": false,
+        "command": "pnpm --filter ./packages/sdppp-photoshop... build"
+      },
+      "post-build": {
+        "dependsOn": [
+          "build-photoshop"
+        ],
+        "cache": false,
+        "command": "pnpm --filter !./release-repos/sd-ppp... run post_build"
+      },
+      "package-psccx": {
+        "dependsOn": [
+          "post-build"
+        ],
+        "cache": false,
+        "command": "node build/package-psccx.js"
+      },
+      "build-release": {
+        "dependsOn": [
+          "package-psccx"
+        ],
+        "cache": false,
+        "command": "pnpm --filter ./release-repos/sd-ppp... build"
+      }
+    }
   },
   "dependencies": {
     "archiver": "^7.0.1"

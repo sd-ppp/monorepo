@@ -8,7 +8,16 @@
     ".": "./src/index.ts",
     "./*": "./src/*"
   },
-  "scripts": {},
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "nx": {
+    "tags": [
+      "scope:ui",
+      "platform:web",
+      "type:lib"
+    ]
+  },
   "dependencies": {
     "@sdppp/common": "workspace:*",
     "@sdppp/pptask": "workspace:*"

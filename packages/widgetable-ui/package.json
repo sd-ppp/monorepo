@@ -6,6 +6,13 @@
   "scripts": {
     "test": "vitest"
   },
+  "nx": {
+    "tags": [
+      "scope:ui",
+      "platform:web",
+      "type:lib"
+    ]
+  },
   "peerDependencies": {
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

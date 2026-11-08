@@ -13,6 +13,13 @@
     "./@uxp/*": "./@uxp/*"
   },
   "scripts": {},
+  "nx": {
+    "tags": [
+      "scope:capability",
+      "platform:cross",
+      "type:lib"
+    ]
+  },
   "dependencies": {
     "@sdppp/balance": "workspace:*",
     "@sdppp/common": "workspace:*",

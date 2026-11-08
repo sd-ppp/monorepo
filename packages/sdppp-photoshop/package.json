@@ -8,6 +8,13 @@
     "build": "vite build",
     "test": "vitest"
   },
+  "nx": {
+    "tags": [
+      "scope:app",
+      "platform:photoshop",
+      "type:app"
+    ]
+  },
   "author": "",
   "license": "ISC",
   "description": "",

@@ -8,7 +8,24 @@
   "types": "./src/index.ts",
   "sideEffects": false,
   "scripts": {
+    "dev": "vite --config playground/vite.config.ts",
+    "build": "vite build --config playground/vite.config.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
     "preview": "vite preview --config playground/vite.config.ts"
+  },
+  "nx": {
+    "targets": {
+      "build": {
+        "outputs": [
+          "{projectRoot}/playground/dist"
+        ]
+      }
+    },
+    "tags": [
+      "scope:tool",
+      "platform:web",
+      "type:lib"
+    ]
   },
   "dependencies": {
     "konva": "^9.3.3",

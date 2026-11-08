@@ -11,6 +11,13 @@
     "playground"
   ],
   "scripts": {},
+  "nx": {
+    "tags": [
+      "scope:ui",
+      "platform:photoshop",
+      "type:lib"
+    ]
+  },
   "dependencies": {
     "@sdppp/cbm-calculator": "workspace:*",
     "@sdppp/common": "workspace:*",

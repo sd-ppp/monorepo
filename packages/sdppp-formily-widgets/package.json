@@ -9,6 +9,13 @@
     "./*": "./src/*"
   },
   "scripts": {},
+  "nx": {
+    "tags": [
+      "scope:ui",
+      "platform:web",
+      "type:lib"
+    ]
+  },
   "dependencies": {
     "@formily/core": "^2.3.2",
     "@formily/react": "^2.3.2",
