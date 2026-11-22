@@ -1,24 +1,54 @@
+import { getCurrentLanguage } from "@sdppp/common";
 import { SDPPPRunningHub } from "../client";
+import type { RunningHubSite } from "../client";
 import { BaseStoreState, createBaseStore, AsyncOperationManager, createTask as createBaseTask } from "../../base/BaseStore";
 import { MainStore } from "../../../tsx/App.store";
 import { sponsorAuthStore } from "../../_sdppp_sponsor/views/auth/authStore";
 
+type WebappHistoryItem = { webappId: string; appName: string }
+
+// 每个站点独立保存的数据（密钥 / 已用应用 / 各应用输入值）
+interface RunningHubSiteSnapshot {
+    apiKey: string
+    webappHistory: WebappHistoryItem[]
+    allValues: Record<string, Record<string, any>>
+}
+
+function createEmptySiteSnapshot(): RunningHubSiteSnapshot {
+    return { apiKey: '', webappHistory: [], allValues: {} };
+}
+
+function createInitialSiteSnapshots(): Record<RunningHubSite, RunningHubSiteSnapshot> {
+    return {
+        cn: createEmptySiteSnapshot(),
+        ai: createEmptySiteSnapshot(),
+    };
+}
+
+// 默认站点保持原有行为：界面语言为英文时使用海外站，否则使用国内站
+const defaultSite: RunningHubSite = getCurrentLanguage() === 'en-US' ? 'ai' : 'cn';
+
 // RunningHub特有的状态接口
 interface RunningHubStoreState extends BaseStoreState<SDPPPRunningHub> {
     apiKey: string
+    site: RunningHubSite
+    siteSnapshots: Record<RunningHubSite, RunningHubSiteSnapshot>
     useSponsorDeduction: boolean
     webappId: string
     currentNodeInfoList: any[]
     accountStatus: {
         remainCoins: number
+        remainPoint?: number | null
+        hasRemainPoint?: boolean
         currentTaskCounts: number
     } | null
     appName: string
-    webappHistory: Array<{ webappId: string; appName: string }>
+    webappHistory: WebappHistoryItem[]
     setApiKey: (apiKey: string) => void
+    setSite: (site: RunningHubSite) => void
     setUseSponsorDeduction: (useSponsorDeduction: boolean) => void
     setWebappId: (webappId: string) => void
-    setAccountStatus: (status: { remainCoins: number; currentTaskCounts: number } | null) => void
+    setAccountStatus: (status: { remainCoins: number; remainPoint?: number | null; hasRemainPoint?: boolean; currentTaskCounts: number } | null) => void
     setAppName: (appName: string) => void
     addWebappHistory: (webappId: string, appName: string) => void
     removeWebappHistory: (webappId: string) => void
@@ -30,13 +60,56 @@ export const runninghubStore = createBaseStore<SDPPPRunningHub, RunningHubStoreS
     '',
     {
         apiKey: '',
+        site: defaultSite,
+        siteSnapshots: createInitialSiteSnapshots(),
         useSponsorDeduction: false,
         webappId: '',
         currentNodeInfoList: [],
         accountStatus: null,
         appName: '',
         webappHistory: [],
-        setApiKey: (apiKey) => runninghubStore.setState({ apiKey }),
+        setApiKey: (apiKey) => {
+            const state = runninghubStore.getState();
+            const currentSnapshot = state.siteSnapshots[state.site] ?? createEmptySiteSnapshot();
+            runninghubStore.setState({
+                apiKey,
+                siteSnapshots: {
+                    ...state.siteSnapshots,
+                    [state.site]: { ...currentSnapshot, apiKey },
+                },
+            });
+        },
+        setSite: (site) => {
+            const state = runninghubStore.getState();
+            if (state.site === site) return;
+
+            // 先把当前站点的数据快照下来，再加载目标站点的数据
+            const siteSnapshots: Record<RunningHubSite, RunningHubSiteSnapshot> = {
+                ...state.siteSnapshots,
+                [state.site]: {
+                    apiKey: state.apiKey,
+                    webappHistory: state.webappHistory,
+                    allValues: state.allValues,
+                },
+            };
+            const target = siteSnapshots[site] ?? createEmptySiteSnapshot();
+
+            runninghubStore.setState({
+                site,
+                siteSnapshots,
+                apiKey: target.apiKey,
+                webappHistory: target.webappHistory,
+                allValues: target.allValues,
+                // 切换站点时清空当前应用选择，避免用另一站的应用 ID 加载
+                webappId: '',
+                appName: '',
+                selectedModel: '',
+                currentValues: {},
+                currentNodes: [],
+                currentNodeInfoList: [],
+                accountStatus: null,
+            });
+        },
         setUseSponsorDeduction: (useSponsorDeduction) => runninghubStore.setState({ useSponsorDeduction }),
         setWebappId: (webappId) => runninghubStore.setState({ webappId }),
         setAccountStatus: (accountStatus) => runninghubStore.setState({ accountStatus }),
@@ -64,6 +137,8 @@ export const runninghubStore = createBaseStore<SDPPPRunningHub, RunningHubStoreS
     },
     (state) => ({
         apiKey: state.apiKey,
+        site: state.site,
+        siteSnapshots: state.siteSnapshots,
         useSponsorDeduction: state.useSponsorDeduction,
         webappId: state.webappId,
         selectedModel: state.selectedModel,
@@ -77,10 +152,12 @@ async function resetClient(state: RunningHubStoreState, prevState: RunningHubSto
     const useSponsorDeduction = state.useSponsorDeduction;
     const apiKeyChanged = state.apiKey !== prevState.apiKey;
     const sponsorChanged = state.useSponsorDeduction !== prevState.useSponsorDeduction;
+    const siteChanged = state.site !== prevState.site;
 
-    if ((state.apiKey || useSponsorDeduction) && (apiKeyChanged || sponsorChanged || !state.client)) {
+    if ((state.apiKey || useSponsorDeduction) && (apiKeyChanged || sponsorChanged || siteChanged || !state.client)) {
         const client = new SDPPPRunningHub({
             apiKey: state.apiKey,
+            site: state.site,
             useSponsorDeduction: () => runninghubStore.getState().useSponsorDeduction,
             getSponsorServices: () => sponsorAuthStore.getState().services,
             getSponsorTenantId: () => sponsorAuthStore.getState().tenantId,
@@ -112,11 +189,11 @@ async function resetClient(state: RunningHubStoreState, prevState: RunningHubSto
                 runninghubStore.setState({ accountStatus: null });
             }
         }, 0);
-    } else if (!state.apiKey && !useSponsorDeduction && (prevState.apiKey || prevState.useSponsorDeduction)) {
-        // API key 被清空时，停止所有刷新并清空账户状态
+    } else if (!state.apiKey && !useSponsorDeduction && (prevState.apiKey || prevState.useSponsorDeduction || siteChanged || state.client)) {
+        // API key 被清空或切换站点后没有可用 key 时，停止所有刷新并清空账户状态
         stopExecutingRefresh();
         stopIdleRefresh();
-        runninghubStore.setState({ accountStatus: null });
+        runninghubStore.setState({ accountStatus: null, client: null });
     }
 }
 runninghubStore.subscribe(resetClient);
@@ -226,12 +303,20 @@ export async function changeSelectedModel(webappId: string, options?: { previous
 
         const currentValues = options?.previousValues ?? runninghubStore.getState().allValues[webappId];
         const values = mergeValues(nodeResult.defaultInput, currentValues);
+        const metaTitle =
+            typeof nodeResult.rawData?.metadata?.title === 'string' &&
+            nodeResult.rawData.metadata.title !== webappId
+                ? nodeResult.rawData.metadata.title
+                : '';
         const appName =
             nodeResult.rawData?.data?.webappName ||
             nodeResult.rawData?.metadata?.rawData?.data?.webappName ||
             nodeResult.rawData?.metadata?.rawData?.data?.webAppName ||
             nodeResult.rawData?.metadata?.rawData?.data?.name ||
-            runninghubStore.getState().appName ||
+            nodeResult.rawData?.metadata?.webappName ||
+            nodeResult.rawData?.metadata?.providerMetadata?.runninghub?.webappName ||
+            metaTitle ||
+            (runninghubStore.getState().webappId === webappId ? runninghubStore.getState().appName : '') ||
             '';
 
         const nodeInfoList =

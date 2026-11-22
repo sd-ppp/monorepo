@@ -68,7 +68,7 @@ export function createBaseStore<TClient extends Client<any>, TState extends Base
 
     // 自动保存当前值到allValues
     store.subscribe((state, prevState) => {
-        if (state.currentValues !== prevState.currentValues) {
+        if (state.currentValues !== prevState.currentValues && state.selectedModel) {
             store.getState().setAllValues({
                 ...store.getState().allValues,
                 [state.selectedModel]: state.currentValues

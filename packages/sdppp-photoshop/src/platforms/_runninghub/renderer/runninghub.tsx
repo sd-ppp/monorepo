@@ -4,7 +4,7 @@ import { supabaseSessionStore } from '@sdppp/auth';
 import type { WorkflowStatusDescriptor } from '@sdppp/ui-library';
 import { loadRemoteConfig } from '@sdppp/vite-remote-config-loader';
 import { WidgetableProvider, WorkflowEditApiFormat } from '@sdppp/widgetable-ui';
-import { Alert, Button, Checkbox, Flex, Input, Tooltip } from 'antd';
+import { Alert, Button, Checkbox, Flex, Input, Segmented, Tooltip } from 'antd';
 import Link from 'antd/es/typography/Link';
 import { CircleStop, HelpCircle } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
@@ -22,6 +22,7 @@ import { useSponsorAuth } from '../../_sdppp_sponsor/views/auth/useSponsorAuth';
 import SponsorBalance from '../../_sdppp_sponsor/views/balance/SponsorBalance';
 import { useBalance } from '../../_sdppp_sponsor/views/balance/useBalance';
 import { sponsorUiStore } from '../../_sdppp_sponsor/views/uiStore';
+import type { RunningHubSite } from '../client';
 import './runninghub.less';
 import { changeSelectedModel, createTask, runninghubStore } from './runninghub.store';
 
@@ -30,9 +31,12 @@ const log = sdpppSDK.logger.extend('runninghub')
 const { Password } = Input;
 
 export default function RunningHubRenderer({ showingPreview }: { showingPreview: boolean }) {
-    const { t, language } = useTranslation()
-    const { apiKey, setApiKey, useSponsorDeduction, setUseSponsorDeduction } = runninghubStore();
+    const { t } = useTranslation()
+    const { apiKey, setApiKey, site, setSite, useSponsorDeduction, setUseSponsorDeduction } = runninghubStore();
     const [error, setError] = useState<string>('');
+
+    // RunningHub 的密钥/教程链接按站点区分，而不是按界面语言
+    const bannerLocale = site === 'ai' ? 'en-US' : 'zh-CN';
 
     useSponsorAuth();
     const { refreshBalance } = useBalance();
@@ -79,7 +83,7 @@ export default function RunningHubRenderer({ showingPreview }: { showingPreview:
             {
                 !apiKey && !useSponsorDeduction && <Link underline onClick={async () => {
                     const banners = loadRemoteConfig('banners');
-                    const runninghubURL = banners.find((banner: any) => banner.type === 'runninghub' && banner.locale == language)?.link;
+                    const runninghubURL = banners.find((banner: any) => banner.type === 'runninghub' && banner.locale == bannerLocale)?.link;
                     sdpppSDK.plugins.photoshop.openExternalLink({ url: runninghubURL })
                 }}>{t('runninghub.get_apikey')}</Link>
             }
@@ -96,7 +100,17 @@ export default function RunningHubRenderer({ showingPreview }: { showingPreview:
 
             <RunningHubStatusRow sponsorBalance={sponsorBalance} />
 
-            {!showingPreview ? <Flex gap={8}>
+            {!showingPreview ? <Flex gap={8} vertical>
+                <Segmented
+                    block
+                    size="small"
+                    value={site}
+                    onChange={(value) => setSite(value as RunningHubSite)}
+                    options={[
+                        { label: t('runninghub.site.domestic'), value: 'cn' },
+                        { label: t('runninghub.site.overseas'), value: 'ai' },
+                    ]}
+                />
                 {!useSponsorDeduction && (
                     <Password
                         placeholder={t('runninghub.apikey_placeholder')}
@@ -116,6 +130,9 @@ export default function RunningHubRenderer({ showingPreview }: { showingPreview:
 function RunningHubRendererModels() {
     const { webappId, setWebappId, webappHistory, removeWebappHistory, appName } = runninghubStore();
     const client = runninghubStore((state) => state.client);
+    const site = runninghubStore((state) => state.site);
+    const { t } = useTranslation();
+    const bannerLocale = site === 'ai' ? 'en-US' : 'zh-CN';
     const [loading, setLoading] = useState(false);
     const [loadError, setLoadError] = useState<string>('');
 
@@ -204,8 +221,6 @@ function RunningHubRendererModels() {
         deletable: true
     }));
 
-    const { t, language } = useTranslation();
-
     return (
         <UploadPassProvider
             uploader={async (uploadInput, signal) => {
@@ -226,7 +241,7 @@ function RunningHubRendererModels() {
                     selectOptions={selectOptions}
                     onSelectChange={handleWebappIdChange}
                     onSelectRemove={removeWebappHistory}
-                    language={language}
+                    language={bannerLocale}
                 />
                 {loadError && <Alert message={loadError} type="error" showIcon />}
             </WidgetableProvider>
@@ -387,6 +402,14 @@ function RunningHubStatusRow({ sponsorBalance }: { sponsorBalance: ReactNode | n
 
     const showAccountStatus = !!accountStatus && !!apiKey && !useSponsorDeduction;
     const showTaskCount = showAccountStatus && accountStatus.currentTaskCounts > 0;
+    const remainPoint = typeof accountStatus?.remainPoint === 'number' && Number.isFinite(accountStatus.remainPoint)
+        ? accountStatus.remainPoint
+        : null;
+    const remainCoins = Number(accountStatus?.remainCoins ?? 0);
+    const hasPoint = remainPoint !== null && remainPoint > 0;
+    const hasCoins = Number.isFinite(remainCoins) && remainCoins > 0;
+    const showPoints = hasPoint || (!hasCoins && !!accountStatus?.hasRemainPoint);
+    const showCoins = hasCoins || (!hasPoint && !accountStatus?.hasRemainPoint);
 
     return (
         <Flex justify='space-between' gap={16} align="center" style={{ color: 'var(--sdppp-host-text-color-secondary)', fontSize: '12px' }}>
@@ -407,10 +430,18 @@ function RunningHubStatusRow({ sponsorBalance }: { sponsorBalance: ReactNode | n
                                 {accountStatus.currentTaskCounts}
                             </span>
                         ) : null}
-                        <span>
-                            {t('runninghub.rh_coins')}
-                            {accountStatus.remainCoins}
-                        </span>
+                        {showPoints ? (
+                            <span>
+                                {t('runninghub.points')}
+                                {remainPoint ?? 0}
+                            </span>
+                        ) : null}
+                        {showCoins ? (
+                            <span>
+                                {t('runninghub.rh_coins')}
+                                {Number.isFinite(remainCoins) ? remainCoins : 0}
+                            </span>
+                        ) : null}
                     </Flex>
                 ) : null
             )}

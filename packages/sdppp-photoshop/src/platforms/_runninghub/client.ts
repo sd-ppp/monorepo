@@ -16,22 +16,26 @@ sdpppSDK.plugins.fetchProxy.registerProxyDomains('runninghub.ai');
 
 const SPONSOR_TEMPLATE_ID = 'b9f3228f-2f37-4ed9-a56b-9ff5b221a9f4';
 
-export class SDPPPRunningHub extends Client<{
-  apiKey: string
-  useSponsorDeduction?: () => boolean
-  getSponsorServices?: () => SDPPPXServices | null
-  getSponsorTenantId?: () => string | null
-}> {
+export type RunningHubSite = 'cn' | 'ai';
+
+export interface SDPPPRunningHubConfig {
+  apiKey: string;
+  /**
+   * RunningHub 站点：'cn' 国内站，'ai' 海外站。
+   * 未指定时回退到界面语言（兼容旧行为）。
+   */
+  site?: RunningHubSite;
+  useSponsorDeduction?: () => boolean;
+  getSponsorServices?: () => SDPPPXServices | null;
+  getSponsorTenantId?: () => string | null;
+}
+
+export class SDPPPRunningHub extends Client<SDPPPRunningHubConfig> {
   private readonly inline: InlineExecutor;
   private readonly schemaCache = new Map<string, FormilySchema>();
   private lastSponsorUploadProvider: string | null = null;
 
-  constructor(config: {
-    apiKey: string;
-    useSponsorDeduction?: () => boolean;
-    getSponsorServices?: () => SDPPPXServices | null;
-    getSponsorTenantId?: () => string | null;
-  }) {
+  constructor(config: SDPPPRunningHubConfig) {
     super(config);
     this.inline = createInlineExecutor({
       platformConfig: () => this.buildPlatformConfig(),
@@ -46,6 +50,8 @@ export class SDPPPRunningHub extends Client<{
   }
 
   private getBaseHost(): string {
+    if (this.config.site === 'ai') return 'www.runninghub.ai';
+    if (this.config.site === 'cn') return 'www.runninghub.cn';
     const locale = getCurrentLanguage();
     return locale === 'en-US' ? 'www.runninghub.ai' : 'www.runninghub.cn';
   }
@@ -59,9 +65,16 @@ export class SDPPPRunningHub extends Client<{
   }
 
   private buildPlatformConfig(): Record<string, any> {
+    const site = this.config.site;
     const platformConfig: Record<string, any> = {
-      language: getCurrentLanguage(),
+      // 兼容旧版本宿主：宿主侧仅根据 language 选择域名，这里按站点显式映射，
+      // 确保“界面语言”不会覆盖用户选择的国内站/海外站。
+      language: site ? (site === 'ai' ? 'en-US' : 'zh-CN') : getCurrentLanguage(),
     };
+
+    if (site) {
+      platformConfig.site = site;
+    }
 
     if (!this.isSponsorMode()) {
       platformConfig.apiKey = this.config.apiKey;
@@ -85,6 +98,8 @@ export class SDPPPRunningHub extends Client<{
 
   async getAccountStatus(): Promise<{
     remainCoins: number;
+    remainPoint?: number | null;
+    hasRemainPoint?: boolean;
     currentTaskCounts: number;
   }> {
     const apiUrl = `https://${this.getBaseHost()}/uc/openapi/accountStatus`;
@@ -128,7 +143,19 @@ export class SDPPPRunningHub extends Client<{
         throw new Error(errorMsg);
       }
 
-      return result.data;
+      const data = result.data ?? {};
+      const parsedCoins = Number(data.remainCoins ?? 0);
+      const hasRemainPoint = data.remainPoint !== undefined && data.remainPoint !== null;
+      const parsedPoint = hasRemainPoint ? Number(data.remainPoint) : null;
+      const parsedTaskCounts = Number(data.currentTaskCounts ?? 0);
+
+      return {
+        ...data,
+        remainCoins: Number.isFinite(parsedCoins) ? parsedCoins : 0,
+        remainPoint: parsedPoint !== null && Number.isFinite(parsedPoint) ? parsedPoint : null,
+        hasRemainPoint: hasRemainPoint && parsedPoint !== null && Number.isFinite(parsedPoint),
+        currentTaskCounts: Number.isFinite(parsedTaskCounts) ? parsedTaskCounts : 0,
+      };
     } catch (error: any) {
       log('getAccountStatus exception', { error: error.message, url: apiUrl });
       console.error('Error fetching account status:', error);
